@@ -76,6 +76,7 @@ const CardiologyCPTApp = () => {
   const [expandedDescriptions, setExpandedDescriptions] = React.useState({});
   const [imagingVessels, setImagingVessels] = React.useState({});
   const [dcbVessels, setDcbVessels] = React.useState({});
+  const [pciAddOnVessels, setPciAddOnVessels] = React.useState({});
   const [expandedPCIVessels, setExpandedPCIVessels] = React.useState({});
   
   // Settings state
@@ -999,6 +1000,10 @@ const CardiologyCPTApp = () => {
     setDcbVessels(prev => ({ ...prev, [code]: vessel }));
   };
 
+  const setPciAddOnVesselForCode = (code, vessel) => {
+    setPciAddOnVessels(prev => ({ ...prev, [code]: vessel }));
+  };
+
   const toggleCategory = (category) => {
     setExpandedCategories(prev => ({
       ...prev,
@@ -1312,7 +1317,14 @@ const CardiologyCPTApp = () => {
     const codesText = allCodes.map(c => {
       const isPCICode = pciCodeList.includes(c.code);
       const isDiagnosticCath = diagnosticCathCodes.includes(c.code);
+      const isImagingCode = ['92978', '92979', '93571', '93572', '0523T', '0524T'].includes(c.code);
+      const isDCBCode = ['0913T', '0914T'].includes(c.code);
+      const isPCIAddOnCode = ['92972', '92973', '92974'].includes(c.code);
+      
       const vessel = codeVessels[c.code] || codeVesselsV2[c.code] || codeVesselsV3[c.code];
+      const imgVessel = imagingVessels[c.code];
+      const dcbVessel = dcbVessels[c.code];
+      const pciAddOnVessel = pciAddOnVessels[c.code];
       
       if (isPCICode && vessel) {
         // Extract just the modifier (e.g., "LD" from "LAD (LD)")
@@ -1323,6 +1335,24 @@ const CardiologyCPTApp = () => {
       // Add -59 modifier to diagnostic cath codes when PCI is also being performed
       if (isDiagnosticCath && hasPCI) {
         return `${c.code}-59 - ${c.description} [Modifier -59: Distinct procedural service - required when billing diagnostic cath with PCI same session]`;
+      }
+      
+      // Imaging codes with vessel
+      if (isImagingCode && imgVessel) {
+        const modifier = imgVessel.match(/\(([^)]+)\)/)?.[1] || '';
+        return `${c.code}-${modifier} - ${c.description} [${imgVessel}]`;
+      }
+      
+      // DCB codes with vessel
+      if (isDCBCode && dcbVessel) {
+        const modifier = dcbVessel.match(/\(([^)]+)\)/)?.[1] || '';
+        return `${c.code}-${modifier} - ${c.description} [${dcbVessel}]`;
+      }
+      
+      // PCI Add-on codes with vessel
+      if (isPCIAddOnCode && pciAddOnVessel) {
+        const modifier = pciAddOnVessel.match(/\(([^)]+)\)/)?.[1] || '';
+        return `${c.code}-${modifier} - ${c.description} [${pciAddOnVessel}]`;
       }
       
       return `${c.code} - ${c.description}`;
@@ -2377,6 +2407,7 @@ ${'*'.repeat(60)}`;
                         const isPCICode = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(cpt.code);
                         const isImagingCode = ['92978', '92979', '93571', '93572', '0523T', '0524T'].includes(cpt.code);
                         const isDCBCode = ['0913T', '0914T'].includes(cpt.code);
+                        const isPCIAddOnCode = ['92972', '92973', '92974'].includes(cpt.code);
                         const isSelected = isCodeSelected(cpt.code);
                         const codeKey = `${category}-${cpt.code}`;
                         const displayText = cpt.summary || cpt.description;
@@ -2511,6 +2542,48 @@ ${'*'.repeat(60)}`;
                                 )}
                               </div>
                             )}
+
+                            {/* Vessel Selection for PCI Add-on Codes (Lithotripsy, Thrombectomy, Brachytherapy) */}
+                            {isPCIAddOnCode && isSelected && (
+                              <div className="ml-8 p-4 bg-amber-50 border-l-4 border-amber-500 rounded">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-semibold text-amber-900 text-sm">Select Target Vessel for {cpt.code}</h4>
+                                  {pciAddOnVessels[cpt.code] && (
+                                    <span className="px-2 py-1 bg-amber-600 text-white text-xs font-bold rounded">
+                                      {pciAddOnVessels[cpt.code]}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-amber-800 mb-3">Select the vessel where this add-on procedure was performed</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {['LAD (LD)', 'LCx (LC)', 'RCA (RC)', 'Left Main (LM)', 'Ramus (RI)'].map((vessel) => (
+                                    <label 
+                                      key={vessel}
+                                      className={`flex items-center gap-2 p-2 border-2 rounded cursor-pointer transition-all ${
+                                        pciAddOnVessels[cpt.code] === vessel
+                                          ? 'border-amber-600 bg-amber-100'
+                                          : 'border-gray-300 hover:border-amber-300'
+                                      }`}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`pci-addon-vessel-${cpt.code}`}
+                                        checked={pciAddOnVessels[cpt.code] === vessel}
+                                        onChange={() => setPciAddOnVesselForCode(cpt.code, vessel)}
+                                        className="w-4 h-4 text-amber-600"
+                                      />
+                                      <span className="text-sm font-medium text-gray-800">{vessel}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                {!pciAddOnVessels[cpt.code] && (
+                                  <div className="mt-3 text-xs text-red-600 font-semibold">
+                                    ⚠️ Vessel selection required for add-on procedure
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -2539,9 +2612,11 @@ ${'*'.repeat(60)}`;
                     const isPCICode = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(cpt.code);
                     const isDCBCode = ['0913T', '0914T'].includes(cpt.code);
                     const isImagingCode = ['92978', '92979', '93571', '93572', '0523T', '0524T'].includes(cpt.code);
+                    const isPCIAddOnCode = ['92972', '92973', '92974'].includes(cpt.code);
                     const vessel = codeVessels[cpt.code];
                     const dcbVessel = dcbVessels[cpt.code];
                     const imgVessel = imagingVessels[cpt.code];
+                    const pciAddOnVessel = pciAddOnVessels[cpt.code];
                     
                     return (
                       <div key={cpt.code} className="flex items-start gap-3 p-3 bg-indigo-50 rounded-lg">
@@ -2585,6 +2660,19 @@ ${'*'.repeat(60)}`;
                           {isImagingCode && !imgVessel && (
                             <div className="mt-1 text-xs text-red-600 font-semibold">
                               ⚠️ Vessel not selected
+                            </div>
+                          )}
+                          {isPCIAddOnCode && pciAddOnVessel && (
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-xs font-semibold text-amber-700">Vessel:</span>
+                              <span className="px-2 py-0.5 bg-amber-600 text-white text-xs font-bold rounded">
+                                {pciAddOnVessel}
+                              </span>
+                            </div>
+                          )}
+                          {isPCIAddOnCode && !pciAddOnVessel && (
+                            <div className="mt-1 text-xs text-red-600 font-semibold">
+                              ⚠️ Vessel not selected for add-on procedure
                             </div>
                           )}
                         </div>
