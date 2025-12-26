@@ -1,0 +1,3010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CathCPT - Interventional Cardiology CPT Code Manager 2026</title>
+  <meta name="description" content="CathCPT - Comprehensive CPT code management tool for interventional cardiology procedures">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%234F46E5' width='100' height='100' rx='20'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>❤️</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .loading { position: fixed; inset: 0; background: linear-gradient(135deg, #4F46E5, #7C3AED); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 9999; }
+    .loading.hidden { display: none; }
+    .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p style="margin-top: 16px;">Loading CathCPT...</p>
+  </div>
+  <div id="root"></div>
+  <script type="text/babel">
+// Icon Components
+const ChevronDown = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="m6 9 6 6 6-6"/></svg>;
+const ChevronRight = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="m9 18 6-6-6-6"/></svg>;
+const Check = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M20 6 9 17l-5-5"/></svg>;
+const Settings = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+const X = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+const Save = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
+const Info = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
+const AlertCircle = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
+const DollarSign = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+const Maximize2 = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>;
+const Shield = ({size=20, className=''}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>;
+
+// Storage wrapper using localStorage
+const storage = {
+  get: async (key) => { try { const v = localStorage.getItem('cathcpt_'+key); return v ? {value:v} : null; } catch(e) { return null; }},
+  set: async (key, value) => { try { localStorage.setItem('cathcpt_'+key, value); return {key,value}; } catch(e) { return null; }}
+};
+
+const CardiologyCPTApp = () => {
+  const [caseId, setCaseId] = React.useState('');
+  const [procedureDateOption, setProcedureDateOption] = React.useState('');
+  const [procedureDateText, setProcedureDateText] = React.useState('');
+  const [selectedLocation, setSelectedLocation] = React.useState('');
+  const [selectedCodes, setSelectedCodes] = React.useState([]);
+  const [expandedCategories, setExpandedCategories] = React.useState({});
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [includeSedation, setIncludeSedation] = React.useState(false);
+  const [sedationUnits, setSedationUnits] = React.useState(0);
+  const [showSuccessMessage, setShowSuccessMessage] = React.useState(false);
+  const [selectedIndication, setSelectedIndication] = React.useState('');
+  const [otherIndication, setOtherIndication] = React.useState('');
+  const [indicationCategory, setIndicationCategory] = React.useState('cardiac');
+  const [selectedCardiacIndication, setSelectedCardiacIndication] = React.useState('');
+  const [selectedPeripheralIndication, setSelectedPeripheralIndication] = React.useState('');
+  const [selectedStructuralIndication, setSelectedStructuralIndication] = React.useState('');
+  const [otherCardiacIndication, setOtherCardiacIndication] = React.useState('');
+  const [otherPeripheralIndication, setOtherPeripheralIndication] = React.useState('');
+  const [otherStructuralIndication, setOtherStructuralIndication] = React.useState('');
+  const [codeVessels, setCodeVessels] = React.useState({}); // Track vessels per code: { 'code': 'vessel' }
+  const [selectedCodesVessel2, setSelectedCodesVessel2] = React.useState([]); // Second vessel PCI codes
+  const [codeVesselsV2, setCodeVesselsV2] = React.useState({});
+  const [selectedCodesVessel3, setSelectedCodesVessel3] = React.useState([]); // Third vessel PCI codes
+  const [codeVesselsV3, setCodeVesselsV3] = React.useState({});
+  const [showModifierGuide, setShowModifierGuide] = React.useState(false);
+  const [expandedDescriptions, setExpandedDescriptions] = React.useState({});
+  const [imagingVessels, setImagingVessels] = React.useState({});
+  const [dcbVessels, setDcbVessels] = React.useState({});
+  const [expandedPCIVessels, setExpandedPCIVessels] = React.useState({});
+  
+  // Settings state
+  const [cardiologistName, setCardiologistName] = React.useState('');
+  const [cathLocations, setCathLocations] = React.useState([]);
+  const [newLocation, setNewLocation] = React.useState('');
+  
+  // Initialize default settings and load from storage
+  React.useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        // Load cardiologist name
+        const cardioResult = await storage.get('cardiologistName');
+        if (cardioResult?.value) {
+          setCardiologistName(cardioResult.value);
+        }
+        
+        // Load cath locations
+        const locationsResult = await storage.get('cathLocations');
+        if (locationsResult?.value) {
+          setCathLocations(JSON.parse(locationsResult.value));
+        } else {
+          // Set defaults if no saved locations
+          setCathLocations(['Main Hospital Cath Lab', 'Outpatient Surgery Center']);
+        }
+      } catch (error) {
+        // If storage fails, use defaults
+        console.log('Loading settings from storage failed, using defaults');
+        setCathLocations(['Main Hospital Cath Lab', 'Outpatient Surgery Center']);
+      }
+    };
+    
+    loadSettings();
+  }, []);
+
+  // Official Coronary Artery Modifier Guide
+  const coronaryModifiers = [
+    { modifier: 'LC', artery: 'Left circumflex', branches: 'Obtuse marginal 1, Obtuse marginal 2' },
+    { modifier: 'LD', artery: 'Left anterior descending', branches: 'Diagonal 1, Diagonal 2' },
+    { modifier: 'LM', artery: 'Left main', branches: 'N/A' },
+    { modifier: 'RC', artery: 'Right', branches: 'Posterior descending, Posterolateral' },
+    { modifier: 'RI', artery: 'Ramus Intermedius', branches: 'N/A' }
+  ];
+
+  // 2026 Medicare Fee Schedule (National Average - Facility Setting)
+  const medicareFeeSchedule2026 = {
+    // Diagnostic Catheterization
+    '93454': { rvus: 8.47, payment: 305.50 },
+    '93455': { rvus: 10.03, payment: 361.70 },
+    '93456': { rvus: 11.72, payment: 422.60 },
+    '93457': { rvus: 13.28, payment: 478.80 },
+    '93458': { rvus: 12.19, payment: 439.50 },
+    '93459': { rvus: 13.75, payment: 495.70 },
+    '93460': { rvus: 15.41, payment: 555.50 },
+    '93461': { rvus: 16.97, payment: 611.70 },
+    '93451': { rvus: 6.83, payment: 246.20 },
+    '93452': { rvus: 8.39, payment: 302.40 },
+    '93453': { rvus: 10.05, payment: 362.40 },
+    
+    // PCI Base Codes
+    '92920': { rvus: 11.83, payment: 426.60 },
+    '92924': { rvus: 14.52, payment: 523.50 },
+    '92928': { rvus: 15.74, payment: 567.50 },
+    '92930': { rvus: 19.82, payment: 714.60 },
+    '92933': { rvus: 18.60, payment: 670.60 },
+    '92937': { rvus: 16.21, payment: 584.30 },
+    '92941': { rvus: 20.44, payment: 736.90 },
+    '92943': { rvus: 21.18, payment: 763.60 },
+    '92945': { rvus: 24.86, payment: 896.40 },
+    
+    // Drug-Coated Balloon (NEW 2026)
+    '0913T': { rvus: 16.20, payment: 583.90 },
+    '0914T': { rvus: 5.40, payment: 194.70 },
+    
+    // PCI Add-on Procedures
+    '92972': { rvus: 3.85, payment: 138.80 },
+    '92973': { rvus: 2.97, payment: 107.10 },
+    '92974': { rvus: 4.12, payment: 148.50 },
+    
+    // Intravascular Imaging & Physiology
+    '92978': { rvus: 2.86, payment: 103.10 },
+    '92979': { rvus: 2.14, payment: 77.20 },
+    '93571': { rvus: 2.75, payment: 99.20 },
+    '93572': { rvus: 2.06, payment: 74.30 },
+    '0523T': { rvus: 3.20, payment: 115.40 },
+    '0524T': { rvus: 2.40, payment: 86.50 },
+    
+    // Moderate Sedation
+    '99152': { rvus: 2.49, payment: 89.80 },
+    '99153': { rvus: 1.14, payment: 41.10 },
+    
+    // Structural Heart
+    '93580': { rvus: 21.54, payment: 776.60 },
+    '93581': { rvus: 24.83, payment: 895.30 },
+    '93582': { rvus: 18.72, payment: 674.90 },
+    '93583': { rvus: 22.16, payment: 798.90 },
+    '93590': { rvus: 19.45, payment: 701.20 },
+    '93591': { rvus: 6.84, payment: 246.60 },
+    '93592': { rvus: 20.38, payment: 734.70 },
+    
+    // TAVR
+    '33361': { rvus: 45.23, payment: 1630.30 },
+    '33362': { rvus: 47.89, payment: 1726.20 },
+    '33363': { rvus: 49.12, payment: 1770.50 },
+    '33364': { rvus: 48.55, payment: 1749.90 },
+    '33365': { rvus: 51.78, payment: 1866.10 },
+    '33366': { rvus: 52.34, payment: 1886.30 },
+    
+    // Adjunctive
+    '93462': { rvus: 5.12, payment: 184.60 },
+    '93463': { rvus: 3.45, payment: 124.40 },
+    '93464': { rvus: 4.67, payment: 168.40 },
+    '93505': { rvus: 6.23, payment: 224.60 },
+    
+    // MCS
+    '33990': { rvus: 12.45, payment: 448.80 },
+    '33991': { rvus: 15.67, payment: 564.90 },
+    '33989': { rvus: 8.34, payment: 300.70 }
+  };
+
+  // 2026 Medicare RVU and Fee Schedule Data (approximate, verify with current CMS data)
+  // CF (Conversion Factor) for 2026 Medicare = approximately $36.04
+  const rvuData = {
+    // Diagnostic Cath - Right Heart
+    '93451': { workRVU: 2.54, totalRVU: 6.83, fee: 246 },
+    '93452': { workRVU: 3.30, totalRVU: 8.39, fee: 302 },
+    '93453': { workRVU: 4.00, totalRVU: 10.05, fee: 362 },
+    
+    // Diagnostic Cath - Coronary
+    '93454': { workRVU: 4.50, totalRVU: 12.85, fee: 424 },
+    '93455': { workRVU: 5.20, totalRVU: 14.20, fee: 469 },
+    '93456': { workRVU: 5.80, totalRVU: 15.50, fee: 512 },
+    '93457': { workRVU: 6.50, totalRVU: 17.00, fee: 561 },
+    '93458': { workRVU: 6.20, totalRVU: 16.50, fee: 545 },
+    '93459': { workRVU: 7.00, totalRVU: 18.20, fee: 601 },
+    '93460': { workRVU: 7.50, totalRVU: 19.50, fee: 644 },
+    '93461': { workRVU: 8.20, totalRVU: 21.00, fee: 693 },
+    
+    // PCI Base Codes
+    '92920': { workRVU: 11.69, totalRVU: 28.44, fee: 939 },
+    '92924': { workRVU: 13.50, totalRVU: 31.75, fee: 1048 },
+    '92928': { workRVU: 13.17, totalRVU: 30.89, fee: 1019 },
+    '92930': { workRVU: 16.28, totalRVU: 36.75, fee: 1213 },
+    '92933': { workRVU: 14.87, totalRVU: 34.20, fee: 1129 },
+    '92937': { workRVU: 13.17, totalRVU: 30.89, fee: 1019 },
+    '92941': { workRVU: 13.17, totalRVU: 30.89, fee: 1019 },
+    '92943': { workRVU: 17.50, totalRVU: 38.90, fee: 1284 },
+    '92945': { workRVU: 21.00, totalRVU: 44.50, fee: 1469 },
+    
+    // Drug-Coated Balloon
+    '0913T': { workRVU: 12.00, totalRVU: 29.50, fee: 974 },
+    '0914T': { workRVU: 3.50, totalRVU: 8.20, fee: 271 },
+    
+    // PCI Add-ons
+    '92972': { workRVU: 2.50, totalRVU: 6.15, fee: 203 },
+    '92973': { workRVU: 2.20, totalRVU: 5.50, fee: 182 },
+    '92974': { workRVU: 1.80, totalRVU: 4.50, fee: 149 },
+    
+    // Intravascular Imaging & Physiology
+    '92978': { workRVU: 1.69, totalRVU: 4.18, fee: 138 },
+    '92979': { workRVU: 1.69, totalRVU: 4.18, fee: 138 },
+    '93571': { workRVU: 1.50, totalRVU: 3.75, fee: 124 },
+    '93572': { workRVU: 1.50, totalRVU: 3.75, fee: 124 },
+    '0523T': { workRVU: 1.85, totalRVU: 4.60, fee: 152 },
+    '0524T': { workRVU: 1.40, totalRVU: 3.50, fee: 116 },
+    
+    // Sedation
+    '99152': { workRVU: 1.42, totalRVU: 3.15, fee: 104 },
+    '99153': { workRVU: 0.98, totalRVU: 2.18, fee: 72 },
+    
+    // Structural Heart
+    '33274': { workRVU: 22.00, totalRVU: 48.00, fee: 1585 },
+    '93580': { workRVU: 18.00, totalRVU: 40.00, fee: 1320 },
+    '93581': { workRVU: 20.50, totalRVU: 45.00, fee: 1485 },
+    '93582': { workRVU: 16.50, totalRVU: 37.00, fee: 1221 },
+    '93583': { workRVU: 19.00, totalRVU: 42.00, fee: 1386 },
+    '93590': { workRVU: 17.00, totalRVU: 38.00, fee: 1254 },
+    '93591': { workRVU: 5.00, totalRVU: 11.00, fee: 363 },
+    '93592': { workRVU: 17.50, totalRVU: 39.00, fee: 1287 },
+    
+    // TAVR
+    '33361': { workRVU: 35.00, totalRVU: 75.00, fee: 2475 },
+    '33362': { workRVU: 36.50, totalRVU: 78.00, fee: 2574 },
+    '33363': { workRVU: 37.00, totalRVU: 79.50, fee: 2624 },
+    '33364': { workRVU: 36.80, totalRVU: 79.00, fee: 2607 },
+    '33365': { workRVU: 38.50, totalRVU: 82.00, fee: 2706 },
+    '33366': { workRVU: 39.00, totalRVU: 83.00, fee: 2739 },
+    '33367': { workRVU: 8.00, totalRVU: 17.00, fee: 561 },
+    '33368': { workRVU: 37.50, totalRVU: 80.00, fee: 2640 },
+    '33369': { workRVU: 38.00, totalRVU: 81.00, fee: 2673 },
+    
+    // Peripheral Vascular - Iliac
+    '37254': { workRVU: 8.50, totalRVU: 20.00, fee: 660 },
+    '37255': { workRVU: 10.00, totalRVU: 24.00, fee: 792 },
+    '37256': { workRVU: 11.50, totalRVU: 27.00, fee: 891 },
+    '37257': { workRVU: 13.00, totalRVU: 31.00, fee: 1023 },
+    '37258': { workRVU: 10.50, totalRVU: 25.00, fee: 825 },
+    '37259': { workRVU: 12.00, totalRVU: 29.00, fee: 957 },
+    '37260': { workRVU: 13.50, totalRVU: 32.00, fee: 1056 },
+    '37261': { workRVU: 15.00, totalRVU: 36.00, fee: 1188 },
+    '37262': { workRVU: 3.00, totalRVU: 7.00, fee: 231 },
+    
+    // Peripheral Vascular - Femoral/Popliteal
+    '37263': { workRVU: 9.00, totalRVU: 21.00, fee: 693 },
+    '37264': { workRVU: 10.50, totalRVU: 25.00, fee: 825 },
+    '37265': { workRVU: 12.00, totalRVU: 28.00, fee: 924 },
+    '37266': { workRVU: 13.50, totalRVU: 32.00, fee: 1056 },
+    '37267': { workRVU: 11.00, totalRVU: 26.00, fee: 858 },
+    '37268': { workRVU: 12.50, totalRVU: 30.00, fee: 990 },
+    '37269': { workRVU: 14.00, totalRVU: 33.00, fee: 1089 },
+    '37270': { workRVU: 15.50, totalRVU: 37.00, fee: 1221 },
+    '37271': { workRVU: 4.00, totalRVU: 9.50, fee: 314 },
+    '37272': { workRVU: 4.50, totalRVU: 10.50, fee: 347 },
+    '37273': { workRVU: 5.00, totalRVU: 12.00, fee: 396 },
+    '37274': { workRVU: 5.50, totalRVU: 13.00, fee: 429 },
+    '37275': { workRVU: 4.50, totalRVU: 10.50, fee: 347 },
+    '37276': { workRVU: 5.00, totalRVU: 12.00, fee: 396 },
+    '37277': { workRVU: 5.50, totalRVU: 13.00, fee: 429 },
+    '37278': { workRVU: 6.00, totalRVU: 14.00, fee: 462 },
+    '37279': { workRVU: 3.00, totalRVU: 7.00, fee: 231 },
+    
+    // Peripheral Vascular - Tibial/Peroneal
+    '37280': { workRVU: 10.00, totalRVU: 23.00, fee: 759 },
+    '37281': { workRVU: 11.50, totalRVU: 27.00, fee: 891 },
+    '37282': { workRVU: 13.00, totalRVU: 30.00, fee: 990 },
+    '37283': { workRVU: 14.50, totalRVU: 34.00, fee: 1122 },
+    '37284': { workRVU: 12.00, totalRVU: 28.00, fee: 924 },
+    '37285': { workRVU: 13.50, totalRVU: 32.00, fee: 1056 },
+    '37286': { workRVU: 15.00, totalRVU: 35.00, fee: 1155 },
+    '37287': { workRVU: 16.50, totalRVU: 39.00, fee: 1287 },
+    '37288': { workRVU: 4.50, totalRVU: 10.50, fee: 347 },
+    '37289': { workRVU: 5.00, totalRVU: 12.00, fee: 396 },
+    '37290': { workRVU: 5.50, totalRVU: 13.00, fee: 429 },
+    '37291': { workRVU: 6.00, totalRVU: 14.00, fee: 462 },
+    '37292': { workRVU: 5.00, totalRVU: 12.00, fee: 396 },
+    '37293': { workRVU: 5.50, totalRVU: 13.00, fee: 429 },
+    '37294': { workRVU: 6.00, totalRVU: 14.00, fee: 462 },
+    '37295': { workRVU: 6.50, totalRVU: 15.00, fee: 495 },
+    
+    // Peripheral Vascular - Inframalleolar (NEW 2026)
+    '37296': { workRVU: 11.00, totalRVU: 26.00, fee: 858 },
+    '37297': { workRVU: 13.00, totalRVU: 31.00, fee: 1023 },
+    '37298': { workRVU: 5.00, totalRVU: 12.00, fee: 396 },
+    '37299': { workRVU: 5.50, totalRVU: 13.00, fee: 429 },
+    
+    // Adjunctive Procedures
+    '75630': { workRVU: 1.20, totalRVU: 3.00, fee: 99 },
+    '75726': { workRVU: 0.80, totalRVU: 2.00, fee: 66 },
+    '93505': { workRVU: 3.00, totalRVU: 7.50, fee: 248 },
+    '93462': { workRVU: 4.00, totalRVU: 9.50, fee: 314 },
+    '93463': { workRVU: 2.50, totalRVU: 6.00, fee: 198 },
+    '93464': { workRVU: 3.50, totalRVU: 8.50, fee: 281 },
+    '93566': { workRVU: 1.00, totalRVU: 2.50, fee: 83 },
+    '93567': { workRVU: 0.80, totalRVU: 2.00, fee: 66 },
+    '93568': { workRVU: 1.20, totalRVU: 3.00, fee: 99 },
+    
+    // MCS (Mechanical Circulatory Support)
+    '33990': { workRVU: 9.00, totalRVU: 21.00, fee: 693 },
+    '33991': { workRVU: 11.00, totalRVU: 26.00, fee: 858 },
+    '33989': { workRVU: 6.00, totalRVU: 14.00, fee: 462 },
+    '33992': { workRVU: 7.50, totalRVU: 18.00, fee: 594 },
+    '33995': { workRVU: 13.00, totalRVU: 31.00, fee: 1023 },
+    '33997': { workRVU: 15.00, totalRVU: 36.00, fee: 1188 }
+  };
+
+  // Top 25 cardiac procedure indications with ICD-10 codes (most to least common)
+  const cardiacIndications = [
+    { code: 'I21.09', description: 'STEMI (ST-Elevation Myocardial Infarction)' },
+    { code: 'I21.4', description: 'NSTEMI (Non-ST-Elevation Myocardial Infarction)' },
+    { code: 'I25.110', description: 'Unstable Angina' },
+    { code: 'I25.10', description: 'Coronary Artery Disease without Angina' },
+    { code: 'I25.119', description: 'Stable Angina' },
+    { code: 'I50.9', description: 'Heart Failure, Unspecified' },
+    { code: 'I50.23', description: 'Acute on Chronic Systolic Heart Failure' },
+    { code: 'R94.31', description: 'Abnormal Stress Test' },
+    { code: 'I25.700', description: 'Atherosclerosis of Coronary Artery Bypass Graft' },
+    { code: 'I48.91', description: 'Atrial Fibrillation' },
+    { code: 'I34.0', description: 'Mitral Valve Stenosis' },
+    { code: 'I34.1', description: 'Mitral Valve Prolapse' },
+    { code: 'I35.0', description: 'Aortic Valve Stenosis' },
+    { code: 'I35.1', description: 'Aortic Valve Insufficiency' },
+    { code: 'I42.0', description: 'Dilated Cardiomyopathy' },
+    { code: 'I42.1', description: 'Hypertrophic Cardiomyopathy' },
+    { code: 'I47.2', description: 'Ventricular Tachycardia' },
+    { code: 'R07.9', description: 'Chest Pain, Unspecified' },
+    { code: 'I63.9', description: 'Cerebral Infarction (Stroke Workup)' },
+    { code: 'I11.0', description: 'Hypertensive Heart Disease with Heart Failure' },
+    { code: 'Z95.1', description: 'Status Post CABG' },
+    { code: 'Z95.5', description: 'Status Post Coronary Angioplasty' },
+    { code: 'I50.43', description: 'Acute on Chronic Combined Systolic and Diastolic Heart Failure' },
+    { code: 'I25.5', description: 'Ischemic Cardiomyopathy' },
+    { code: 'I25.2', description: 'Old Myocardial Infarction' }
+  ];
+
+  // Top peripheral vascular indications
+  const peripheralIndications = [
+    { code: 'I70.219', description: 'Atherosclerosis with Intermittent Claudication' },
+    
+    { code: 'I70.269', description: 'Critical Limb Ischemia with Rest Pain' },
+    { code: 'I73.9', description: 'Peripheral Vascular Disease, Unspecified' },
+    { code: 'I70.213', description: 'Atherosclerosis with Claudication, Bilateral Legs' },
+    { code: 'I70.261', description: 'Atherosclerosis with Gangrene, Right Leg' },
+    { code: 'I70.262', description: 'Atherosclerosis with Gangrene, Left Leg' },
+    { code: 'I70.263', description: 'Atherosclerosis with Gangrene, Bilateral Legs' },
+    { code: 'I70.25', description: 'Atherosclerosis with Ulceration' },
+    { code: 'I70.0', description: 'Atherosclerosis of Aorta' },
+    { code: 'I74.3', description: 'Arterial Embolism of Lower Extremity' },
+    { code: 'I74.5', description: 'Arterial Embolism of Iliac Artery' },
+    { code: 'I70.1', description: 'Atherosclerosis of Renal Artery' },
+    { code: 'I77.1', description: 'Arterial Stenosis' },
+    { code: 'I65.2', description: 'Carotid Artery Stenosis' },
+    { code: 'E11.51', description: 'Type 2 Diabetes with Diabetic Peripheral Angiopathy' },
+    { code: 'I96', description: 'Gangrene, Not Elsewhere Classified' },
+    { code: 'I70.92', description: 'Chronic Total Occlusion of Artery of Extremity' },
+    { code: 'Z95.820', description: 'Status Post Peripheral Vascular Angioplasty' }
+  ];
+
+  // Top structural heart indications
+  const structuralIndications = [
+    { code: 'I35.0', description: 'Severe Aortic Stenosis (for TAVR)' },
+    { code: 'I34.0', description: 'Nonrheumatic Mitral Stenosis' },
+    { code: 'I34.1', description: 'Nonrheumatic Mitral Valve Prolapse' },
+    { code: 'I35.1', description: 'Nonrheumatic Aortic Insufficiency' },
+    { code: 'I35.2', description: 'Aortic Stenosis with Insufficiency' },
+    { code: 'I34.2', description: 'Nonrheumatic Mitral Insufficiency' },
+    { code: 'Q21.1', description: 'Atrial Septal Defect (ASD)' },
+    { code: 'Q21.0', description: 'Ventricular Septal Defect (VSD)' },
+    { code: 'Q21.8', description: 'Patent Foramen Ovale (PFO)' },
+    { code: 'I37.0', description: 'Pulmonary Valve Stenosis' },
+    { code: 'I36.0', description: 'Nonrheumatic Tricuspid Stenosis' },
+    { code: 'I36.1', description: 'Nonrheumatic Tricuspid Insufficiency' },
+    { code: 'I38', description: 'Endocarditis, Valve Unspecified' },
+    { code: 'I50.9', description: 'Heart Failure (for structural intervention)' },
+    { code: 'I48.91', description: 'Atrial Fibrillation (for LAA closure)' },
+    { code: 'Q22.0', description: 'Pulmonary Valve Atresia' },
+    { code: 'Q22.1', description: 'Congenital Pulmonary Valve Stenosis' },
+    { code: 'T82.0', description: 'Mechanical Complication of Heart Valve Prosthesis' },
+    { code: 'I34.8', description: 'Other Nonrheumatic Mitral Valve Disorders' },
+    { code: 'I42.2', description: 'Other Hypertrophic Cardiomyopathy (for septal reduction)' }
+  ];
+
+  const analyzeBundlingRules = () => {
+    const billable = [];
+    const bundled = [];
+    const warnings = [];
+    
+    const codes = selectedCodes.map(c => c.code);
+    
+    // Check for diagnostic cath with PCI on same day
+    const diagnosticCathCodes = ['93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461'];
+    const pciCodes = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'];
+    
+    const hasDiagnosticCath = codes.some(c => diagnosticCathCodes.includes(c));
+    const hasPCI = codes.some(c => pciCodes.includes(c));
+    
+    if (hasDiagnosticCath && hasPCI) {
+      warnings.push({
+        type: 'Diagnostic Cath + PCI (Modifier -59 Applicable)',
+        message: 'Diagnostic catheterization with PCI on the same day CAN be billed separately using modifier -59 when medical necessity criteria are met.',
+        criteria: [
+          '✓ Use modifier -59 on the diagnostic cath code when billing separately',
+          'Criteria for separate billing with modifier -59:',
+          '• No prior diagnostic cath within reasonable period (usually 30 days)',
+          '• Diagnostic cath was medically necessary (not solely for PCI guidance)',
+          '• Decision to perform PCI occurred AFTER reviewing new diagnostic findings',
+          '• Documentation must clearly support medical necessity for both procedures'
+        ]
+      });
+    }
+    
+    // Check for IVUS/FFR with PCI
+    const imagingCodes = ['92978', '92979', '93571', '93572', '0523T', '0524T'];
+    const hasImaging = codes.some(c => imagingCodes.includes(c));
+    
+    if (hasImaging && hasPCI) {
+      const imagingInList = codes.filter(c => imagingCodes.includes(c));
+      imagingInList.forEach(code => {
+        billable.push({
+          code: code,
+          reason: 'Add-on code - separately billable when performed with PCI'
+        });
+      });
+    }
+    
+    // Check for mechanical thrombectomy
+    if (codes.includes('92973') && hasPCI) {
+      billable.push({
+        code: '92973',
+        reason: 'Add-on code for mechanical thrombectomy - separately billable with PCI when documented'
+      });
+    }
+    
+    // Check for IVL
+    if (codes.includes('92972') && hasPCI) {
+      billable.push({
+        code: '92972',
+        reason: 'Add-on code for coronary intravascular lithotripsy - separately billable with PCI'
+      });
+    }
+
+    // Check for Drug-Coated Balloon codes
+    if (codes.includes('0913T')) {
+      billable.push({
+        code: '0913T',
+        reason: 'Drug-coated balloon as standalone procedure - includes IVUS/OCT when performed'
+      });
+      
+      // Check if user also selected IVUS/OCT - these should be bundled
+      const imagingWithDCB = codes.filter(c => ['92978', '92979', '0523T', '0524T'].includes(c));
+      if (imagingWithDCB.length > 0) {
+        imagingWithDCB.forEach(code => {
+          bundled.push({
+            code: code,
+            reason: 'BUNDLED with drug-coated balloon (0913T) - imaging is included in DCB code'
+          });
+        });
+      }
+      
+      warnings.push({
+        type: 'Drug-Coated Balloon (0913T)',
+        message: 'This code is COMPREHENSIVE and includes:',
+        criteria: [
+          'Drug delivery by intracoronary balloon (drug-coated or drug-eluting)',
+          'Mechanical dilation by non-drug delivery balloon angioplasty',
+          'Endoluminal imaging (IVUS or OCT) when performed',
+          'Imaging supervision, interpretation, and report',
+          'Do NOT separately bill IVUS (92978/92979) or OCT (0523T/0524T) when included in DCB procedure'
+        ]
+      });
+    }
+    
+    if (codes.includes('0914T')) {
+      const basePCICodes = ['92920', '92924', '92928', '92930', '92933'];
+      const hasBasePCI = codes.some(c => basePCICodes.includes(c));
+      
+      if (hasBasePCI) {
+        billable.push({
+          code: '0914T',
+          reason: 'Add-on drug-coated balloon for separate target lesion - use with base PCI code'
+        });
+      }
+      
+      warnings.push({
+        type: 'Drug-Coated Balloon Add-on (0914T)',
+        message: 'This add-on code requires:',
+        criteria: [
+          'Must be performed on SEPARATE target lesion from base PCI procedure',
+          'Base procedure must be balloon angioplasty (92920), stent (92928/92930), or atherectomy (92924/92933)',
+          'Includes IVUS/OCT when performed on the DCB lesion',
+          'List separately in addition to primary PCI code'
+        ]
+      });
+    }
+
+    // Check for Brachytherapy
+    if (codes.includes('92974') && hasPCI) {
+      billable.push({
+        code: '92974',
+        reason: 'Add-on code for brachytherapy radiation delivery device placement'
+      });
+    }
+    
+    // Peripheral vascular bundling - new 2026 codes include all imaging
+    const peripheralCodes = codes.filter(c => c.startsWith('372') && parseInt(c) >= 37254 && parseInt(c) <= 37299);
+    if (peripheralCodes.length > 0) {
+      warnings.push({
+        type: 'Peripheral Vascular 2026 Bundling',
+        message: 'New 2026 peripheral codes (37254-37299) are COMPREHENSIVE and bundle:',
+        criteria: [
+          'All catheter placements and repositioning',
+          'All contrast injections',
+          'All roadmapping and completion angiography',
+          'Imaging supervision and interpretation',
+          'Closure of arteriotomy by pressure or closure device',
+          'Diagnostic angiography only separately billable if specific criteria met (see below)'
+        ]
+      });
+      
+      warnings.push({
+        type: 'Diagnostic Angiography with Peripheral Intervention',
+        message: 'Diagnostic angiography may be separately billable ONLY if ALL criteria met:',
+        criteria: [
+          'No prior study available',
+          'OR patient condition changed since prior study',
+          'OR inadequate visualization on prior study',  
+          'OR clinical change during procedure since prior study',
+          'AND decision to treat was based on these findings',
+          'Documentation must clearly support medical necessity'
+        ]
+      });
+    }
+    
+    // Check for moderate sedation
+    if (includeSedation) {
+      billable.push({
+        code: '99152',
+        reason: 'Moderate sedation initial 15 minutes - separately billable'
+      });
+      if (sedationUnits > 0) {
+        billable.push({
+          code: '99153',
+          reason: `Moderate sedation additional ${sedationUnits} x 15 minutes - separately billable`
+        });
+      }
+    }
+    
+    // Multiple PCI in same artery
+    const pciCodesSelected = codes.filter(c => pciCodes.includes(c));
+    if (pciCodesSelected.length > 1) {
+      warnings.push({
+        type: 'Multiple PCI Codes',
+        message: 'When coding multiple PCI procedures:',
+        criteria: [
+          'Use coronary artery modifiers (LD, LC, RC, LM, RI) to specify which artery',
+          'Report one code per major coronary artery',
+          'Branches are now included in base codes (no separate add-on codes in 2026)',
+          'For multiple vessels, report each base code that describes the most intensive intervention',
+          'NCCI edits may require modifier 59 or XS for different arteries'
+        ]
+      });
+    }
+    
+    // Add all selected codes to billable if not specifically bundled
+    selectedCodes.forEach(sc => {
+      if (!billable.some(b => b.code === sc.code) && !bundled.some(b => b.code === sc.code)) {
+        billable.push({
+          code: sc.code,
+          reason: 'Primary procedure code'
+        });
+      }
+    });
+    
+    return { billable, bundled, warnings };
+  };
+
+  // Comprehensive validation and feedback analysis
+  const generateFeedbackAnalysis = () => {
+    const feedback = {
+      errors: [],
+      warnings: [],
+      validCodes: [],
+      invalidCombos: [],
+      recommendations: []
+    };
+
+    // Combine all PCI codes from all sections
+    const allPCICodes = [
+      ...selectedCodes.filter(c => ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(c.code)),
+      ...selectedCodesVessel2,
+      ...selectedCodesVessel3
+    ];
+
+    // Check for vessel modifiers
+    const mainPCIMissingVessels = selectedCodes.filter(c => 
+      ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(c.code) && !codeVessels[c.code]
+    );
+    const add1MissingVessels = selectedCodesVessel2.filter(c => !codeVesselsV2[c.code]);
+    const add2MissingVessels = selectedCodesVessel3.filter(c => !codeVesselsV3[c.code]);
+
+    if (mainPCIMissingVessels.length > 0) {
+      feedback.errors.push(`Primary PCI codes missing vessel: ${mainPCIMissingVessels.map(c => c.code).join(', ')}`);
+    }
+    if (add1MissingVessels.length > 0) {
+      feedback.errors.push(`Additional Vessel #1 codes missing vessel: ${add1MissingVessels.map(c => c.code).join(', ')}`);
+    }
+    if (add2MissingVessels.length > 0) {
+      feedback.errors.push(`Additional Vessel #2 codes missing vessel: ${add2MissingVessels.map(c => c.code).join(', ')}`);
+    }
+
+    // Check for duplicate vessels
+    const allVessels = [
+      ...Object.entries(codeVessels).map(([code, vessel]) => ({ code, vessel, section: 'Primary' })),
+      ...Object.entries(codeVesselsV2).map(([code, vessel]) => ({ code, vessel, section: 'Additional #1' })),
+      ...Object.entries(codeVesselsV3).map(([code, vessel]) => ({ code, vessel, section: 'Additional #2' }))
+    ];
+
+    const vesselGroups = {};
+    allVessels.forEach(({ code, vessel, section }) => {
+      if (!vesselGroups[vessel]) vesselGroups[vessel] = [];
+      vesselGroups[vessel].push({ code, section });
+    });
+
+    Object.entries(vesselGroups).forEach(([vessel, codes]) => {
+      if (codes.length > 1) {
+        const sameVesselCodes = codes.map(c => `${c.code} (${c.section})`).join(', ');
+        feedback.warnings.push(`Same vessel ${vessel} used for: ${sameVesselCodes}. Verify this is intentional (e.g., different lesions in same artery).`);
+      }
+    });
+
+    // Check for invalid combinations
+    const allSelectedCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3];
+    const codes = allSelectedCodes.map(c => c.code);
+
+    // Check diagnostic cath with PCI
+    const diagnosticCathCodes = ['93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461'];
+    const hasDiagnosticCath = codes.some(c => diagnosticCathCodes.includes(c));
+    const hasPCI = allPCICodes.length > 0;
+
+    if (hasDiagnosticCath && hasPCI) {
+      feedback.recommendations.push('Diagnostic Cath + PCI same session detected: Modifier -59 will be automatically added to diagnostic cath code(s) in the generated report.');
+      feedback.warnings.push('Diagnostic cath with PCI same session: Ensure documentation supports medical necessity - (1) No prior cath in 30 days, (2) Diagnostic cath was medically necessary, (3) Decision for PCI made AFTER reviewing diagnostic findings.');
+    }
+
+    // Check for 0913T with IVUS/OCT
+    if (codes.includes('0913T') && codes.some(c => ['92978', '92979', '0523T', '0524T'].includes(c))) {
+      feedback.invalidCombos.push({
+        codes: '0913T (DCB) with IVUS/OCT codes',
+        issue: 'IVUS/OCT is included in 0913T',
+        action: 'Remove separate IVUS/OCT codes (92978, 92979, 0523T, 0524T) - already bundled in DCB'
+      });
+    }
+
+    // Check for 0914T without base PCI
+    if (codes.includes('0914T')) {
+      const basePCICodes = ['92920', '92924', '92928', '92930', '92933'];
+      const hasBasePCI = codes.some(c => basePCICodes.includes(c));
+      if (!hasBasePCI) {
+        feedback.invalidCombos.push({
+          codes: '0914T without base PCI code',
+          issue: '0914T is an add-on code requiring base PCI procedure',
+          action: 'Add base PCI code (92920, 92924, 92928, 92930, or 92933)'
+        });
+      }
+    }
+
+    // Check for multiple CTO codes
+    const ctoCodes = codes.filter(c => ['92943', '92945'].includes(c));
+    if (ctoCodes.length > 1) {
+      feedback.warnings.push('Multiple CTO codes selected. Use 92943 for antegrade only, 92945 for combined antegrade/retrograde. Do not bill both.');
+    }
+
+    // Validate codes to submit
+    const bundlingAnalysis = analyzeBundlingRules();
+    
+    // Add valid codes
+    allSelectedCodes.forEach(code => {
+      const isPCICode = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(code.code);
+      const isDiagnosticCath = diagnosticCathCodes.includes(code.code);
+      const vessel = codeVessels[code.code] || codeVesselsV2[code.code] || codeVesselsV3[code.code];
+      
+      if (isPCICode && vessel) {
+        const modifier = vessel.match(/\(([^)]+)\)/)?.[1] || '';
+        feedback.validCodes.push(`${code.code}-${modifier}`);
+      } else if (isDiagnosticCath && hasPCI) {
+        // Add -59 modifier to diagnostic cath when PCI is also being performed
+        feedback.validCodes.push(`${code.code}-59`);
+      } else if (!isPCICode) {
+        feedback.validCodes.push(code.code);
+      }
+    });
+
+    // Add sedation if applicable
+    if (includeSedation) {
+      feedback.validCodes.push('99152');
+      if (sedationUnits > 0) {
+        feedback.validCodes.push(`99153 x${sedationUnits}`);
+      }
+    }
+
+    // Recommendations
+    if (allPCICodes.length > 0 && !codes.some(c => ['92978', '92979', '0523T', '0524T', '93571', '93572'].includes(c)) && !codes.includes('0913T')) {
+      feedback.recommendations.push('Consider adding intravascular imaging (IVUS/OCT) or physiology (FFR) for optimal lesion assessment');
+    }
+
+    if (allPCICodes.length >= 2) {
+      feedback.recommendations.push('Multi-vessel PCI detected. Ensure each code has appropriate vessel modifier (LC, LD, RC, LM, RI)');
+    }
+
+    return feedback;
+  };
+
+  // Calculate total RVUs and reimbursement - updates dynamically as codes are added/removed
+  const calculateRVUAndReimbursement = () => {
+    // Combine all selected codes from all vessel sections
+    const allCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3];
+    let totalWorkRVU = 0;
+    let totalRVU = 0;
+    let totalFee = 0;
+    const breakdown = [];
+
+    allCodes.forEach(codeItem => {
+      const rvuInfo = rvuData[codeItem.code];
+      // Get vessel modifier if applicable
+      const vessel = codeVessels[codeItem.code] || codeVesselsV2[codeItem.code] || codeVesselsV3[codeItem.code];
+      const modifier = vessel ? vessel.match(/\(([^)]+)\)/)?.[1] : null;
+      const displayCode = modifier ? `${codeItem.code}-${modifier}` : codeItem.code;
+      
+      if (rvuInfo) {
+        totalWorkRVU += rvuInfo.workRVU;
+        totalRVU += rvuInfo.totalRVU;
+        totalFee += rvuInfo.fee;
+        breakdown.push({
+          code: displayCode,
+          description: codeItem.summary || '',
+          workRVU: rvuInfo.workRVU,
+          totalRVU: rvuInfo.totalRVU,
+          fee: rvuInfo.fee
+        });
+      } else {
+        // Handle codes without RVU data - show as pending/unknown
+        breakdown.push({
+          code: displayCode,
+          description: codeItem.summary || '',
+          workRVU: 0,
+          totalRVU: 0,
+          fee: 0,
+          noData: true
+        });
+      }
+    });
+
+    // Add sedation if included
+    if (includeSedation) {
+      const sedRVU = rvuData['99152'];
+      if (sedRVU) {
+        totalWorkRVU += sedRVU.workRVU;
+        totalRVU += sedRVU.totalRVU;
+        totalFee += sedRVU.fee;
+        breakdown.push({
+          code: '99152',
+          description: 'Moderate sedation, initial 15 min',
+          workRVU: sedRVU.workRVU,
+          totalRVU: sedRVU.totalRVU,
+          fee: sedRVU.fee
+        });
+      }
+
+      if (sedationUnits > 0) {
+        const addSedRVU = rvuData['99153'];
+        if (addSedRVU) {
+          totalWorkRVU += addSedRVU.workRVU * sedationUnits;
+          totalRVU += addSedRVU.totalRVU * sedationUnits;
+          totalFee += addSedRVU.fee * sedationUnits;
+          breakdown.push({
+            code: `99153 x${sedationUnits}`,
+            description: `Moderate sedation, additional ${sedationUnits * 15} min`,
+            workRVU: addSedRVU.workRVU * sedationUnits,
+            totalRVU: addSedRVU.totalRVU * sedationUnits,
+            fee: addSedRVU.fee * sedationUnits
+          });
+        }
+      }
+    }
+
+    return {
+      totalWorkRVU: totalWorkRVU.toFixed(2),
+      totalRVU: totalRVU.toFixed(2),
+      totalFee: totalFee.toFixed(2),
+      breakdown,
+      codeCount: allCodes.length + (includeSedation ? 1 : 0) + (includeSedation && sedationUnits > 0 ? 1 : 0)
+    };
+  };
+
+  // 2026 CPT Codes for Interventional Cardiology (organized by category)
+  const cptCategories = {
+    'Diagnostic Cardiac Catheterization': [
+      { code: '93451', summary: 'Right heart cath', description: 'Right heart catheterization including oxygen saturation and cardiac output measurements' },
+      { code: '93452', summary: 'Left heart cath with LV gram', description: 'Left heart catheterization including left ventriculography, imaging and interpretation' },
+      { code: '93453', summary: 'Combined R+L heart cath with LV gram', description: 'Combined right and left heart catheterization including left ventriculography' },
+      { code: '93454', summary: 'Coronary angiography only', description: 'Catheter placement in coronary artery(s) for coronary angiography, imaging and interpretation' },
+      { code: '93455', summary: 'Coronary angio + bypass grafts', description: 'Catheter placement in coronary artery(s) for angiography with catheter placement in bypass graft(s)' },
+      { code: '93456', summary: 'Coronary angio + right heart cath', description: 'Catheter placement in coronary artery(s) for angiography with right heart catheterization' },
+      { code: '93457', summary: 'Coronary angio + grafts + right heart', description: 'Catheter placement in coronary artery(s) for angiography with bypass graft(s) and right heart catheterization' },
+      { code: '93458', summary: 'Coronary angio + left heart/LV gram', description: 'Catheter placement in coronary artery(s) for angiography with left heart catheterization including left ventriculography' },
+      { code: '93459', summary: 'Coronary angio + left heart + grafts', description: 'Catheter placement in coronary artery(s) for angiography with left heart catheterization and bypass graft(s)' },
+      { code: '93460', summary: 'Coronary angio + combined R+L heart', description: 'Catheter placement in coronary artery(s) for angiography with combined right and left heart catheterization including left ventriculography' },
+      { code: '93461', summary: 'Coronary angio + combined R+L + grafts', description: 'Catheter placement in coronary artery(s) for angiography with combined right and left heart catheterization and bypass graft(s)' }
+    ],
+    'PCI': [
+      { code: '92920', description: 'Percutaneous transluminal coronary angioplasty; single major artery and/or its branches', summary: 'PTCA single artery' },
+      { code: '92924', description: 'Percutaneous transluminal coronary atherectomy, with coronary angioplasty when performed; single major artery and/or its branches', summary: 'Atherectomy + PTCA' },
+      { code: '92928', description: 'Percutaneous transcatheter placement of intracoronary stent(s), with coronary angioplasty when performed, single major artery and/or its branches; one lesion involving one or more coronary segment', summary: 'Stent, single lesion' },
+      { code: '92930', description: 'Percutaneous transcatheter placement of intracoronary stent(s), with coronary angioplasty when performed, single major artery and/or its branches; two or more distinct coronary lesions with two or more coronary stents deployed in two or more coronary segments, or a bifurcation lesion requiring angioplasty and/or stenting in both the main artery and the side branch', summary: 'Stent, 2+ lesions/bifurcation' },
+      { code: '92933', description: 'Percutaneous transluminal coronary atherectomy, with intracoronary stent, with coronary angioplasty when performed; single major coronary artery and/or its branches', summary: 'Atherectomy + stent' },
+      { code: '92937', description: 'Percutaneous transluminal revascularization of or through coronary artery bypass graft (internal mammary, free arterial, venous), any combination of intracoronary stent, atherectomy and angioplasty, including distal protection when performed; single major coronary artery and/or its branches', summary: 'Bypass graft intervention' },
+      { code: '92941', description: 'Percutaneous transluminal revascularization of acute total/subtotal occlusion during acute myocardial infarction, any combination of intracoronary stent, atherectomy and angioplasty, including aspiration thrombectomy when performed; single major coronary artery and/or its branches or single bypass graft and/or its subtended branches', summary: 'Acute MI revascularization' },
+      { code: '92943', description: 'Percutaneous transluminal revascularization of chronic total occlusion, single coronary artery, coronary artery branch, or coronary artery bypass graft and/or subtended major coronary artery branches of the bypass graft, any combination of intracoronary stent, atherectomy and angioplasty; antegrade approach', summary: 'CTO, antegrade' },
+      { code: '92945', description: 'Percutaneous transluminal revascularization of chronic total occlusion, single coronary artery, coronary artery branch, or coronary artery bypass graft and/or subtended major coronary artery branches of the bypass graft, any combination of intracoronary stent, atherectomy and angioplasty; combined antegrade and retrograde approaches', summary: 'CTO, antegrade + retrograde' }
+    ],
+    'Drug-Coated Balloon (NEW 2026)': [
+      { code: '0913T', summary: 'DCB single vessel (standalone)', description: 'Percutaneous transcatheter therapeutic drug delivery by intracoronary drug-delivery balloon (e.g., drug-coated, drug-eluting), including mechanical dilation by nondrug delivery balloon angioplasty, endoluminal imaging using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) when performed, imaging supervision, interpretation, and report, single major coronary artery or branch', isNew: true, requiresVessel: true },
+      { code: '0914T', summary: 'DCB add-on for separate lesion', description: 'Percutaneous transcatheter therapeutic drug delivery by intracoronary drug-delivery balloon (e.g., drug-coated, drug-eluting) performed on a separate target lesion from the target lesion treated with balloon angioplasty, coronary stent placement or coronary atherectomy, including mechanical dilation by nondrug-delivery balloon angioplasty, endoluminal imaging using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) when performed, imaging supervision, interpretation, and report, single major coronary artery or branch (List separately in addition to code for percutaneous coronary stent or atherectomy intervention)', isNew: true, isAddOn: true, requiresVessel: true }
+    ],
+    'PCI Add-on Procedures': [
+      { code: '92972', summary: 'Coronary lithotripsy (IVL)', description: 'Percutaneous transluminal coronary lithotripsy (List separately in addition to code for primary procedure)', isAddOn: true },
+      { code: '92973', summary: 'Mechanical thrombectomy', description: 'Percutaneous transluminal coronary mechanical aspiration thrombectomy (List separately in addition to code for primary procedure)', isAddOn: true },
+      { code: '92974', summary: 'Brachytherapy device placement', description: 'Transcatheter placement of radiation delivery device for subsequent coronary intravascular brachytherapy (List separately in addition to code for primary procedure)', isAddOn: true }
+    ],
+    'Intravascular Imaging & Physiology': [
+      { code: '92978', summary: 'IVUS/OCT initial vessel', description: 'Endoluminal imaging of coronary vessel or graft using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) during diagnostic evaluation and/or therapeutic intervention including imaging supervision, interpretation, and report; initial vessel', isAddOn: true, requiresVessel: true },
+      { code: '92979', summary: 'IVUS/OCT each additional vessel', description: 'Endoluminal imaging of coronary vessel or graft using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) during diagnostic evaluation and/or therapeutic intervention including imaging supervision, interpretation, and report; each additional vessel', isAddOn: true, requiresVessel: true },
+      { code: '93571', summary: 'FFR/CFR initial vessel', description: 'Intravascular Doppler velocity and/or pressure derived coronary flow reserve measurement (coronary vessel or graft) during coronary angiography including pharmacologically induced stress, when performed; initial vessel', isAddOn: true, requiresVessel: true },
+      { code: '93572', summary: 'FFR/CFR each additional vessel', description: 'Intravascular Doppler velocity and/or pressure derived coronary flow reserve measurement (coronary vessel or graft) during coronary angiography including pharmacologically induced stress, when performed; each additional vessel', isAddOn: true, requiresVessel: true },
+      { code: '0523T', summary: 'OCT initial vessel', description: 'Intravascular coronary optical coherence tomography (OCT), initial vessel (List separately in addition to code for primary procedure)', isAddOn: true, requiresVessel: true },
+      { code: '0524T', summary: 'OCT each additional vessel', description: 'Intravascular coronary optical coherence tomography (OCT), each additional vessel (List separately in addition to code for primary procedure)', isAddOn: true, requiresVessel: true }
+    ],
+    'Structural Heart Interventions': [
+      { code: '33274', summary: 'TPVI (pulmonary valve)', description: 'Transcatheter pulmonary valve implantation (TPVI)' },
+      { code: '93580', summary: 'ASD closure', description: 'Percutaneous transcatheter closure of congenital atrial septal defect' },
+      { code: '93581', summary: 'VSD closure', description: 'Percutaneous transcatheter closure of ventricular septal defect' },
+      { code: '93582', summary: 'PFO closure', description: 'Percutaneous transcatheter closure of patent foramen ovale' },
+      { code: '93583', summary: 'Septal reduction (alcohol ablation)', description: 'Percutaneous transcatheter septal reduction therapy' },
+      { code: '93590', summary: 'Paravalvular leak closure, initial', description: 'Percutaneous transcatheter closure of paravalvular leak, initial occlusion device' },
+      { code: '93591', summary: 'Paravalvular leak closure, add-on', description: 'Percutaneous transcatheter closure of paravalvular leak, each additional device', isAddOn: true },
+      { code: '93592', summary: 'LAA closure (Watchman)', description: 'Percutaneous transcatheter closure of left atrial appendage' }
+    ],
+    'TAVR (Transcatheter Aortic Valve Replacement)': [
+      { code: '33361', summary: 'TAVR, percutaneous femoral', description: 'TAVR, percutaneous femoral artery access' },
+      { code: '33362', summary: 'TAVR, open femoral', description: 'TAVR, open femoral artery access' },
+      { code: '33363', summary: 'TAVR, open axillary', description: 'TAVR, open axillary artery access' },
+      { code: '33364', summary: 'TAVR, open iliac', description: 'TAVR, open iliac artery access' },
+      { code: '33365', summary: 'TAVR, transaortic', description: 'TAVR, transaortic access' },
+      { code: '33366', summary: 'TAVR, transapical', description: 'TAVR, transapical access' },
+      { code: '33367', summary: 'TAVR, CPB support', description: 'TAVR, cardiopulmonary bypass support', isAddOn: true },
+      { code: '33368', summary: 'TAVR, transcarotid', description: 'TAVR, transcarotid access' },
+      { code: '33369', summary: 'TAVR, transcaval', description: 'TAVR, transcaval access' }
+    ],
+    'Peripheral Vascular - Iliac Territory': [
+      { code: '37254', summary: 'Iliac, simple, PTA', description: 'Iliac artery, straightforward lesion, angioplasty' },
+      { code: '37255', summary: 'Iliac, simple, stent', description: 'Iliac artery, straightforward lesion, stent with/without angioplasty' },
+      { code: '37256', summary: 'Iliac, simple, atherectomy', description: 'Iliac artery, straightforward lesion, atherectomy with/without angioplasty' },
+      { code: '37257', summary: 'Iliac, simple, stent + atherectomy', description: 'Iliac artery, straightforward lesion, stent and atherectomy with/without angioplasty' },
+      { code: '37258', summary: 'Iliac, complex, PTA', description: 'Iliac artery, complex lesion, angioplasty' },
+      { code: '37259', summary: 'Iliac, complex, stent', description: 'Iliac artery, complex lesion, stent with/without angioplasty' },
+      { code: '37260', summary: 'Iliac, complex, atherectomy', description: 'Iliac artery, complex lesion, atherectomy with/without angioplasty' },
+      { code: '37261', summary: 'Iliac, complex, stent + atherectomy', description: 'Iliac artery, complex lesion, stent and atherectomy with/without angioplasty' },
+      { code: '37262', summary: 'Iliac, IVL (add-on)', description: 'Iliac artery, intravascular lithotripsy (add-on)', isAddOn: true }
+    ],
+    'Peripheral Vascular - Femoral/Popliteal Territory': [
+      { code: '37263', summary: 'Fem/pop, simple, PTA', description: 'Femoral/popliteal artery, straightforward lesion, angioplasty' },
+      { code: '37264', summary: 'Fem/pop, simple, stent', description: 'Femoral/popliteal artery, straightforward lesion, stent with/without angioplasty' },
+      { code: '37265', summary: 'Fem/pop, simple, atherectomy', description: 'Femoral/popliteal artery, straightforward lesion, atherectomy with/without angioplasty' },
+      { code: '37266', summary: 'Fem/pop, simple, stent + atherectomy', description: 'Femoral/popliteal artery, straightforward lesion, stent and atherectomy with/without angioplasty' },
+      { code: '37267', summary: 'Fem/pop, complex, PTA', description: 'Femoral/popliteal artery, complex lesion, angioplasty' },
+      { code: '37268', summary: 'Fem/pop, complex, stent', description: 'Femoral/popliteal artery, complex lesion, stent with/without angioplasty' },
+      { code: '37269', summary: 'Fem/pop, complex, atherectomy', description: 'Femoral/popliteal artery, complex lesion, atherectomy with/without angioplasty' },
+      { code: '37270', summary: 'Fem/pop, complex, stent + atherectomy', description: 'Femoral/popliteal artery, complex lesion, stent and atherectomy with/without angioplasty' },
+      { code: '37271', summary: 'Fem/pop, add\'l vessel, simple, PTA', description: 'Femoral/popliteal artery, each additional vessel, straightforward lesion, angioplasty (add-on)', isAddOn: true },
+      { code: '37272', summary: 'Fem/pop, add\'l vessel, simple, stent', description: 'Femoral/popliteal artery, each additional vessel, straightforward lesion, stent (add-on)', isAddOn: true },
+      { code: '37273', summary: 'Fem/pop, add\'l vessel, simple, atherectomy', description: 'Femoral/popliteal artery, each additional vessel, straightforward lesion, atherectomy (add-on)', isAddOn: true },
+      { code: '37274', summary: 'Fem/pop, add\'l vessel, simple, stent + atherectomy', description: 'Femoral/popliteal artery, each additional vessel, straightforward lesion, stent and atherectomy (add-on)', isAddOn: true },
+      { code: '37275', summary: 'Fem/pop, add\'l vessel, complex, PTA', description: 'Femoral/popliteal artery, each additional vessel, complex lesion, angioplasty (add-on)', isAddOn: true },
+      { code: '37276', summary: 'Fem/pop, add\'l vessel, complex, stent', description: 'Femoral/popliteal artery, each additional vessel, complex lesion, stent (add-on)', isAddOn: true },
+      { code: '37277', summary: 'Fem/pop, add\'l vessel, complex, atherectomy', description: 'Femoral/popliteal artery, each additional vessel, complex lesion, atherectomy (add-on)', isAddOn: true },
+      { code: '37278', summary: 'Fem/pop, add\'l vessel, complex, stent + atherectomy', description: 'Femoral/popliteal artery, each additional vessel, complex lesion, stent and atherectomy (add-on)', isAddOn: true },
+      { code: '37279', summary: 'Fem/pop, IVL (add-on)', description: 'Femoral/popliteal artery, intravascular lithotripsy (add-on)', isAddOn: true }
+    ],
+    'Peripheral Vascular - Tibial/Peroneal Territory': [
+      { code: '37280', summary: 'Tibial/peroneal, simple, PTA', description: 'Tibial/peroneal artery, straightforward lesion, angioplasty' },
+      { code: '37281', summary: 'Tibial/peroneal, simple, stent', description: 'Tibial/peroneal artery, straightforward lesion, stent with/without angioplasty' },
+      { code: '37282', summary: 'Tibial/peroneal, simple, atherectomy', description: 'Tibial/peroneal artery, straightforward lesion, atherectomy with/without angioplasty' },
+      { code: '37283', summary: 'Tibial/peroneal, simple, stent + atherectomy', description: 'Tibial/peroneal artery, straightforward lesion, stent and atherectomy with/without angioplasty' },
+      { code: '37284', summary: 'Tibial/peroneal, complex, PTA', description: 'Tibial/peroneal artery, complex lesion, angioplasty' },
+      { code: '37285', summary: 'Tibial/peroneal, complex, stent', description: 'Tibial/peroneal artery, complex lesion, stent with/without angioplasty' },
+      { code: '37286', summary: 'Tibial/peroneal, complex, atherectomy', description: 'Tibial/peroneal artery, complex lesion, atherectomy with/without angioplasty' },
+      { code: '37287', summary: 'Tibial/peroneal, complex, stent + atherectomy', description: 'Tibial/peroneal artery, complex lesion, stent and atherectomy with/without angioplasty' },
+      { code: '37288', summary: 'Tibial/peroneal, add\'l, simple, PTA', description: 'Tibial/peroneal artery, each additional vessel, straightforward lesion, angioplasty (add-on)', isAddOn: true },
+      { code: '37289', summary: 'Tibial/peroneal, add\'l, simple, stent', description: 'Tibial/peroneal artery, each additional vessel, straightforward lesion, stent (add-on)', isAddOn: true },
+      { code: '37290', summary: 'Tibial/peroneal, add\'l, simple, atherectomy', description: 'Tibial/peroneal artery, each additional vessel, straightforward lesion, atherectomy (add-on)', isAddOn: true },
+      { code: '37291', summary: 'Tibial/peroneal, add\'l, simple, stent + atherectomy', description: 'Tibial/peroneal artery, each additional vessel, straightforward lesion, stent and atherectomy (add-on)', isAddOn: true },
+      { code: '37292', summary: 'Tibial/peroneal, add\'l, complex, PTA', description: 'Tibial/peroneal artery, each additional vessel, complex lesion, angioplasty (add-on)', isAddOn: true },
+      { code: '37293', summary: 'Tibial/peroneal, add\'l, complex, stent', description: 'Tibial/peroneal artery, each additional vessel, complex lesion, stent (add-on)', isAddOn: true },
+      { code: '37294', summary: 'Tibial/peroneal, add\'l, complex, atherectomy', description: 'Tibial/peroneal artery, each additional vessel, complex lesion, atherectomy (add-on)', isAddOn: true },
+      { code: '37295', summary: 'Tibial/peroneal, add\'l, complex, stent + atherectomy', description: 'Tibial/peroneal artery, each additional vessel, complex lesion, stent and atherectomy (add-on)', isAddOn: true }
+    ],
+    'Peripheral Vascular - Inframalleolar Territory (NEW 2026)': [
+      { code: '37296', summary: 'Inframalleolar, simple, PTA', description: 'Inframalleolar artery (foot), straightforward lesion, angioplasty', isNew: true },
+      { code: '37297', summary: 'Inframalleolar, complex, PTA', description: 'Inframalleolar artery (foot), complex lesion, angioplasty', isNew: true },
+      { code: '37298', summary: 'Inframalleolar, add\'l, simple, PTA', description: 'Inframalleolar artery (foot), each additional vessel, straightforward lesion, angioplasty (add-on)', isNew: true, isAddOn: true },
+      { code: '37299', summary: 'Inframalleolar, add\'l, complex, PTA', description: 'Inframalleolar artery (foot), each additional vessel, complex lesion, angioplasty (add-on)', isNew: true, isAddOn: true }
+    ],
+    'Adjunctive Procedures': [
+      { code: '75630', summary: 'Abdominal aortography', description: 'Aortography, abdominal, with serialography' },
+      { code: '75726', summary: 'IMA angiography, bilateral', description: 'Angiography, internal mammary artery (IMA), bilateral' },
+      { code: '93505', summary: 'Endomyocardial biopsy', description: 'Endomyocardial biopsy (single or multiple samples)' },
+      { code: '93462', summary: 'Transseptal puncture', description: 'Transseptal left heart catheterization through intact septum' },
+      { code: '93463', summary: 'Pharmacologic challenge', description: 'Pharmacologic agent administration with hemodynamic measurements' },
+      { code: '93464', summary: 'Exercise hemodynamics', description: 'Physiologic exercise study with hemodynamic measurements' },
+      { code: '93566', summary: 'RV/RA angiography (add-on)', description: 'Injection for selective right ventricular or right atrial angiography (add-on)', isAddOn: true },
+      { code: '93567', summary: 'Supravalvular aortography (add-on)', description: 'Injection for supravalvular aortography (add-on)', isAddOn: true },
+      { code: '93568', summary: 'Pulmonary angiography (add-on)', description: 'Injection for pulmonary angiography (add-on)', isAddOn: true },
+      { code: '33016', summary: 'Pericardiocentesis', description: 'Pericardiocentesis, needle or catheter technique' },
+      { code: '33017', summary: 'Pericardial drain placement', description: 'Pericardial drainage with catheter placement, fluoroscopy and/or ultrasound guidance' },
+      { code: '92950', summary: 'CPR', description: 'Cardiopulmonary resuscitation (CPR)' },
+      { code: '36000', summary: 'Venous access, separate', description: 'Introduction of needle or catheter, vein (separate venous access)' },
+      { code: '36140', summary: 'Arterial access, separate', description: 'Introduction of needle or catheter, upper or lower extremity artery (separate arterial access)' },
+      { code: '93503', summary: 'Swan-Ganz insertion', description: 'Swan-Ganz catheter insertion for hemodynamic monitoring' },
+      { code: '33210', summary: 'Temp pacer, single chamber', description: 'Insertion of temporary transvenous single chamber pacing electrode' },
+      { code: '33211', summary: 'Temp pacer, dual chamber', description: 'Insertion of temporary transvenous dual chamber pacing electrodes' },
+      { code: '92998', summary: 'PCI, unsuccessful attempt', description: 'Percutaneous PCI - attempted but unsuccessful (report with modifier 52 or 53)' }
+    ],
+    'Mechanical Circulatory Support (MCS)': [
+      { code: '33990', summary: 'pVAD insertion, arterial (Impella)', description: 'Insertion of percutaneous ventricular assist device (e.g., Impella), arterial access' },
+      { code: '33991', summary: 'pVAD insertion, arterial + venous', description: 'Insertion of percutaneous VAD, both arterial and venous access, with transseptal puncture' },
+      { code: '33995', summary: 'pVAD repositioning', description: 'Repositioning of percutaneous ventricular assist device' },
+      { code: '33992', summary: 'pVAD removal, arterial', description: 'Removal of percutaneous ventricular assist device, arterial access' },
+      { code: '33993', summary: 'pVAD removal, arterial + venous', description: 'Removal of percutaneous VAD, both arterial and venous access' },
+      { code: '33946', summary: 'ECMO initiation, VV', description: 'Extracorporeal membrane oxygenation (ECMO)/ECLS initiation, veno-venous' },
+      { code: '33947', summary: 'ECMO initiation, VA', description: 'ECMO/ECLS initiation, veno-arterial' },
+      { code: '33948', summary: 'ECMO initiation, AV', description: 'ECMO/ECLS initiation, arterial-venous' },
+      { code: '33949', summary: 'ECMO cannula, perc, ≤5 yrs', description: 'ECMO/ECLS insertion of peripheral cannula(e), percutaneous, birth through 5 years' },
+      { code: '33951', summary: 'ECMO cannula, perc, ≥6 yrs', description: 'ECMO/ECLS insertion of peripheral cannula(e), percutaneous, 6 years and older' },
+      { code: '33952', summary: 'ECMO cannula, open, ≥6 yrs', description: 'ECMO/ECLS insertion of peripheral cannula(e), open, 6 years and older' },
+      { code: '33989', summary: 'IABP insertion', description: 'Insertion of intra-aortic balloon pump (IABP)' }
+    ]
+  };
+
+  const toggleDescription = (codeKey) => {
+    setExpandedDescriptions(prev => ({ ...prev, [codeKey]: !prev[codeKey] }));
+  };
+
+  const togglePCIVessel = (vesselKey) => {
+    setExpandedPCIVessels(prev => ({ ...prev, [vesselKey]: !prev[vesselKey] }));
+  };
+
+  const setImagingVesselForCode = (code, vessel) => {
+    setImagingVessels(prev => ({ ...prev, [code]: vessel }));
+  };
+
+  const setDcbVesselForCode = (code, vessel) => {
+    setDcbVessels(prev => ({ ...prev, [code]: vessel }));
+  };
+
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  const toggleCode = (code, description) => {
+    setSelectedCodes(prev => {
+      const exists = prev.find(c => c.code === code);
+      if (exists) {
+        // Remove code and its vessel mapping
+        setCodeVessels(prevVessels => {
+          const newVessels = { ...prevVessels };
+          delete newVessels[code];
+          return newVessels;
+        });
+        return prev.filter(c => c.code !== code);
+      } else {
+        return [...prev, { code, description }];
+      }
+    });
+  };
+
+  const setVesselForCode = (code, vessel) => {
+    setCodeVessels(prev => ({
+      ...prev,
+      [code]: vessel
+    }));
+  };
+
+  // Helper functions for Vessel 2
+  const toggleCodeV2 = (code, description) => {
+    setSelectedCodesVessel2(prev => {
+      const exists = prev.find(c => c.code === code);
+      if (exists) {
+        setCodeVesselsV2(prevVessels => {
+          const newVessels = { ...prevVessels };
+          delete newVessels[code];
+          return newVessels;
+        });
+        return prev.filter(c => c.code !== code);
+      } else {
+        return [...prev, { code, description }];
+      }
+    });
+  };
+
+  const setVesselForCodeV2 = (code, vessel) => {
+    setCodeVesselsV2(prev => ({
+      ...prev,
+      [code]: vessel
+    }));
+  };
+
+  // Helper functions for Vessel 3
+  const toggleCodeV3 = (code, description) => {
+    setSelectedCodesVessel3(prev => {
+      const exists = prev.find(c => c.code === code);
+      if (exists) {
+        setCodeVesselsV3(prevVessels => {
+          const newVessels = { ...prevVessels };
+          delete newVessels[code];
+          return newVessels;
+        });
+        return prev.filter(c => c.code !== code);
+      } else {
+        return [...prev, { code, description }];
+      }
+    });
+  };
+
+  const setVesselForCodeV3 = (code, vessel) => {
+    setCodeVesselsV3(prev => ({
+      ...prev,
+      [code]: vessel
+    }));
+  };
+
+  const isCodeSelected = (code) => {
+    return selectedCodes.some(c => c.code === code);
+  };
+
+  // Comprehensive coding analysis function
+  const analyzeCoding = () => {
+    const errors = [];
+    const warnings = [];
+    const billable = [];
+    const bundled = [];
+    
+    // Combine all PCI codes from all vessels
+    const allPCICodes = [
+      ...selectedCodes.filter(c => ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code)),
+      ...selectedCodesVessel2.filter(c => ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code)),
+      ...selectedCodesVessel3.filter(c => ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code))
+    ];
+    
+    // Get all vessels used
+    const vessel1Data = Object.entries(codeVessels).map(([code, vessel]) => ({ code, vessel, section: 1 }));
+    const vessel2Data = Object.entries(codeVesselsV2).map(([code, vessel]) => ({ code, vessel, section: 2 }));
+    const vessel3Data = Object.entries(codeVesselsV3).map(([code, vessel]) => ({ code, vessel, section: 3 }));
+    const allVesselData = [...vessel1Data, ...vessel2Data, ...vessel3Data];
+    
+    // Check for duplicate vessels in different sections
+    const vesselCounts = {};
+    allVesselData.forEach(v => {
+      vesselCounts[v.vessel] = (vesselCounts[v.vessel] || 0) + 1;
+    });
+    
+    Object.entries(vesselCounts).forEach(([vessel, count]) => {
+      if (count > 1) {
+        warnings.push({
+          type: 'warning',
+          message: `Multiple procedures coded for ${vessel}. Ensure these represent separate lesions in different segments, or consider using complex stenting code (92930) if appropriate.`
+        });
+      }
+    });
+    
+    // Check for diagnostic cath with PCI
+    const diagnosticCodes = selectedCodes.filter(c => 
+      ['93454','93455','93456','93457','93458','93459','93460','93461'].includes(c.code)
+    );
+    
+    if (diagnosticCodes.length > 0 && allPCICodes.length > 0) {
+      warnings.push({
+        type: 'info',
+        message: 'Diagnostic cath + PCI same day: Use modifier -59 on diagnostic cath code when billing separately. Ensure documentation supports: (1) no prior cath within 30 days, (2) diagnostic cath medically necessary, (3) PCI decision made after reviewing new diagnostic findings.'
+      });
+    }
+    
+    // Check for missing vessel selections
+    const pciCodesV1 = selectedCodes.filter(c => 
+      ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code)
+    );
+    const missingVessels1 = pciCodesV1.filter(c => !codeVessels[c.code]);
+    
+    const pciCodesV2 = selectedCodesVessel2.filter(c => 
+      ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code)
+    );
+    const missingVessels2 = pciCodesV2.filter(c => !codeVesselsV2[c.code]);
+    
+    const pciCodesV3 = selectedCodesVessel3.filter(c => 
+      ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code)
+    );
+    const missingVessels3 = pciCodesV3.filter(c => !codeVesselsV3[c.code]);
+    
+    if (missingVessels1.length > 0 || missingVessels2.length > 0 || missingVessels3.length > 0) {
+      const allMissing = [...missingVessels1, ...missingVessels2, ...missingVessels3].map(c => c.code).join(', ');
+      errors.push({
+        type: 'error',
+        message: `PCI codes missing vessel/modifier selection: ${allMissing}. Cannot submit without vessel modifiers for Medicare billing.`
+      });
+    }
+    
+    // Check for IVUS/OCT with Drug-Coated Balloon
+    const dcbCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3].filter(c => c.code === '0913T' || c.code === '0914T');
+    const imagingCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3].filter(c => ['92978','92979','0523T','0524T'].includes(c.code));
+    
+    if (dcbCodes.length > 0 && imagingCodes.length > 0) {
+      imagingCodes.forEach(img => {
+        bundled.push({
+          code: img.code,
+          reason: 'BUNDLED with Drug-Coated Balloon (0913T/0914T) - imaging is included in DCB code, do not bill separately'
+        });
+      });
+      warnings.push({
+        type: 'warning',
+        message: 'Drug-Coated Balloon codes include IVUS/OCT imaging. These imaging codes have been marked as bundled.'
+      });
+    }
+    
+    // Check for 0914T without base PCI
+    const dcbAddOn = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3].filter(c => c.code === '0914T');
+    const basePCI = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3].filter(c => 
+      ['92920','92924','92928','92930','92933'].includes(c.code)
+    );
+    
+    if (dcbAddOn.length > 0 && basePCI.length === 0) {
+      errors.push({
+        type: 'error',
+        message: '0914T (DCB add-on) requires a base PCI code (92920, 92924, 92928, 92930, or 92933) on a separate lesion.'
+      });
+    }
+    
+    // Build billable list - combine all codes from all sections
+    const allCodes = [
+      ...selectedCodes.map(c => ({ ...c, vessel: codeVessels[c.code], section: 1 })),
+      ...selectedCodesVessel2.map(c => ({ ...c, vessel: codeVesselsV2[c.code], section: 2 })),
+      ...selectedCodesVessel3.map(c => ({ ...c, vessel: codeVesselsV3[c.code], section: 3 }))
+    ];
+    
+    allCodes.forEach(c => {
+      if (!bundled.find(b => b.code === c.code)) {
+        billable.push({
+          code: c.code,
+          description: c.description,
+          vessel: c.vessel || null,
+          section: c.section
+        });
+      }
+    });
+    
+    // Add sedation if applicable
+    if (includeSedation) {
+      billable.push({
+        code: '99152',
+        description: 'Moderate sedation initial 15 minutes',
+        vessel: null,
+        section: 0
+      });
+      if (sedationUnits > 0) {
+        billable.push({
+          code: '99153',
+          description: `Moderate sedation additional ${sedationUnits} units x 15 minutes`,
+          vessel: null,
+          section: 0
+        });
+      }
+    }
+    
+    return { errors, warnings, billable, bundled };
+  };
+
+  // RVU and Reimbursement Calculator
+  const calculateRVUsAndReimbursement = () => {
+    const analysis = analyzeCoding();
+    let totalRVUs = 0;
+    let totalReimbursement = 0;
+    const breakdown = [];
+    
+    analysis.billable.forEach(item => {
+      const feeData = medicareFeeSchedule2026[item.code];
+      if (feeData) {
+        totalRVUs += feeData.rvus;
+        totalReimbursement += feeData.payment;
+        
+        breakdown.push({
+          code: item.code,
+          description: item.description,
+          vessel: item.vessel,
+          section: item.section,
+          rvus: feeData.rvus,
+          payment: feeData.payment
+        });
+      }
+    });
+    
+    return {
+      totalRVUs: totalRVUs.toFixed(2),
+      totalReimbursement: totalReimbursement.toFixed(2),
+      breakdown
+    };
+  };
+
+  const saveSettings = async () => {
+    try {
+      // Save cardiologist name
+      await storage.set('cardiologistName', cardiologistName);
+      
+      // Save cath locations
+      await storage.set('cathLocations', JSON.stringify(cathLocations));
+      
+      setShowSettings(false);
+      
+      // Show brief success message
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('Settings saved for this session only.');
+      setShowSettings(false);
+    }
+  };
+
+  const addLocation = () => {
+    if (newLocation.trim() && !cathLocations.includes(newLocation.trim())) {
+      setCathLocations([...cathLocations, newLocation.trim()]);
+      setNewLocation('');
+    }
+  };
+
+  const removeLocation = (location) => {
+    setCathLocations(cathLocations.filter(loc => loc !== location));
+  };
+
+  const getIndicationList = () => {
+    switch (indicationCategory) {
+      case 'cardiac':
+        return cardiacIndications;
+      case 'peripheral':
+        return peripheralIndications;
+      case 'structural':
+        return structuralIndications;
+      default:
+        return cardiacIndications;
+    }
+  };
+
+  const generateEmailBody = () => {
+    const bundlingAnalysis = analyzeBundlingRules();
+    
+    // Combine all codes from all sections
+    const allCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3];
+    
+    // Check if any PCI codes are selected (need this to determine if -59 modifier is needed)
+    const pciCodeList = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945', '0913T', '0914T'];
+    const hasPCI = allCodes.some(c => pciCodeList.includes(c.code));
+    
+    // Diagnostic cardiac catheterization codes that need -59 modifier when PCI is also performed
+    const diagnosticCathCodes = ['93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461'];
+    
+    const codesText = allCodes.map(c => {
+      const isPCICode = pciCodeList.includes(c.code);
+      const isDiagnosticCath = diagnosticCathCodes.includes(c.code);
+      const vessel = codeVessels[c.code] || codeVesselsV2[c.code] || codeVesselsV3[c.code];
+      
+      if (isPCICode && vessel) {
+        // Extract just the modifier (e.g., "LD" from "LAD (LD)")
+        const modifier = vessel.match(/\(([^)]+)\)/)?.[1] || '';
+        return `${c.code}-${modifier} - ${c.description} [${vessel}]`;
+      }
+      
+      // Add -59 modifier to diagnostic cath codes when PCI is also being performed
+      if (isDiagnosticCath && hasPCI) {
+        return `${c.code}-59 - ${c.description} [Modifier -59: Distinct procedural service - required when billing diagnostic cath with PCI same session]`;
+      }
+      
+      return `${c.code} - ${c.description}`;
+    }).join('\n');
+    
+    let sedationText = '';
+    if (includeSedation) {
+      sedationText = '\n\nModerate Sedation:\n99152 - Moderate sedation services, initial 15 minutes (x1)';
+      if (sedationUnits > 0) {
+        sedationText += `\n99153 - Each additional 15 minutes (x${sedationUnits})`;
+      }
+    }
+    
+    // Remove the old vesselsText section as it's now per-code
+    let vesselsText = '';
+    
+    // Collect all selected indications
+    const indications = [];
+    
+    if (selectedCardiacIndication) {
+      if (selectedCardiacIndication === 'other') {
+        indications.push(`Cardiac: Other - ${otherCardiacIndication}`);
+      } else {
+        const indication = cardiacIndications.find(ind => ind.code === selectedCardiacIndication);
+        indications.push(`Cardiac: ${indication.code} - ${indication.description}`);
+      }
+    }
+    
+    if (selectedPeripheralIndication) {
+      if (selectedPeripheralIndication === 'other') {
+        indications.push(`Peripheral: Other - ${otherPeripheralIndication}`);
+      } else {
+        const indication = peripheralIndications.find(ind => ind.code === selectedPeripheralIndication);
+        indications.push(`Peripheral: ${indication.code} - ${indication.description}`);
+      }
+    }
+    
+    if (selectedStructuralIndication) {
+      if (selectedStructuralIndication === 'other') {
+        indications.push(`Structural: Other - ${otherStructuralIndication}`);
+      } else {
+        const indication = structuralIndications.find(ind => ind.code === selectedStructuralIndication);
+        indications.push(`Structural: ${indication.code} - ${indication.description}`);
+      }
+    }
+    
+    // Billing guidance section
+    let billingGuidance = '\n\n' + '='.repeat(60) + '\nBILLING GUIDANCE & NCCI COMPLIANCE\n' + '='.repeat(60);
+    
+    // Billable codes
+    if (bundlingAnalysis.billable.length > 0) {
+      billingGuidance += '\n\nCODES TO BILL:\n';
+      bundlingAnalysis.billable.forEach(item => {
+        billingGuidance += `\n${item.code} - ${item.reason}`;
+      });
+    }
+    
+    // Bundled codes
+    if (bundlingAnalysis.bundled.length > 0) {
+      billingGuidance += '\n\nCODES NOT SEPARATELY BILLABLE (Bundled):\n';
+      bundlingAnalysis.bundled.forEach(item => {
+        billingGuidance += `\n${item.code} - ${item.reason}`;
+      });
+    }
+    
+    // Warnings and special considerations
+    if (bundlingAnalysis.warnings.length > 0) {
+      billingGuidance += '\n\n⚠️ IMPORTANT BILLING CONSIDERATIONS:\n';
+      bundlingAnalysis.warnings.forEach((warning, index) => {
+        billingGuidance += `\n\n${index + 1}. ${warning.type}:\n${warning.message}`;
+        if (warning.criteria && warning.criteria.length > 0) {
+          warning.criteria.forEach(criterion => {
+            billingGuidance += `\n   • ${criterion}`;
+          });
+        }
+      });
+    }
+    
+    billingGuidance += '\n\n' + '='.repeat(60);
+    billingGuidance += '\nNOTE: Always verify with current NCCI edits and payer-specific policies.';
+    billingGuidance += '\nDocument medical necessity for all separately billed services.';
+    billingGuidance += '\n' + '='.repeat(60);
+    
+    // Get procedure date display text
+    const getProcedureDateDisplay = () => {
+      switch (procedureDateOption) {
+        case 'today': return 'Today';
+        case 'this_week': return 'This Week';
+        case 'this_month': return 'This Month';
+        case 'other': return procedureDateText || 'Not specified';
+        default: return 'Not specified';
+      }
+    };
+    
+    return `${'*'.repeat(60)}
+CONFIDENTIAL - For coding reference only
+Do not forward. Delete after billing complete.
+Contains limited dataset - not full PHI.
+${'*'.repeat(60)}
+
+Physician: ${cardiologistName}
+
+Case Information:
+Case ID: ${caseId}
+Procedure Timeframe: ${getProcedureDateDisplay()}
+Location: ${selectedLocation}
+${indications.length > 0 ? `
+${'='.repeat(60)}
+PROCEDURE INDICATION(S) / ICD-10:
+${'='.repeat(60)}
+${indications.join('\n')}
+` : ''}
+CPT Codes Performed (2026):
+${codesText}${sedationText}
+
+Total Procedures: ${allCodes.length}${includeSedation ? ` + Moderate Sedation (${15 + (sedationUnits * 15)} minutes)` : ''}${billingGuidance}
+
+${'*'.repeat(60)}
+Generated by CathCPT - Coding Reference Tool
+This document does not contain Protected Health Information (PHI)
+${'*'.repeat(60)}`;
+  };
+
+  const handleGenerateReport = () => {
+    // Validate required fields
+    if (!caseId) {
+      alert('Please enter a Case ID or MRN (last 4 digits)');
+      return;
+    }
+    
+    if (!procedureDateOption) {
+      alert('Please select a procedure timeframe');
+      return;
+    }
+    
+    if (procedureDateOption === 'other' && !procedureDateText) {
+      alert('Please enter a procedure timeframe description');
+      return;
+    }
+    
+    if (!selectedLocation) {
+      alert('Please select a procedure location');
+      return;
+    }
+    
+    if (selectedCodes.length === 0 && selectedCodesVessel2.length === 0 && selectedCodesVessel3.length === 0 && !includeSedation) {
+      alert('Please select at least one CPT code or moderate sedation');
+      return;
+    }
+
+    // Check that all PCI codes have vessel modifiers (all three sections)
+    const mainPCI = selectedCodes.filter(c => 
+      ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(c.code)
+    );
+    
+    const missingVesselsMain = mainPCI.filter(c => !codeVessels[c.code]);
+    const missingVesselsAdd1 = selectedCodesVessel2.filter(c => !codeVesselsV2[c.code]);
+    const missingVesselsAdd2 = selectedCodesVessel3.filter(c => !codeVesselsV3[c.code]);
+    
+    const allMissing = [
+      ...missingVesselsMain.map(c => `${c.code} (Primary)`),
+      ...missingVesselsAdd1.map(c => `${c.code} (Add Vessel #1)`),
+      ...missingVesselsAdd2.map(c => `${c.code} (Add Vessel #2)`)
+    ];
+    
+    if (allMissing.length > 0) {
+      alert(`Please select vessel/modifier for the following PCI codes:\n\n${allMissing.join('\n')}\n\nVessel modifiers are required for Medicare billing.`);
+      return;
+    }
+
+    // Show the success message with the report
+    setShowSuccessMessage(true);
+  };
+  
+  // Copy report to clipboard function
+  const copyReportToClipboard = async () => {
+    const reportText = generateEmailBody();
+    try {
+      await navigator.clipboard.writeText(reportText);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 3000);
+    } catch (err) {
+      // Fallback: select the textarea content
+      const textarea = document.getElementById('report-textarea');
+      if (textarea) {
+        textarea.select();
+        textarea.setSelectionRange(0, 99999); // For mobile
+        try {
+          document.execCommand('copy');
+          setCopySuccess(true);
+          setTimeout(() => setCopySuccess(false), 3000);
+        } catch (e) {
+          alert('Please manually select and copy the text from the report box.');
+        }
+      }
+    }
+  };
+  
+  const [copySuccess, setCopySuccess] = React.useState(false);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            {/* CathCPT App Icon - Matching uploaded design */}
+            <div className="w-20 h-20 rounded-xl overflow-hidden shadow-lg flex-shrink-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <defs>
+                  <linearGradient id="bgGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#D4A84B"/>
+                    <stop offset="50%" stopColor="#C49A3D"/>
+                    <stop offset="100%" stopColor="#9A7830"/>
+                  </linearGradient>
+                  <linearGradient id="textGold" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#F5E6B0"/>
+                    <stop offset="25%" stopColor="#E8D48A"/>
+                    <stop offset="50%" stopColor="#D4B254"/>
+                    <stop offset="75%" stopColor="#B8922E"/>
+                    <stop offset="100%" stopColor="#8B6914"/>
+                  </linearGradient>
+                </defs>
+                {/* Background */}
+                <rect width="100" height="100" rx="18" fill="url(#bgGold)"/>
+                {/* Anatomical Heart */}
+                <g transform="translate(28, 5) scale(0.52)">
+                  <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
+                  <path d="M32,18 C26,4 42,0 42,0 C42,0 58,4 52,18" fill="#7A1230"/>
+                  <path d="M56,14 C64,6 74,8 78,14" stroke="#7A1230" strokeWidth="7" fill="none" strokeLinecap="round"/>
+                  <path d="M28,14 C20,6 10,8 6,14" stroke="#7A1230" strokeWidth="7" fill="none" strokeLinecap="round"/>
+                  <path d="M42,28 C38,48 34,68 30,85" stroke="#A82040" strokeWidth="2" fill="none" opacity="0.5"/>
+                  <path d="M42,28 C46,48 50,68 54,85" stroke="#A82040" strokeWidth="2" fill="none" opacity="0.5"/>
+                  <path d="M22,42 C28,58 26,75 24,85" stroke="#A82040" strokeWidth="1.5" fill="none" opacity="0.4"/>
+                  <path d="M62,42 C56,58 58,75 60,85" stroke="#A82040" strokeWidth="1.5" fill="none" opacity="0.4"/>
+                </g>
+                {/* CPT Text */}
+                <text x="50" y="64" fontSize="34" fontWeight="900" fill="url(#textGold)" textAnchor="middle" fontFamily="Arial Black, sans-serif" style={{textShadow: '1px 2px 2px rgba(90,64,16,0.4)'}}>CPT</text>
+                {/* CathCPT label */}
+                <text x="50" y="90" fontSize="14" fontWeight="bold" fill="#6B4423" textAnchor="middle" fontFamily="Arial, sans-serif">CathCPT</text>
+              </svg>
+            </div>
+            
+            <div>
+              <h1 className="text-3xl font-bold text-amber-700 mb-1">CathCPT</h1>
+              <p className="text-gray-600">Interventional Cardiology Code Manager - 2026</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-3 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors"
+          >
+            <Settings size={24} className="text-indigo-700" />
+          </button>
+        </div>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Settings</h2>
+              <button onClick={() => setShowSettings(false)}>
+                <X size={24} className="text-gray-500 hover:text-gray-700" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Physician Name
+                </label>
+                <input
+                  type="text"
+                  value={cardiologistName}
+                  onChange={(e) => setCardiologistName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Dr. John Smith"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cath Lab Locations
+                </label>
+                <div className="space-y-2 mb-3">
+                  {cathLocations.map((location, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <span className="flex-grow text-gray-700">{location}</span>
+                      <button
+                        onClick={() => removeLocation(location)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addLocation()}
+                    className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Add new location"
+                  />
+                  <button
+                    onClick={addLocation}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={saveSettings}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <Save size={20} />
+                Save Settings
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Case Information - HIPAA Compliant */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield size={24} className="text-green-600" />
+            <h2 className="text-xl font-semibold text-gray-800">Case Information</h2>
+          </div>
+          
+          {/* HIPAA Privacy Notice */}
+          <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={24} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-yellow-800 mb-1">⚠️ HIPAA Privacy Notice</h3>
+                <p className="text-sm text-yellow-800">
+                  Do <strong>NOT</strong> enter patient names or full dates of birth. Use internal 
+                  case IDs only. This tool is for coding assistance only and does 
+                  not store Protected Health Information (PHI).
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter Case ID or MRN (last 4 digits only) *
+              </label>
+              <input
+                type="text"
+                value={caseId}
+                onChange={(e) => setCaseId(e.target.value)}
+                maxLength={10}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., CASE-1234 or MRN ****5678"
+              />
+              <p className="text-xs text-gray-500 mt-1">For internal reference only - do not enter full MRN</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Procedure Timeframe *
+              </label>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                {[
+                  { value: 'today', label: 'Today' },
+                  { value: 'this_week', label: 'This Week' },
+                  { value: 'this_month', label: 'This Month' },
+                  { value: 'other', label: 'Other' }
+                ].map((option) => (
+                  <label 
+                    key={option.value}
+                    className={`flex items-center justify-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      procedureDateOption === option.value
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="procedureDate"
+                      value={option.value}
+                      checked={procedureDateOption === option.value}
+                      onChange={(e) => {
+                        setProcedureDateOption(e.target.value);
+                        if (e.target.value !== 'other') {
+                          setProcedureDateText('');
+                        }
+                      }}
+                      className="sr-only"
+                    />
+                    <span className="font-medium">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              {procedureDateOption === 'other' && (
+                <input
+                  type="text"
+                  value={procedureDateText}
+                  onChange={(e) => setProcedureDateText(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="e.g., Last Tuesday, 2 weeks ago, Q4 2025"
+                />
+              )}
+              <p className="text-xs text-gray-500 mt-1">Use relative dates only - do not enter specific dates</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Procedure Location *
+              </label>
+              <div className="space-y-2">
+                {cathLocations.map((location, index) => (
+                  <label key={index} className="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 hover:bg-gray-50 transition-all">
+                    <input
+                      type="radio"
+                      name="location"
+                      value={location}
+                      checked={selectedLocation === location}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      className="w-4 h-4 text-indigo-600"
+                    />
+                    <span className="text-gray-700">{location}</span>
+                  </label>
+                ))}
+                {cathLocations.length === 0 && (
+                  <p className="text-gray-500 text-sm italic">No locations configured. Please add locations in Settings.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Procedure Indication Section */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Procedure Indications (ICD-10)</h2>
+          <p className="text-sm text-gray-600 mb-4">Select one indication from each applicable category</p>
+          
+          {/* Cardiac Indications */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
+              Cardiac Indications
+            </h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 border-l-4 border-indigo-200 pl-4">
+              {cardiacIndications.map((indication) => (
+                <label 
+                  key={indication.code}
+                  className={`flex items-start gap-3 p-2 border rounded-lg cursor-pointer transition-all ${
+                    selectedCardiacIndication === indication.code
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
+                  }`}
+                  onClick={() => {
+                    if (selectedCardiacIndication === indication.code) {
+                      setSelectedCardiacIndication('');
+                    }
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="cardiacIndication"
+                    value={indication.code}
+                    checked={selectedCardiacIndication === indication.code}
+                    onChange={(e) => {
+                      setSelectedCardiacIndication(e.target.value);
+                      setOtherCardiacIndication('');
+                    }}
+                    className="w-4 h-4 text-indigo-600 mt-1 flex-shrink-0"
+                  />
+                  <div className="flex-grow">
+                    <div className="font-semibold text-indigo-900 text-sm">{indication.code}</div>
+                    <div className="text-xs text-gray-700">{indication.description}</div>
+                  </div>
+                </label>
+              ))}
+              
+              <label 
+                className={`flex items-start gap-3 p-2 border rounded-lg cursor-pointer transition-all ${
+                  selectedCardiacIndication === 'other'
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  if (selectedCardiacIndication === 'other') {
+                    setSelectedCardiacIndication('');
+                    setOtherCardiacIndication('');
+                  }
+                }}
+              >
+                <input
+                  type="radio"
+                  name="cardiacIndication"
+                  value="other"
+                  checked={selectedCardiacIndication === 'other'}
+                  onChange={(e) => setSelectedCardiacIndication(e.target.value)}
+                  className="w-4 h-4 text-indigo-600 mt-1 flex-shrink-0"
+                />
+                <div className="flex-grow">
+                  <div className="font-semibold text-indigo-900 text-sm">Other</div>
+                  {selectedCardiacIndication === 'other' && (
+                    <input
+                      type="text"
+                      value={otherCardiacIndication}
+                      onChange={(e) => setOtherCardiacIndication(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full mt-2 px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Enter ICD-10 code and description"
+                    />
+                  )}
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Peripheral Vascular Indications */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-green-900 mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+              Peripheral Vascular Indications
+            </h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 border-l-4 border-green-200 pl-4">
+              {peripheralIndications.map((indication) => (
+                <label 
+                  key={indication.code}
+                  className={`flex items-start gap-3 p-2 border rounded-lg cursor-pointer transition-all ${
+                    selectedPeripheralIndication === indication.code
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                  }`}
+                  onClick={() => {
+                    if (selectedPeripheralIndication === indication.code) {
+                      setSelectedPeripheralIndication('');
+                    }
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="peripheralIndication"
+                    value={indication.code}
+                    checked={selectedPeripheralIndication === indication.code}
+                    onChange={(e) => {
+                      setSelectedPeripheralIndication(e.target.value);
+                      setOtherPeripheralIndication('');
+                    }}
+                    className="w-4 h-4 text-green-600 mt-1 flex-shrink-0"
+                  />
+                  <div className="flex-grow">
+                    <div className="font-semibold text-green-900 text-sm">{indication.code}</div>
+                    <div className="text-xs text-gray-700">{indication.description}</div>
+                  </div>
+                </label>
+              ))}
+              
+              <label 
+                className={`flex items-start gap-3 p-2 border rounded-lg cursor-pointer transition-all ${
+                  selectedPeripheralIndication === 'other'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  if (selectedPeripheralIndication === 'other') {
+                    setSelectedPeripheralIndication('');
+                    setOtherPeripheralIndication('');
+                  }
+                }}
+              >
+                <input
+                  type="radio"
+                  name="peripheralIndication"
+                  value="other"
+                  checked={selectedPeripheralIndication === 'other'}
+                  onChange={(e) => setSelectedPeripheralIndication(e.target.value)}
+                  className="w-4 h-4 text-green-600 mt-1 flex-shrink-0"
+                />
+                <div className="flex-grow">
+                  <div className="font-semibold text-green-900 text-sm">Other</div>
+                  {selectedPeripheralIndication === 'other' && (
+                    <input
+                      type="text"
+                      value={otherPeripheralIndication}
+                      onChange={(e) => setOtherPeripheralIndication(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full mt-2 px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter ICD-10 code and description"
+                    />
+                  )}
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Structural Heart Indications */}
+          <div>
+            <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 bg-purple-600 rounded-full"></span>
+              Structural Heart Indications
+            </h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 border-l-4 border-purple-200 pl-4">
+              {structuralIndications.map((indication) => (
+                <label 
+                  key={indication.code}
+                  className={`flex items-start gap-3 p-2 border rounded-lg cursor-pointer transition-all ${
+                    selectedStructuralIndication === indication.code
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                  }`}
+                  onClick={() => {
+                    if (selectedStructuralIndication === indication.code) {
+                      setSelectedStructuralIndication('');
+                    }
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="structuralIndication"
+                    value={indication.code}
+                    checked={selectedStructuralIndication === indication.code}
+                    onChange={(e) => {
+                      setSelectedStructuralIndication(e.target.value);
+                      setOtherStructuralIndication('');
+                    }}
+                    className="w-4 h-4 text-purple-600 mt-1 flex-shrink-0"
+                  />
+                  <div className="flex-grow">
+                    <div className="font-semibold text-purple-900 text-sm">{indication.code}</div>
+                    <div className="text-xs text-gray-700">{indication.description}</div>
+                  </div>
+                </label>
+              ))}
+              
+              <label 
+                className={`flex items-start gap-3 p-2 border rounded-lg cursor-pointer transition-all ${
+                  selectedStructuralIndication === 'other'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  if (selectedStructuralIndication === 'other') {
+                    setSelectedStructuralIndication('');
+                    setOtherStructuralIndication('');
+                  }
+                }}
+              >
+                <input
+                  type="radio"
+                  name="structuralIndication"
+                  value="other"
+                  checked={selectedStructuralIndication === 'other'}
+                  onChange={(e) => setSelectedStructuralIndication(e.target.value)}
+                  className="w-4 h-4 text-purple-600 mt-1 flex-shrink-0"
+                />
+                <div className="flex-grow">
+                  <div className="font-semibold text-purple-900 text-sm">Other</div>
+                  {selectedStructuralIndication === 'other' && (
+                    <input
+                      type="text"
+                      value={otherStructuralIndication}
+                      onChange={(e) => setOtherStructuralIndication(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full mt-2 px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Enter ICD-10 code and description"
+                    />
+                  )}
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Moderate Sedation Section */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Moderate Sedation</h2>
+          
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 hover:bg-gray-50 transition-all">
+              <input
+                type="checkbox"
+                checked={includeSedation}
+                onChange={(e) => {
+                  setIncludeSedation(e.target.checked);
+                  if (!e.target.checked) setSedationUnits(0);
+                }}
+                className="w-5 h-5 text-indigo-600"
+              />
+              <div>
+                <div className="font-semibold text-gray-800">99152 - Moderate sedation services, initial 15 minutes</div>
+                <div className="text-sm text-gray-600">Check if moderate sedation was provided</div>
+              </div>
+            </label>
+
+            {includeSedation && (
+              <div className="ml-8 p-4 bg-indigo-50 rounded-lg space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Additional 15-minute increments (99153)
+                  </label>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Select number of additional 15-minute periods beyond the initial 15 minutes (maximum 4 units)
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setSedationUnits(Math.max(0, sedationUnits - 1))}
+                      className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-semibold transition-colors"
+                      disabled={sedationUnits === 0}
+                    >
+                      −
+                    </button>
+                    <div className="flex-grow text-center">
+                      <div className="text-2xl font-bold text-indigo-900">{sedationUnits}</div>
+                      <div className="text-sm text-gray-600">
+                        {sedationUnits === 0 ? 'No additional time' : `${sedationUnits} × 15 min = ${sedationUnits * 15} minutes`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSedationUnits(Math.min(4, sedationUnits + 1))}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
+                      disabled={sedationUnits === 4}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="pt-3 border-t border-indigo-200">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-gray-700">Total Sedation Time:</span>
+                    <span className="text-lg font-bold text-indigo-900">{15 + (sedationUnits * 15)} minutes</span>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    99152 (15 min) {sedationUnits > 0 && `+ 99153 × ${sedationUnits} (${sedationUnits * 15} min)`}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CPT Code Selection */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Select CPT Codes</h2>
+            <button
+              onClick={() => setShowModifierGuide(!showModifierGuide)}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm font-medium text-blue-800 transition-colors"
+            >
+              <Info size={16} />
+              Coronary Modifiers
+            </button>
+          </div>
+
+          {/* Modifier Guide */}
+          {showModifierGuide && (
+            <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="font-semibold text-blue-900">Coronary Artery Modifier Guide</h3>
+                <button onClick={() => setShowModifierGuide(false)}>
+                  <X size={18} className="text-blue-700 hover:text-blue-900" />
+                </button>
+              </div>
+              <p className="text-sm text-blue-800 mb-3">
+                Use these modifiers when reporting PCI base codes for Medicare billing:
+              </p>
+              <div className="space-y-2">
+                {coronaryModifiers.map((mod) => (
+                  <div key={mod.modifier} className="bg-white p-3 rounded border border-blue-200">
+                    <div className="flex items-start gap-3">
+                      <div className="font-bold text-blue-900 min-w-[40px]">{mod.modifier}</div>
+                      <div className="flex-grow">
+                        <div className="font-semibold text-gray-800">{mod.artery}</div>
+                        <div className="text-sm text-gray-600">Branches: {mod.branches}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-blue-700 mt-3">
+                <strong>Note:</strong> Branches are included in base codes - use add-on codes only when specified
+              </p>
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            {Object.entries(cptCategories).map(([category, codes]) => {
+              // Special handling for PCI category with vessel submenus
+              if (category === 'PCI') {
+                return (
+                  <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => toggleCategory(category)}
+                      className="w-full flex items-center justify-between p-4 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-indigo-900">Percutaneous Coronary Intervention (PCI)</span>
+                      </div>
+                      {expandedCategories[category] ? <ChevronDown size={20} className="text-indigo-700" /> : <ChevronRight size={20} className="text-indigo-700" />}
+                    </button>
+                    
+                    {expandedCategories[category] && (
+                      <div className="p-4 space-y-3">
+                        {/* First Vessel Submenu */}
+                        <div className="border border-indigo-200 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => togglePCIVessel('first')}
+                            className="w-full flex items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-indigo-800">First Vessel</span>
+                              {selectedCodes.filter(c => ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code)).length > 0 && (
+                                <span className="px-2 py-0.5 bg-indigo-600 text-white text-xs rounded-full">
+                                  {selectedCodes.filter(c => ['92920','92924','92928','92930','92933','92937','92941','92943','92945'].includes(c.code)).length}
+                                </span>
+                              )}
+                            </div>
+                            {expandedPCIVessels['first'] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                          </button>
+                          {expandedPCIVessels['first'] && (
+                            <div className="p-3 space-y-2">
+                              {codes.map((cpt) => {
+                                const isSelected = isCodeSelected(cpt.code);
+                                const codeKey = `PCI-first-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-indigo-900">{cpt.code}</span>
+                                            {cpt.summary && (
+                                              <button 
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }} 
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-indigo-200 text-indigo-700' : 'hover:bg-gray-200 text-gray-500 hover:text-indigo-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-indigo-300">{cpt.description}</div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="ml-8 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <h4 className="font-semibold text-blue-900 text-sm">Select Vessel/Modifier</h4>
+                                          {codeVessels[cpt.code] && <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">{codeVessels[cpt.code]}</span>}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          {['LAD (LD)', 'LCx (LC)', 'RCA (RC)', 'Left Main (LM)', 'Ramus (RI)'].map((vessel) => (
+                                            <label key={vessel} className={`flex items-center gap-2 p-2 border-2 rounded cursor-pointer ${codeVessels[cpt.code] === vessel ? 'border-blue-600 bg-blue-100' : 'border-gray-300'}`} onClick={(e) => e.stopPropagation()}>
+                                              <input type="radio" name={`vessel-first-${cpt.code}`} checked={codeVessels[cpt.code] === vessel} onChange={() => setVesselForCode(cpt.code, vessel)} className="w-4 h-4" />
+                                              <span className="text-sm">{vessel}</span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                        {!codeVessels[cpt.code] && <div className="mt-3 text-xs text-red-600 font-semibold">⚠️ Vessel required</div>}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Second Vessel Submenu */}
+                        <div className="border border-purple-200 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => togglePCIVessel('second')}
+                            className="w-full flex items-center justify-between p-3 bg-purple-50 hover:bg-purple-100"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-purple-800">Second Vessel</span>
+                              {selectedCodesVessel2.length > 0 && (
+                                <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">{selectedCodesVessel2.length}</span>
+                              )}
+                            </div>
+                            {expandedPCIVessels['second'] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                          </button>
+                          {expandedPCIVessels['second'] && (
+                            <div className="p-3 space-y-2">
+                              {codes.map((cpt) => {
+                                const isSelected = selectedCodesVessel2.some(c => c.code === cpt.code);
+                                const codeKey = `PCI-second-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCodeV2(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-purple-500 border-purple-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-purple-900">{cpt.code}</span>
+                                            {cpt.summary && (
+                                              <button 
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }} 
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-purple-200 text-purple-700' : 'hover:bg-gray-200 text-gray-500 hover:text-purple-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-purple-300">{cpt.description}</div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="ml-8 p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <h4 className="font-semibold text-purple-900 text-sm">Select Vessel/Modifier</h4>
+                                          {codeVesselsV2[cpt.code] && <span className="px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded">{codeVesselsV2[cpt.code]}</span>}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          {['LAD (LD)', 'LCx (LC)', 'RCA (RC)', 'Left Main (LM)', 'Ramus (RI)'].map((vessel) => (
+                                            <label key={vessel} className={`flex items-center gap-2 p-2 border-2 rounded cursor-pointer ${codeVesselsV2[cpt.code] === vessel ? 'border-purple-600 bg-purple-100' : 'border-gray-300'}`} onClick={(e) => e.stopPropagation()}>
+                                              <input type="radio" name={`vessel-second-${cpt.code}`} checked={codeVesselsV2[cpt.code] === vessel} onChange={() => setVesselForCodeV2(cpt.code, vessel)} className="w-4 h-4" />
+                                              <span className="text-sm">{vessel}</span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                        {!codeVesselsV2[cpt.code] && <div className="mt-3 text-xs text-red-600 font-semibold">⚠️ Vessel required</div>}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Third Vessel Submenu */}
+                        <div className="border border-orange-200 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => togglePCIVessel('third')}
+                            className="w-full flex items-center justify-between p-3 bg-orange-50 hover:bg-orange-100"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-orange-800">Third Vessel</span>
+                              {selectedCodesVessel3.length > 0 && (
+                                <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded-full">{selectedCodesVessel3.length}</span>
+                              )}
+                            </div>
+                            {expandedPCIVessels['third'] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                          </button>
+                          {expandedPCIVessels['third'] && (
+                            <div className="p-3 space-y-2">
+                              {codes.map((cpt) => {
+                                const isSelected = selectedCodesVessel3.some(c => c.code === cpt.code);
+                                const codeKey = `PCI-third-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCodeV3(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-orange-900">{cpt.code}</span>
+                                            {cpt.summary && (
+                                              <button 
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }} 
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-orange-200 text-orange-700' : 'hover:bg-gray-200 text-gray-500 hover:text-orange-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-orange-300">{cpt.description}</div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="ml-8 p-4 bg-orange-50 border-l-4 border-orange-500 rounded">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <h4 className="font-semibold text-orange-900 text-sm">Select Vessel/Modifier</h4>
+                                          {codeVesselsV3[cpt.code] && <span className="px-2 py-1 bg-orange-600 text-white text-xs font-bold rounded">{codeVesselsV3[cpt.code]}</span>}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          {['LAD (LD)', 'LCx (LC)', 'RCA (RC)', 'Left Main (LM)', 'Ramus (RI)'].map((vessel) => (
+                                            <label key={vessel} className={`flex items-center gap-2 p-2 border-2 rounded cursor-pointer ${codeVesselsV3[cpt.code] === vessel ? 'border-orange-600 bg-orange-100' : 'border-gray-300'}`} onClick={(e) => e.stopPropagation()}>
+                                              <input type="radio" name={`vessel-third-${cpt.code}`} checked={codeVesselsV3[cpt.code] === vessel} onChange={() => setVesselForCodeV3(cpt.code, vessel)} className="w-4 h-4" />
+                                              <span className="text-sm">{vessel}</span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                        {!codeVesselsV3[cpt.code] && <div className="mt-3 text-xs text-red-600 font-semibold">⚠️ Vessel required</div>}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // Standard rendering for non-PCI categories
+              return (
+              <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">{category}</span>
+                    {category.includes('NEW 2026') && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded">NEW</span>
+                    )}
+                  </div>
+                  {expandedCategories[category] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                </button>
+                
+                {expandedCategories[category] && (
+                  <div className="p-4">
+                    <div className="space-y-2">
+                      {codes.map((cpt) => {
+                        const isPCICode = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(cpt.code);
+                        const isImagingCode = ['92978', '92979', '93571', '93572', '0523T', '0524T'].includes(cpt.code);
+                        const isDCBCode = ['0913T', '0914T'].includes(cpt.code);
+                        const isSelected = isCodeSelected(cpt.code);
+                        const codeKey = `${category}-${cpt.code}`;
+                        const displayText = cpt.summary || cpt.description;
+                        
+                        return (
+                          <div key={cpt.code} className="space-y-2">
+                            <div
+                              onClick={() => toggleCode(cpt.code, cpt.description)}
+                              className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-indigo-500 bg-indigo-50'
+                                  : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                  isSelected
+                                    ? 'bg-indigo-500 border-indigo-500'
+                                    : 'border-gray-300'
+                                }`}>
+                                  {isSelected && <Check size={14} className="text-white" />}
+                                </div>
+                                <div className="flex-grow">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-indigo-900">{cpt.code}</span>
+                                    {cpt.summary && cpt.description !== cpt.summary && (
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }} 
+                                        className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-indigo-200 text-indigo-700' : 'hover:bg-gray-200 text-gray-500 hover:text-indigo-600'}`}
+                                        title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                      >
+                                        <Maximize2 size={14} />
+                                      </button>
+                                    )}
+                                    {cpt.isNew && (
+                                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-bold rounded">NEW 2026</span>
+                                    )}
+                                    {cpt.isAddOn && (
+                                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-gray-700 mt-1">{displayText}</div>
+                                  {cpt.summary && cpt.description !== cpt.summary && expandedDescriptions[codeKey] && (
+                                    <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-indigo-300">
+                                      {cpt.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Vessel Selection for Imaging Codes */}
+                            {isImagingCode && isSelected && (
+                              <div className="ml-8 p-4 bg-green-50 border-l-4 border-green-500 rounded">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-semibold text-green-900 text-sm">Select Vessel for {cpt.code}</h4>
+                                  {imagingVessels[cpt.code] && (
+                                    <span className="px-2 py-1 bg-green-600 text-white text-xs font-bold rounded">
+                                      {imagingVessels[cpt.code]}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-green-800 mb-3">Select the vessel where imaging was performed</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {['LAD (LD)', 'LCx (LC)', 'RCA (RC)', 'Left Main (LM)', 'Ramus (RI)'].map((vessel) => (
+                                    <label 
+                                      key={vessel}
+                                      className={`flex items-center gap-2 p-2 border-2 rounded cursor-pointer transition-all ${
+                                        imagingVessels[cpt.code] === vessel
+                                          ? 'border-green-600 bg-green-100'
+                                          : 'border-gray-300 hover:border-green-300'
+                                      }`}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`imaging-vessel-${cpt.code}`}
+                                        checked={imagingVessels[cpt.code] === vessel}
+                                        onChange={() => setImagingVesselForCode(cpt.code, vessel)}
+                                        className="w-4 h-4 text-green-600"
+                                      />
+                                      <span className="text-sm font-medium text-gray-800">{vessel}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                {!imagingVessels[cpt.code] && (
+                                  <div className="mt-3 text-xs text-red-600 font-semibold">
+                                    ⚠️ Vessel selection required
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Vessel/Lesion Selection for Drug-Coated Balloon Codes */}
+                            {isDCBCode && isSelected && (
+                              <div className="ml-8 p-4 bg-teal-50 border-l-4 border-teal-500 rounded">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-semibold text-teal-900 text-sm">Select Target Vessel/Lesion for {cpt.code}</h4>
+                                  {dcbVessels[cpt.code] && (
+                                    <span className="px-2 py-1 bg-teal-600 text-white text-xs font-bold rounded">
+                                      {dcbVessels[cpt.code]}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-teal-800 mb-3">Select the vessel where drug-coated balloon was deployed</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {['LAD (LD)', 'LCx (LC)', 'RCA (RC)', 'Left Main (LM)', 'Ramus (RI)'].map((vessel) => (
+                                    <label 
+                                      key={vessel}
+                                      className={`flex items-center gap-2 p-2 border-2 rounded cursor-pointer transition-all ${
+                                        dcbVessels[cpt.code] === vessel
+                                          ? 'border-teal-600 bg-teal-100'
+                                          : 'border-gray-300 hover:border-teal-300'
+                                      }`}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`dcb-vessel-${cpt.code}`}
+                                        checked={dcbVessels[cpt.code] === vessel}
+                                        onChange={() => setDcbVesselForCode(cpt.code, vessel)}
+                                        className="w-4 h-4 text-teal-600"
+                                      />
+                                      <span className="text-sm font-medium text-gray-800">{vessel}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                {!dcbVessels[cpt.code] && (
+                                  <div className="mt-3 text-xs text-red-600 font-semibold">
+                                    ⚠️ Vessel/lesion selection required
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );})}
+          </div>
+        </div>
+
+
+        {/* Selected Codes Summary */}
+        {(selectedCodes.length > 0 || selectedCodesVessel2.length > 0 || selectedCodesVessel3.length > 0) && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Selected Codes Summary ({selectedCodes.length + selectedCodesVessel2.length + selectedCodesVessel3.length})
+            </h2>
+            
+            {/* Primary Codes */}
+            {selectedCodes.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-indigo-700 mb-2">Primary Procedure Codes</h3>
+                <div className="space-y-2">
+                  {selectedCodes.map((cpt) => {
+                    const isPCICode = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945'].includes(cpt.code);
+                    const isDCBCode = ['0913T', '0914T'].includes(cpt.code);
+                    const isImagingCode = ['92978', '92979', '93571', '93572', '0523T', '0524T'].includes(cpt.code);
+                    const vessel = codeVessels[cpt.code];
+                    const dcbVessel = dcbVessels[cpt.code];
+                    const imgVessel = imagingVessels[cpt.code];
+                    
+                    return (
+                      <div key={cpt.code} className="flex items-start gap-3 p-3 bg-indigo-50 rounded-lg">
+                        <div className="font-semibold text-indigo-900 min-w-[60px]">{cpt.code}</div>
+                        <div className="flex-grow">
+                          <div className="text-sm text-gray-700">{cpt.description}</div>
+                          {isPCICode && vessel && (
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-xs font-semibold text-blue-700">Vessel:</span>
+                              <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-bold rounded">
+                                {vessel}
+                              </span>
+                            </div>
+                          )}
+                          {isPCICode && !vessel && (
+                            <div className="mt-1 text-xs text-red-600 font-semibold">
+                              ⚠️ Vessel/modifier not selected
+                            </div>
+                          )}
+                          {isDCBCode && dcbVessel && (
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-xs font-semibold text-teal-700">Target Vessel:</span>
+                              <span className="px-2 py-0.5 bg-teal-600 text-white text-xs font-bold rounded">
+                                {dcbVessel}
+                              </span>
+                            </div>
+                          )}
+                          {isDCBCode && !dcbVessel && (
+                            <div className="mt-1 text-xs text-red-600 font-semibold">
+                              ⚠️ Target vessel not selected
+                            </div>
+                          )}
+                          {isImagingCode && imgVessel && (
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-xs font-semibold text-green-700">Vessel:</span>
+                              <span className="px-2 py-0.5 bg-green-600 text-white text-xs font-bold rounded">
+                                {imgVessel}
+                              </span>
+                            </div>
+                          )}
+                          {isImagingCode && !imgVessel && (
+                            <div className="mt-1 text-xs text-red-600 font-semibold">
+                              ⚠️ Vessel not selected
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Additional Vessel #1 Codes */}
+            {selectedCodesVessel2.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-orange-700 mb-2">Additional Vessel #1 (Second Vessel)</h3>
+                <div className="space-y-2">
+                  {selectedCodesVessel2.map((cpt) => {
+                    const vessel = codeVesselsV2[cpt.code];
+                    
+                    return (
+                      <div key={`sum-add1-${cpt.code}`} className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
+                        <div className="font-semibold text-orange-900 min-w-[60px]">{cpt.code}</div>
+                        <div className="flex-grow">
+                          <div className="text-sm text-gray-700">{cpt.description}</div>
+                          {vessel && (
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-xs font-semibold text-orange-700">Vessel:</span>
+                              <span className="px-2 py-0.5 bg-orange-600 text-white text-xs font-bold rounded">
+                                {vessel}
+                              </span>
+                            </div>
+                          )}
+                          {!vessel && (
+                            <div className="mt-1 text-xs text-red-600 font-semibold">
+                              ⚠️ Vessel/modifier not selected
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Additional Vessel #2 Codes */}
+            {selectedCodesVessel3.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-purple-700 mb-2">Additional Vessel #2 (Third Vessel)</h3>
+                <div className="space-y-2">
+                  {selectedCodesVessel3.map((cpt) => {
+                    const vessel = codeVesselsV3[cpt.code];
+                    
+                    return (
+                      <div key={`sum-add2-${cpt.code}`} className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
+                        <div className="font-semibold text-purple-900 min-w-[60px]">{cpt.code}</div>
+                        <div className="flex-grow">
+                          <div className="text-sm text-gray-700">{cpt.description}</div>
+                          {vessel && (
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-xs font-semibold text-purple-700">Vessel:</span>
+                              <span className="px-2 py-0.5 bg-purple-600 text-white text-xs font-bold rounded">
+                                {vessel}
+                              </span>
+                            </div>
+                          )}
+                          {!vessel && (
+                            <div className="mt-1 text-xs text-red-600 font-semibold">
+                              ⚠️ Vessel/modifier not selected
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Feedback Analysis Section */}
+        {(selectedCodes.length > 0 || selectedCodesVessel2.length > 0 || selectedCodesVessel3.length > 0) && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span>📋 Coding Feedback & Validation</span>
+            </h2>
+            
+            {(() => {
+              const feedback = generateFeedbackAnalysis();
+              
+              return (
+                <div className="space-y-4">
+                  {/* Errors */}
+                  {feedback.errors.length > 0 && (
+                    <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                      <h3 className="font-semibold text-red-800 mb-2">❌ Errors - Must Fix Before Submitting</h3>
+                      <ul className="list-disc list-inside space-y-1">
+                        {feedback.errors.map((error, idx) => (
+                          <li key={idx} className="text-sm text-red-700">{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Invalid Combinations */}
+                  {feedback.invalidCombos.length > 0 && (
+                    <div className="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+                      <h3 className="font-semibold text-yellow-800 mb-2">⚠️ Invalid Code Combinations</h3>
+                      <div className="space-y-3">
+                        {feedback.invalidCombos.map((combo, idx) => (
+                          <div key={idx} className="text-sm">
+                            <div className="font-semibold text-yellow-900">{combo.codes}</div>
+                            <div className="text-yellow-700 mt-1">Issue: {combo.issue}</div>
+                            <div className="text-yellow-700 mt-1">Action: {combo.action}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Warnings */}
+                  {feedback.warnings.length > 0 && (
+                    <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                      <h3 className="font-semibold text-blue-800 mb-2">ℹ️ Warnings - Review Carefully</h3>
+                      <ul className="list-disc list-inside space-y-1">
+                        {feedback.warnings.map((warning, idx) => (
+                          <li key={idx} className="text-sm text-blue-700">{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Valid Codes to Submit */}
+                  {feedback.validCodes.length > 0 && (
+                    <div className="p-4 bg-green-50 border-l-4 border-green-500 rounded">
+                      <h3 className="font-semibold text-green-800 mb-2">✅ Codes to Submit</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {feedback.validCodes.map((code, idx) => (
+                          <span key={idx} className="px-3 py-1 bg-green-600 text-white text-sm font-semibold rounded">
+                            {code}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recommendations */}
+                  {feedback.recommendations.length > 0 && (
+                    <div className="p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
+                      <h3 className="font-semibold text-purple-800 mb-2">💡 Recommendations</h3>
+                      <ul className="list-disc list-inside space-y-1">
+                        {feedback.recommendations.map((rec, idx) => (
+                          <li key={idx} className="text-sm text-purple-700">{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {feedback.errors.length === 0 && feedback.invalidCombos.length === 0 && (
+                    <div className="p-4 bg-green-50 border-2 border-green-500 rounded-lg text-center">
+                      <div className="text-2xl mb-2">✅</div>
+                      <div className="font-semibold text-green-800">All codes validated successfully!</div>
+                      <div className="text-sm text-green-700 mt-1">Ready to submit</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* RVU and Reimbursement Analysis - Updates dynamically as codes are added/removed */}
+        {(selectedCodes.length > 0 || selectedCodesVessel2.length > 0 || selectedCodesVessel3.length > 0 || includeSedation) && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span>💰 Physician Work RVU & Reimbursement</span>
+              <span className="text-sm font-normal text-gray-500">
+                ({selectedCodes.length + selectedCodesVessel2.length + selectedCodesVessel3.length} procedure{selectedCodes.length + selectedCodesVessel2.length + selectedCodesVessel3.length !== 1 ? 's' : ''} selected)
+              </span>
+            </h2>
+            
+            {(() => {
+              const rvuCalc = calculateRVUAndReimbursement();
+              // Calculate physician-only payment (approximately 58% of total for work component)
+              const physicianPayment = (parseFloat(rvuCalc.totalWorkRVU) * 36.04).toFixed(2);
+              const hasUnknownCodes = rvuCalc.breakdown.some(item => item.noData);
+              
+              return (
+                <div className="space-y-4">
+                  {/* Summary Cards - Physician Only */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                      <div className="text-sm text-blue-700 font-semibold">Physician Work RVUs</div>
+                      <div className="text-3xl font-bold text-blue-900 mt-1">{rvuCalc.totalWorkRVU}</div>
+                      <div className="text-xs text-blue-600 mt-1">Professional component only</div>
+                    </div>
+                    
+                    <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                      <div className="text-sm text-green-700 font-semibold">Est. Physician Payment</div>
+                      <div className="text-3xl font-bold text-green-900 mt-1">${physicianPayment}</div>
+                      <div className="text-xs text-green-600 mt-1">2026 Medicare (CF $36.04)</div>
+                    </div>
+                  </div>
+
+                  {/* Breakdown Table - Physician Only */}
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-800">Physician Work RVU Breakdown</h3>
+                    </div>
+                    <div className="divide-y divide-gray-200">
+                      {rvuCalc.breakdown.length === 0 ? (
+                        <div className="px-4 py-3 text-gray-500 text-sm italic">
+                          Select procedure codes to see RVU breakdown
+                        </div>
+                      ) : (
+                        rvuCalc.breakdown.map((item, idx) => (
+                          <div key={idx} className={`px-4 py-3 flex items-center justify-between hover:bg-gray-50 ${item.noData ? 'bg-yellow-50' : ''}`}>
+                            <div>
+                              <div className="font-semibold text-gray-800">{item.code}</div>
+                              {item.description && (
+                                <div className="text-xs text-gray-500">{item.description}</div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-6 text-sm">
+                              {item.noData ? (
+                                <div className="text-yellow-600 text-xs">RVU data pending</div>
+                              ) : (
+                                <>
+                                  <div className="text-blue-700">
+                                    Work RVU: <span className="font-semibold">{item.workRVU.toFixed(2)}</span>
+                                  </div>
+                                  <div className="text-green-700 font-bold">
+                                    ${(item.workRVU * 36.04).toFixed(2)}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Warning for codes without RVU data */}
+                  {hasUnknownCodes && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                      <strong>Note:</strong> Some codes do not have RVU data in the system. 
+                      Please verify reimbursement values with the current CMS fee schedule.
+                    </div>
+                  )}
+
+                  {/* Disclaimer */}
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                    <strong>Note:</strong> Values shown represent physician work RVUs and professional component payment only (2026 CF = $36.04). 
+                    Facility fees are billed separately by the hospital. Actual payment varies by geographic location (GPCI adjustments). 
+                    Commercial payer rates typically 150-250% of Medicare.
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Submit Section */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Generate Coding Report</h2>
+          
+          {showSuccessMessage ? (
+            <div className="space-y-4">
+              {/* Success Header */}
+              <div className="flex items-center gap-2 p-3 bg-green-100 border border-green-300 rounded-lg">
+                <Check size={20} className="text-green-600" />
+                <span className="font-semibold text-green-800">Report Generated Successfully!</span>
+              </div>
+              
+              {/* Security Warning */}
+              <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={24} className="text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-bold text-red-800 mb-1">⚠️ SECURE EMAIL ONLY</h3>
+                    <p className="text-sm text-red-700">
+                      If sharing this report electronically, use your organization's <strong>secure/encrypted email system only</strong>. 
+                      Do not send via personal email or unencrypted channels.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Instructions */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <p className="font-semibold mb-2">To use this report:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Click the <strong>"Copy Report"</strong> button below</li>
+                  <li>Paste into your billing system or secure document</li>
+                  <li>If emailing, use your organization's secure email only</li>
+                  <li>Delete the report after billing is complete</li>
+                </ol>
+              </div>
+              
+              {/* Copy Button */}
+              <button
+                onClick={copyReportToClipboard}
+                className={`w-full py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${
+                  copySuccess 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                }`}
+              >
+                {copySuccess ? (
+                  <>
+                    <Check size={20} />
+                    Copied to Clipboard!
+                  </>
+                ) : (
+                  <>
+                    📋 Copy Report to Clipboard
+                  </>
+                )}
+              </button>
+              
+              {/* Report Preview */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Report Preview (click inside to select all):
+                </label>
+                <textarea
+                  id="report-textarea"
+                  readOnly
+                  value={generateEmailBody()}
+                  className="w-full h-72 p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-indigo-500"
+                  onClick={(e) => {
+                    e.target.select();
+                    e.target.setSelectionRange(0, 99999);
+                  }}
+                />
+              </div>
+              
+              {/* Close / New Report Button */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSuccessMessage(false)}
+                  className="flex-1 py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSuccessMessage(false);
+                    setSelectedCodes([]);
+                    setSelectedCodesVessel2([]);
+                    setSelectedCodesVessel3([]);
+                    setCodeVessels({});
+                    setCodeVesselsV2({});
+                    setCodeVesselsV3({});
+                    setCaseId('');
+                    setProcedureDateOption('');
+                    setProcedureDateText('');
+                    setSelectedLocation('');
+                    setIncludeSedation(false);
+                    setSedationUnits(0);
+                    setSelectedCardiacIndication('');
+                    setSelectedPeripheralIndication('');
+                    setSelectedStructuralIndication('');
+                  }}
+                  className="flex-1 py-2 px-4 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition-colors"
+                >
+                  Start New Report
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Security reminder before generating */}
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                <p className="flex items-center gap-2">
+                  <Shield size={18} className="text-yellow-600" />
+                  <span>This tool generates a limited dataset report for coding purposes only.</span>
+                </p>
+              </div>
+              
+              <button
+                onClick={handleGenerateReport}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <Check size={20} />
+                Generate Coding Report
+              </button>
+              
+              <p className="text-xs text-gray-500 text-center">
+                Report will be displayed for copying. No data is transmitted or stored.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer with HIPAA notice */}
+        <div className="text-center text-sm text-gray-500 pb-4">
+          <div className="mb-3 p-3 bg-gray-100 rounded-lg">
+            <p className="text-xs text-gray-600">
+              <strong>Privacy Notice:</strong> CathCPT is a coding assistance tool only. 
+              No Protected Health Information (PHI) is stored or transmitted. 
+              Users are responsible for HIPAA compliance when sharing generated reports.
+            </p>
+          </div>
+          <p>CPT® codes © American Medical Association. All rights reserved.</p>
+          <p className="mt-1">CathCPT uses 2026 CPT codes</p>
+          <p className="mt-1 text-xs">Last Updated: December 2025</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Render the app
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<CardiologyCPTApp />);
+
+// Hide loading screen
+document.getElementById('loading').classList.add('hidden');
+  </script>
+</body>
+</html>
