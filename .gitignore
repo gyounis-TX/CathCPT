@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# OS files
+.DS_Store
+*.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# iOS build artifacts
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/*.xcodeproj/xcuserdata/
+ios/App/build/
+
+# Android build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+android/.idea/
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# Temporary files
+*.tmp
+*.bak
