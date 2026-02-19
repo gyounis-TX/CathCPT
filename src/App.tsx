@@ -995,7 +995,7 @@ const App: React.FC = () => {
           setEditingCharge(null);
         }}
         patient={selectedPatientForCharge}
-        isFirstEncounter={!charges[selectedPatientForCharge?.id || '']?.[formatDateForStorage(new Date())]}
+        isFirstEncounter={!charges[selectedPatientForCharge?.id || ''] || Object.keys(charges[selectedPatientForCharge?.id || ''] || {}).length === 0}
         isCallCoverage={false}
         previousDiagnoses={selectedPatientForCharge ? (patientDiagnoses[selectedPatientForCharge.id] || []) : []}
         onSave={handleChargeSave}
