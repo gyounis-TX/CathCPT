@@ -1,11 +1,17 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Check, Settings, X, Save, Info, AlertCircle, DollarSign, Maximize2, Shield, Search, Star, FileText, History, Clock, Download, Trash2, Copy, BookOpen, Lightbulb, List, Sparkles } from 'lucide-react';
-import { CaseTemplate, SavedCase, RuleViolation, PHIMatch } from './types';
+import { ChevronDown, ChevronRight, Check, Settings, X, Save, Info, AlertCircle, DollarSign, Maximize2, Shield, Search, Star, FileText, History, Clock, Download, Trash2, BookOpen, Lightbulb, List, Sparkles, Plus, Edit2 } from 'lucide-react';
+import { CaseTemplate, SavedCase, RuleViolation } from './types';
 import { builtInTemplates, createCustomTemplate } from './data/templates';
 import { runBillingRules, createBillingContext, getRule } from './data/billingRules';
 import { cptCategories } from './data/cptCategories';
-import { scanFieldsForPHI, scrubPHI, getPHISummary } from './services/phiScanner';
+import { echoCategories } from './data/echoCodes';
+import { epCategories } from './data/epCodes';
+import { getCustomCodes, addCustomCode, updateCustomCode, deleteCustomCode, CustomCPTCode } from './services/customCodes';
+import { getDevModeSettings, enableDevMode, setDevModeUserType, disableDevMode, DevModeSettings } from './services/devMode';
+import { logger } from './services/logger';
+import { saveCharge } from './services/chargesService';
+import { CodeGroupSettings } from './components/CodeGroupSettings';
 
 // Category color mapping for visual distinction
 const categoryColors: Record<string, { dot: string; bg: string; text: string; border: string; hoverBg: string }> = {
@@ -15,23 +21,75 @@ const categoryColors: Record<string, { dot: string; bg: string; text: string; bo
   'Intravascular Imaging & Physiology': { dot: 'bg-cyan-500', bg: 'bg-cyan-50', text: 'text-cyan-900', border: 'border-cyan-200', hoverBg: 'hover:bg-cyan-100' },
   'Structural Heart Interventions': { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-900', border: 'border-purple-200', hoverBg: 'hover:bg-purple-100' },
   'TAVR': { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-900', border: 'border-pink-200', hoverBg: 'hover:bg-pink-100' },
-  // Peripheral Vascular Angiography submenus
-  'Peripheral Vascular Angiography': { dot: 'bg-slate-600', bg: 'bg-slate-50', text: 'text-slate-900', border: 'border-slate-300', hoverBg: 'hover:bg-slate-100' },
-  'Aortoiliac/Abdominal': { dot: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-900', border: 'border-slate-200', hoverBg: 'hover:bg-slate-100' },
-  'Lower Extremity': { dot: 'bg-stone-500', bg: 'bg-stone-50', text: 'text-stone-900', border: 'border-stone-200', hoverBg: 'hover:bg-stone-100' },
-  'Upper Extremity': { dot: 'bg-zinc-500', bg: 'bg-zinc-50', text: 'text-zinc-900', border: 'border-zinc-200', hoverBg: 'hover:bg-zinc-100' },
+  // Peripheral Vascular Angiography submenus - improved colors
+  'Peripheral Vascular Angiography': { dot: 'bg-sky-600', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-300', hoverBg: 'hover:bg-sky-100' },
+  'Aortoiliac/Abdominal': { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100' },
+  'Lower Extremity': { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-900', border: 'border-blue-200', hoverBg: 'hover:bg-blue-100' },
+  'Upper Extremity': { dot: 'bg-cyan-500', bg: 'bg-cyan-50', text: 'text-cyan-900', border: 'border-cyan-200', hoverBg: 'hover:bg-cyan-100' },
   'Renal': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100' },
-  'Mesenteric': { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-900', border: 'border-orange-200', hoverBg: 'hover:bg-orange-100' },
-  'Pelvic': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
+  'Mesenteric': { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100' },
+  'Pelvic': { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100' },
   // Peripheral Intervention submenus
   'Peripheral Intervention': { dot: 'bg-teal-600', bg: 'bg-teal-50', text: 'text-teal-900', border: 'border-teal-300', hoverBg: 'hover:bg-teal-100' },
   'Iliac': { dot: 'bg-teal-500', bg: 'bg-teal-50', text: 'text-teal-900', border: 'border-teal-200', hoverBg: 'hover:bg-teal-100' },
   'Femoral/Popliteal': { dot: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-900', border: 'border-green-200', hoverBg: 'hover:bg-green-100' },
   'Tibial/Peroneal': { dot: 'bg-lime-500', bg: 'bg-lime-50', text: 'text-lime-900', border: 'border-lime-200', hoverBg: 'hover:bg-lime-100' },
   'Inframalleolar': { dot: 'bg-emerald-600', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200', hoverBg: 'hover:bg-emerald-100' },
-  'IVC Filter Procedures': { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100' },
-  'Adjunctive Procedures': { dot: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200', hoverBg: 'hover:bg-indigo-100' },
+  // Venous Interventions submenus
+  'Venous Interventions': { dot: 'bg-indigo-600', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-300', hoverBg: 'hover:bg-indigo-100' },
+  'Venography': { dot: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200', hoverBg: 'hover:bg-indigo-100' },
+  'IVC Filter': { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100' },
+  'Venous Stenting': { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-900', border: 'border-purple-200', hoverBg: 'hover:bg-purple-100' },
+  'Venous Thrombectomy': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
+  'Adjunctive Procedures': { dot: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-900', border: 'border-slate-200', hoverBg: 'hover:bg-slate-100' },
   'MCS': { dot: 'bg-red-600', bg: 'bg-red-50', text: 'text-red-900', border: 'border-red-200', hoverBg: 'hover:bg-red-100' },
+  // Miscellaneous submenus
+  'Miscellaneous': { dot: 'bg-gray-600', bg: 'bg-gray-50', text: 'text-gray-900', border: 'border-gray-300', hoverBg: 'hover:bg-gray-100' },
+  'Thrombolysis': { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-900', border: 'border-orange-200', hoverBg: 'hover:bg-orange-100' },
+  'Arterial Thrombectomy': { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-900', border: 'border-red-200', hoverBg: 'hover:bg-red-100' },
+  'Retrieval': { dot: 'bg-stone-500', bg: 'bg-stone-50', text: 'text-stone-900', border: 'border-stone-200', hoverBg: 'hover:bg-stone-100' },
+  // Endovascular submenus
+  'Endovascular': { dot: 'bg-rose-600', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-300', hoverBg: 'hover:bg-rose-100' },
+  'Carotid/Cerebrovascular': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100' },
+  'Carotid Stenting': { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-900', border: 'border-pink-200', hoverBg: 'hover:bg-pink-100' },
+  'Thoracic Aortography': { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-900', border: 'border-red-200', hoverBg: 'hover:bg-red-100' },
+  'EVAR': { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-900', border: 'border-orange-200', hoverBg: 'hover:bg-orange-100' },
+  'TEVAR': { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100' },
+  'Subclavian/Innominate': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
+  // Echocardiography subcategories
+  'Echocardiography': { dot: 'bg-sky-600', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-300', hoverBg: 'hover:bg-sky-100' },
+  'TTE Complete': { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100' },
+  'TTE Limited': { dot: 'bg-sky-400', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100' },
+  'TTE with Doppler': { dot: 'bg-cyan-500', bg: 'bg-cyan-50', text: 'text-cyan-900', border: 'border-cyan-200', hoverBg: 'hover:bg-cyan-100' },
+  'TEE': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100' },
+  'Stress Echo': { dot: 'bg-lime-500', bg: 'bg-lime-50', text: 'text-lime-900', border: 'border-lime-200', hoverBg: 'hover:bg-lime-100' },
+  'Congenital Echo': { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100' },
+  'Contrast Echo': { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100' },
+  'Strain Imaging': { dot: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200', hoverBg: 'hover:bg-indigo-100' },
+  '3D Echo': { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-900', border: 'border-purple-200', hoverBg: 'hover:bg-purple-100' },
+  'ICE': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
+  // Electrophysiology subcategories
+  'Electrophysiology': { dot: 'bg-violet-600', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-300', hoverBg: 'hover:bg-violet-100' },
+  'EP Studies': { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100' },
+  'SVT/AVNRT Ablation': { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-900', border: 'border-purple-200', hoverBg: 'hover:bg-purple-100' },
+  'Atrial Flutter Ablation': { dot: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200', hoverBg: 'hover:bg-indigo-100' },
+  'Atrial Fibrillation Ablation': { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-900', border: 'border-blue-200', hoverBg: 'hover:bg-blue-100' },
+  'VT Ablation': { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-900', border: 'border-red-200', hoverBg: 'hover:bg-red-100' },
+  'Pacemaker Implant': { dot: 'bg-teal-500', bg: 'bg-teal-50', text: 'text-teal-900', border: 'border-teal-200', hoverBg: 'hover:bg-teal-100' },
+  'ICD Implant': { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-900', border: 'border-orange-200', hoverBg: 'hover:bg-orange-100' },
+  'CRT Implant': { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100' },
+  'Leadless Pacemaker': { dot: 'bg-cyan-500', bg: 'bg-cyan-50', text: 'text-cyan-900', border: 'border-cyan-200', hoverBg: 'hover:bg-cyan-100' },
+  'Subcutaneous ICD': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100' },
+  'Device Revision': { dot: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-900', border: 'border-slate-200', hoverBg: 'hover:bg-slate-100' },
+  'Lead Extraction': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
+  'Loop Recorder': { dot: 'bg-lime-500', bg: 'bg-lime-50', text: 'text-lime-900', border: 'border-lime-200', hoverBg: 'hover:bg-lime-100' },
+  'External Cardioversion': { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-900', border: 'border-pink-200', hoverBg: 'hover:bg-pink-100' },
+  'Tilt Table': { dot: 'bg-stone-500', bg: 'bg-stone-50', text: 'text-stone-900', border: 'border-stone-200', hoverBg: 'hover:bg-stone-100' },
+  // Other/Custom Codes
+  'Other': { dot: 'bg-gray-500', bg: 'bg-gray-50', text: 'text-gray-900', border: 'border-gray-300', hoverBg: 'hover:bg-gray-100' },
+  // Endovascular subcategories - intervention categories
+  'Renal Intervention': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100' },
+  'Mesenteric Intervention': { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100' },
 };
 
 // Default colors for categories not in mapping
@@ -47,7 +105,8 @@ const CardiologyCPTApp = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [includeSedation, setIncludeSedation] = useState(false);
   const [sedationUnits, setSedationUnits] = useState(0);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showChargeSubmitted, setShowChargeSubmitted] = useState(false);
+  const [submittedChargeInfo, setSubmittedChargeInfo] = useState<{ codeCount: number; totalRVU: number; estimatedPayment: number } | null>(null);
   const [selectedIndication, setSelectedIndication] = useState('');
   const [otherIndication, setOtherIndication] = useState('');
   const [indicationCategory, setIndicationCategory] = useState('cardiac');
@@ -74,6 +133,23 @@ const CardiologyCPTApp = () => {
   // Feature 1: Code Search
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Custom Codes (Other section)
+  const [customCodes, setCustomCodes] = useState<CustomCPTCode[]>([]);
+  const [showAddCustomCode, setShowAddCustomCode] = useState(false);
+  const [newCustomCode, setNewCustomCode] = useState('');
+  const [newCustomDescription, setNewCustomDescription] = useState('');
+  const [newCustomRVU, setNewCustomRVU] = useState('');
+  const [editingCustomCode, setEditingCustomCode] = useState<CustomCPTCode | null>(null);
+
+  // Dev Mode
+  const [showDevMode, setShowDevMode] = useState(false);
+  const [devModeSettings, setDevModeSettings] = useState<DevModeSettings | null>(null);
+  const [selectedDevTier, setSelectedDevTier] = useState<'individual' | 'pro'>('individual');
+  const [selectedDevRole, setSelectedDevRole] = useState<'physician' | 'admin' | null>(null);
+
+  // Code Group Settings
+  const [showCodeGroupSettings, setShowCodeGroupSettings] = useState(false);
+
   // Feature 2: Favorites
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -89,13 +165,6 @@ const CardiologyCPTApp = () => {
   // Feature 5: Case History
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [caseHistory, setCaseHistory] = useState<SavedCase[]>([]);
-
-  // Feature 6: PHI Scrubbing
-  const [phiMatches, setPhiMatches] = useState<PHIMatch[]>([]);
-  const [showPHIWarning, setShowPHIWarning] = useState(false);
-  const [phiAutoScrub, setPhiAutoScrub] = useState(false);
-  const [phiBypassOnce, setPhiBypassOnce] = useState(false);
-  const [pendingReportGeneration, setPendingReportGeneration] = useState(false);
 
   // Feature 7: Billing Rules Engine
   const [ruleViolations, setRuleViolations] = useState<RuleViolation[]>([]);
@@ -147,15 +216,20 @@ const CardiologyCPTApp = () => {
           setCaseHistory(JSON.parse(historyResult.value));
         }
 
-        // Load PHI settings
-        const phiResult = await window.storage.get('cathcpt_phi_settings');
-        if (phiResult?.value) {
-          const phiSettings = JSON.parse(phiResult.value);
-          setPhiAutoScrub(phiSettings.autoScrub || false);
+        // Load custom codes
+        const loadedCustomCodes = await getCustomCodes();
+        setCustomCodes(loadedCustomCodes);
+
+        // Load dev mode settings
+        const devSettings = await getDevModeSettings();
+        setDevModeSettings(devSettings);
+        if (devSettings) {
+          setSelectedDevTier(devSettings.userTier);
+          setSelectedDevRole(devSettings.userRole);
         }
       } catch (error) {
         // If storage fails, use defaults
-        console.log('Loading settings from storage failed, using defaults');
+        logger.info('Loading settings from storage failed, using defaults');
         setCathLocations(['Main Hospital Cath Lab', 'Outpatient Surgery Center']);
       }
     };
@@ -186,28 +260,6 @@ const CardiologyCPTApp = () => {
       setRuleViolations([]);
     }
   }, [selectedCodes, selectedCodesVessel2, selectedCodesVessel3, codeVessels, codeVesselsV2, codeVesselsV3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication]);
-
-  // PHI scanning on case ID changes
-  useEffect(() => {
-    if (caseId) {
-      const matches = scanFieldsForPHI({ caseId });
-      setPhiMatches(matches);
-    } else {
-      setPhiMatches([]);
-    }
-  }, [caseId]);
-
-  // Handle pending report generation after PHI bypass
-  useEffect(() => {
-    if (pendingReportGeneration && phiBypassOnce) {
-      setPendingReportGeneration(false);
-      // Small delay to ensure state is updated before triggering
-      setTimeout(() => {
-        const btn = document.getElementById('generate-report-btn');
-        if (btn) btn.click();
-      }, 50);
-    }
-  }, [pendingReportGeneration, phiBypassOnce]);
 
   // Official Coronary Artery Modifier Guide
   const coronaryModifiers = [
@@ -248,6 +300,7 @@ const CardiologyCPTApp = () => {
   // Get favorite codes from all categories
   const getFavoriteCodes = useMemo(() => {
     const allCodes: any[] = [];
+    // Include standard CPT categories
     Object.values(cptCategories).forEach(codes => {
       codes.forEach(code => {
         if (favorites.includes(code.code)) {
@@ -255,8 +308,110 @@ const CardiologyCPTApp = () => {
         }
       });
     });
+    // Include echo categories
+    Object.values(echoCategories).forEach(codes => {
+      codes.forEach(code => {
+        if (favorites.includes(code.code)) {
+          allCodes.push(code);
+        }
+      });
+    });
+    // Include EP categories
+    Object.values(epCategories).forEach(codes => {
+      codes.forEach(code => {
+        if (favorites.includes(code.code)) {
+          allCodes.push(code);
+        }
+      });
+    });
+    // Include custom codes
+    customCodes.forEach(code => {
+      if (favorites.includes(code.code)) {
+        allCodes.push({ code: code.code, description: code.description, summary: code.description, rvu: code.rvu });
+      }
+    });
     return allCodes;
-  }, [favorites]);
+  }, [favorites, customCodes]);
+
+  // Custom Codes - Handlers
+  const handleSaveCustomCode = useCallback(async () => {
+    if (!newCustomCode.trim() || !newCustomDescription.trim()) return;
+
+    try {
+      if (editingCustomCode) {
+        // Update existing code
+        await updateCustomCode(editingCustomCode.id, {
+          code: newCustomCode.trim(),
+          description: newCustomDescription.trim(),
+          rvu: newCustomRVU ? parseFloat(newCustomRVU) : undefined
+        });
+      } else {
+        // Add new code
+        await addCustomCode(
+          newCustomCode.trim(),
+          newCustomDescription.trim(),
+          newCustomRVU ? parseFloat(newCustomRVU) : undefined
+        );
+      }
+      const updatedCodes = await getCustomCodes();
+      setCustomCodes(updatedCodes);
+      setShowAddCustomCode(false);
+      setNewCustomCode('');
+      setNewCustomDescription('');
+      setNewCustomRVU('');
+      setEditingCustomCode(null);
+    } catch (error) {
+      logger.error('Error saving custom code', error);
+      alert(error instanceof Error ? error.message : 'Error saving code');
+    }
+  }, [newCustomCode, newCustomDescription, newCustomRVU, editingCustomCode]);
+
+  const handleDeleteCustomCode = useCallback(async (customCode: CustomCPTCode) => {
+    if (!confirm(`Delete custom code ${customCode.code}?`)) return;
+    try {
+      await deleteCustomCode(customCode.id);
+      const updatedCodes = await getCustomCodes();
+      setCustomCodes(updatedCodes);
+    } catch (error) {
+      logger.error('Error deleting custom code', error);
+    }
+  }, []);
+
+  const handleEditCustomCode = useCallback((customCode: CustomCPTCode) => {
+    setEditingCustomCode(customCode);
+    setNewCustomCode(customCode.code);
+    setNewCustomDescription(customCode.description);
+    setNewCustomRVU(customCode.rvu?.toString() || '');
+    setShowAddCustomCode(true);
+  }, []);
+
+  // Dev Mode handlers
+  const handleOpenDevMode = useCallback(async () => {
+    await enableDevMode();
+    const settings = await getDevModeSettings();
+    setDevModeSettings(settings);
+    if (settings) {
+      setSelectedDevTier(settings.userTier);
+      setSelectedDevRole(settings.userRole);
+    }
+    setShowDevMode(true);
+  }, []);
+
+  const handleApplyDevMode = useCallback(async () => {
+    await setDevModeUserType(selectedDevTier, selectedDevRole);
+    const settings = await getDevModeSettings();
+    setDevModeSettings(settings);
+    setShowDevMode(false);
+    // Reload to apply changes
+    window.location.reload();
+  }, [selectedDevTier, selectedDevRole]);
+
+  const handleDisableDevMode = useCallback(async () => {
+    await disableDevMode();
+    setDevModeSettings(null);
+    setShowDevMode(false);
+    window.location.reload();
+  }, []);
 
   // Feature 4: Case Templates - Load and save templates
   const loadTemplate = useCallback((template: CaseTemplate) => {
@@ -439,16 +594,6 @@ const CardiologyCPTApp = () => {
     URL.revokeObjectURL(url);
   }, [caseHistory]);
 
-  // Feature 6: PHI Scrubbing
-  const handlePHIScrub = useCallback(() => {
-    if (phiMatches.length > 0) {
-      const scrubbed = scrubPHI(caseId);
-      setCaseId(scrubbed);
-      setPhiMatches([]);
-      setShowPHIWarning(false);
-    }
-  }, [caseId, phiMatches]);
-
   // Feature 7: Billing Rules Engine - Override rules
   const toggleRuleOverride = useCallback((ruleId: string) => {
     setOverriddenRules(prev =>
@@ -561,6 +706,10 @@ const CardiologyCPTApp = () => {
     '93590': { rvus: 19.45, payment: 701.20 },
     '93591': { rvus: 6.84, payment: 246.60 },
     '93592': { rvus: 20.38, payment: 734.70 },
+    '33418': { rvus: 25.50, payment: 919.00 },
+    '33419': { rvus: 8.50, payment: 306.30 },
+    '0569T': { rvus: 24.00, payment: 864.90 },
+    '0570T': { rvus: 7.50, payment: 270.30 },
     
     // TAVR
     '33361': { rvus: 45.23, payment: 1630.30 },
@@ -575,11 +724,49 @@ const CardiologyCPTApp = () => {
     '93463': { rvus: 3.45, payment: 124.40 },
     '93464': { rvus: 4.67, payment: 168.40 },
     '93505': { rvus: 6.23, payment: 224.60 },
-    
+
     // MCS
     '33990': { rvus: 12.45, payment: 448.80 },
     '33991': { rvus: 15.67, payment: 564.90 },
-    '33989': { rvus: 8.34, payment: 300.70 }
+    '33989': { rvus: 8.34, payment: 300.70 },
+
+    // Venography
+    '36010': { rvus: 3.20, payment: 115.30 },
+    '36011': { rvus: 4.50, payment: 162.20 },
+    '36012': { rvus: 5.50, payment: 198.20 },
+    '75820': { rvus: 1.80, payment: 64.90 },
+    '75822': { rvus: 2.30, payment: 82.90 },
+    '75825': { rvus: 2.00, payment: 72.10 },
+    '75827': { rvus: 2.00, payment: 72.10 },
+
+    // IVC Filter
+    '37191': { rvus: 10.00, payment: 360.40 },
+    '37192': { rvus: 12.50, payment: 450.50 },
+    '37193': { rvus: 16.00, payment: 576.60 },
+
+    // Venous Stenting/Angioplasty
+    '37238': { rvus: 19.00, payment: 684.80 },
+    '37239': { rvus: 9.50, payment: 342.40 },
+    '37248': { rvus: 15.50, payment: 558.60 },
+    '37249': { rvus: 7.75, payment: 279.30 },
+
+    // Venous Thrombectomy
+    '37187': { rvus: 24.00, payment: 865.00 },
+    '37188': { rvus: 12.00, payment: 432.50 },
+
+    // Thrombolysis
+    '37211': { rvus: 13.00, payment: 468.50 },
+    '37212': { rvus: 13.00, payment: 468.50 },
+    '37213': { rvus: 7.00, payment: 252.30 },
+    '37214': { rvus: 8.50, payment: 306.30 },
+
+    // Arterial Thrombectomy
+    '37184': { rvus: 26.00, payment: 937.00 },
+    '37185': { rvus: 13.00, payment: 468.50 },
+    '37186': { rvus: 9.50, payment: 342.40 },
+
+    // Retrieval
+    '37197': { rvus: 12.00, payment: 432.50 }
   };
 
   // 2026 Medicare RVU and Fee Schedule Data (approximate, verify with current CMS data)
@@ -641,6 +828,10 @@ const CardiologyCPTApp = () => {
     '93590': { workRVU: 17.00, totalRVU: 38.00, fee: 1254 },
     '93591': { workRVU: 5.00, totalRVU: 11.00, fee: 363 },
     '93592': { workRVU: 17.50, totalRVU: 39.00, fee: 1287 },
+    '33418': { workRVU: 20.00, totalRVU: 44.00, fee: 1452 },
+    '33419': { workRVU: 6.50, totalRVU: 14.50, fee: 479 },
+    '0569T': { workRVU: 19.00, totalRVU: 42.00, fee: 1386 },
+    '0570T': { workRVU: 5.50, totalRVU: 12.50, fee: 413 },
     
     // TAVR
     '33361': { workRVU: 35.00, totalRVU: 75.00, fee: 2475 },
@@ -723,10 +914,43 @@ const CardiologyCPTApp = () => {
     '37298': { workRVU: 5.00, totalRVU: 12.00, fee: 396 },
     '37299': { workRVU: 5.50, totalRVU: 13.00, fee: 429 },
 
+    // Venography
+    '36010': { workRVU: 1.20, totalRVU: 3.20, fee: 115 },
+    '36011': { workRVU: 1.80, totalRVU: 4.50, fee: 162 },
+    '36012': { workRVU: 2.20, totalRVU: 5.50, fee: 198 },
+    '75820': { workRVU: 0.70, totalRVU: 1.80, fee: 65 },
+    '75822': { workRVU: 0.90, totalRVU: 2.30, fee: 83 },
+    '75825': { workRVU: 0.80, totalRVU: 2.00, fee: 72 },
+    '75827': { workRVU: 0.80, totalRVU: 2.00, fee: 72 },
+
     // IVC Filter Procedures
     '37191': { workRVU: 4.00, totalRVU: 10.00, fee: 360 },
     '37192': { workRVU: 5.00, totalRVU: 12.50, fee: 450 },
     '37193': { workRVU: 6.50, totalRVU: 16.00, fee: 576 },
+
+    // Venous Stenting/Angioplasty
+    '37238': { workRVU: 8.00, totalRVU: 19.00, fee: 685 },
+    '37239': { workRVU: 4.00, totalRVU: 9.50, fee: 342 },
+    '37248': { workRVU: 6.50, totalRVU: 15.50, fee: 559 },
+    '37249': { workRVU: 3.25, totalRVU: 7.75, fee: 279 },
+
+    // Venous Thrombectomy
+    '37187': { workRVU: 10.00, totalRVU: 24.00, fee: 865 },
+    '37188': { workRVU: 5.00, totalRVU: 12.00, fee: 432 },
+
+    // Thrombolysis
+    '37211': { workRVU: 5.50, totalRVU: 13.00, fee: 468 },
+    '37212': { workRVU: 5.50, totalRVU: 13.00, fee: 468 },
+    '37213': { workRVU: 3.00, totalRVU: 7.00, fee: 252 },
+    '37214': { workRVU: 3.50, totalRVU: 8.50, fee: 306 },
+
+    // Arterial Thrombectomy
+    '37184': { workRVU: 11.00, totalRVU: 26.00, fee: 937 },
+    '37185': { workRVU: 5.50, totalRVU: 13.00, fee: 468 },
+    '37186': { workRVU: 4.00, totalRVU: 9.50, fee: 342 },
+
+    // Retrieval
+    '37197': { workRVU: 5.00, totalRVU: 12.00, fee: 432 },
 
     // Adjunctive Procedures
     '75630': { workRVU: 1.20, totalRVU: 3.00, fee: 99 },
@@ -744,8 +968,85 @@ const CardiologyCPTApp = () => {
     '33991': { workRVU: 11.00, totalRVU: 26.00, fee: 858 },
     '33989': { workRVU: 6.00, totalRVU: 14.00, fee: 462 },
     '33992': { workRVU: 7.50, totalRVU: 18.00, fee: 594 },
+    '33993': { workRVU: 9.00, totalRVU: 21.00, fee: 756 },
     '33995': { workRVU: 13.00, totalRVU: 31.00, fee: 1023 },
-    '33997': { workRVU: 15.00, totalRVU: 36.00, fee: 1188 }
+    '33997': { workRVU: 15.00, totalRVU: 36.00, fee: 1188 },
+
+    // ECMO
+    '33946': { workRVU: 12.00, totalRVU: 28.00, fee: 1009 },
+    '33947': { workRVU: 14.00, totalRVU: 33.00, fee: 1189 },
+    '33948': { workRVU: 13.00, totalRVU: 30.00, fee: 1081 },
+    '33949': { workRVU: 8.00, totalRVU: 19.00, fee: 685 },
+    '33951': { workRVU: 8.50, totalRVU: 20.00, fee: 721 },
+    '33952': { workRVU: 10.00, totalRVU: 24.00, fee: 865 },
+
+    // Pericardiocentesis
+    '33016': { workRVU: 4.50, totalRVU: 10.50, fee: 378 },
+    '33017': { workRVU: 5.50, totalRVU: 13.00, fee: 468 },
+
+    // Temporary Pacing
+    '33210': { workRVU: 3.50, totalRVU: 8.50, fee: 306 },
+    '33211': { workRVU: 4.50, totalRVU: 11.00, fee: 396 },
+
+    // Vascular Access
+    '36000': { workRVU: 0.50, totalRVU: 1.20, fee: 43 },
+    '36140': { workRVU: 0.80, totalRVU: 2.00, fee: 72 },
+
+    // Miscellaneous
+    '92950': { workRVU: 4.00, totalRVU: 9.50, fee: 342 },
+    '92998': { workRVU: 6.00, totalRVU: 14.00, fee: 504 },
+    '93503': { workRVU: 2.00, totalRVU: 5.00, fee: 180 },
+
+    // Carotid/Cerebrovascular Catheter Placement
+    '36221': { workRVU: 3.50, totalRVU: 8.50, fee: 306 },
+    '36222': { workRVU: 5.00, totalRVU: 12.00, fee: 432 },
+    '36223': { workRVU: 6.00, totalRVU: 14.50, fee: 522 },
+    '36224': { workRVU: 7.00, totalRVU: 17.00, fee: 612 },
+    '36225': { workRVU: 5.50, totalRVU: 13.00, fee: 468 },
+    '36226': { workRVU: 6.50, totalRVU: 15.50, fee: 559 },
+    '36227': { workRVU: 2.50, totalRVU: 6.00, fee: 216 },
+    '36228': { workRVU: 3.00, totalRVU: 7.00, fee: 252 },
+
+    // Carotid Stenting
+    '37215': { workRVU: 18.00, totalRVU: 42.00, fee: 1512 },
+    '37216': { workRVU: 16.00, totalRVU: 38.00, fee: 1369 },
+    '37217': { workRVU: 20.00, totalRVU: 47.00, fee: 1693 },
+    '37218': { workRVU: 19.00, totalRVU: 45.00, fee: 1621 },
+
+    // Thoracic Aortography
+    '75600': { workRVU: 1.00, totalRVU: 2.50, fee: 90 },
+    '75605': { workRVU: 1.20, totalRVU: 3.00, fee: 108 },
+
+    // EVAR
+    '34701': { workRVU: 25.00, totalRVU: 58.00, fee: 2089 },
+    '34702': { workRVU: 28.00, totalRVU: 65.00, fee: 2341 },
+    '34703': { workRVU: 30.00, totalRVU: 70.00, fee: 2522 },
+    '34704': { workRVU: 22.00, totalRVU: 51.00, fee: 1837 },
+    '34705': { workRVU: 32.00, totalRVU: 75.00, fee: 2702 },
+    '34706': { workRVU: 12.00, totalRVU: 28.00, fee: 1009 },
+    '34707': { workRVU: 4.00, totalRVU: 9.50, fee: 342 },
+    '34708': { workRVU: 6.00, totalRVU: 14.00, fee: 504 },
+    '34709': { workRVU: 8.00, totalRVU: 19.00, fee: 685 },
+    '34710': { workRVU: 10.00, totalRVU: 24.00, fee: 865 },
+    '34711': { workRVU: 5.00, totalRVU: 12.00, fee: 432 },
+    '34712': { workRVU: 3.50, totalRVU: 8.50, fee: 306 },
+
+    // TEVAR
+    '33880': { workRVU: 35.00, totalRVU: 82.00, fee: 2954 },
+    '33881': { workRVU: 33.00, totalRVU: 77.00, fee: 2774 },
+    '33883': { workRVU: 10.00, totalRVU: 24.00, fee: 865 },
+    '33884': { workRVU: 5.00, totalRVU: 12.00, fee: 432 },
+    '33886': { workRVU: 8.00, totalRVU: 19.00, fee: 685 },
+    '33889': { workRVU: 15.00, totalRVU: 35.00, fee: 1261 },
+    '33891': { workRVU: 18.00, totalRVU: 42.00, fee: 1512 },
+
+    // Subclavian/Innominate Interventions
+    '37226': { workRVU: 9.00, totalRVU: 21.00, fee: 756 },
+    '37227': { workRVU: 11.00, totalRVU: 26.00, fee: 937 },
+    '37236': { workRVU: 8.50, totalRVU: 20.00, fee: 720 },
+    '37237': { workRVU: 4.25, totalRVU: 10.00, fee: 360 },
+    '37246': { workRVU: 6.00, totalRVU: 14.00, fee: 504 },
+    '37247': { workRVU: 3.00, totalRVU: 7.00, fee: 252 }
   };
 
   // Top 25 cardiac procedure indications with ICD-10 codes (most to least common)
@@ -1519,7 +1820,7 @@ const CardiologyCPTApp = () => {
       // Show brief success message
       alert('Settings saved successfully!');
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logger.error('Failed to save settings', error);
       alert('Settings saved for this session only.');
       setShowSettings(false);
     }
@@ -1549,157 +1850,7 @@ const CardiologyCPTApp = () => {
     }
   };
 
-  const generateEmailBody = () => {
-    const bundlingAnalysis = analyzeBundlingRules();
-    
-    // Combine all codes from all sections
-    const allCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3];
-    
-    // Check if any PCI codes are selected (need this to determine if -59 modifier is needed)
-    const pciCodeList = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945', '0913T', '0914T'];
-    const hasPCI = allCodes.some(c => pciCodeList.includes(c.code));
-    
-    // Diagnostic cardiac catheterization codes that need -59 modifier when PCI is also performed
-    const diagnosticCathCodes = ['93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461'];
-    
-    const codesText = allCodes.map(c => {
-      const isPCICode = pciCodeList.includes(c.code);
-      const isDiagnosticCath = diagnosticCathCodes.includes(c.code);
-      const vessel = codeVessels[c.code] || codeVesselsV2[c.code] || codeVesselsV3[c.code];
-      
-      if (isPCICode && vessel) {
-        // Extract just the modifier (e.g., "LD" from "LAD (LD)")
-        const modifier = vessel.match(/\(([^)]+)\)/)?.[1] || '';
-        return `${c.code}-${modifier} - ${c.description} [${vessel}]`;
-      }
-      
-      // Add -59 modifier to diagnostic cath codes when PCI is also being performed
-      if (isDiagnosticCath && hasPCI) {
-        return `${c.code}-59 - ${c.description} [Modifier -59: Distinct procedural service - required when billing diagnostic cath with PCI same session]`;
-      }
-      
-      return `${c.code} - ${c.description}`;
-    }).join('\n');
-    
-    let sedationText = '';
-    if (includeSedation) {
-      sedationText = '\n\nModerate Sedation:\n99152 - Moderate sedation services, initial 15 minutes (x1)';
-      if (sedationUnits > 0) {
-        sedationText += `\n99153 - Each additional 15 minutes (x${sedationUnits})`;
-      }
-    }
-    
-    // Remove the old vesselsText section as it's now per-code
-    let vesselsText = '';
-    
-    // Collect all selected indications
-    const indications = [];
-    
-    if (selectedCardiacIndication) {
-      if (selectedCardiacIndication === 'other') {
-        indications.push(`Cardiac: Other - ${otherCardiacIndication}`);
-      } else {
-        const indication = cardiacIndications.find(ind => ind.code === selectedCardiacIndication);
-        indications.push(`Cardiac: ${indication.code} - ${indication.description}`);
-      }
-    }
-    
-    if (selectedPeripheralIndication) {
-      if (selectedPeripheralIndication === 'other') {
-        indications.push(`Peripheral: Other - ${otherPeripheralIndication}`);
-      } else {
-        const indication = peripheralIndications.find(ind => ind.code === selectedPeripheralIndication);
-        indications.push(`Peripheral: ${indication.code} - ${indication.description}`);
-      }
-    }
-    
-    if (selectedStructuralIndication) {
-      if (selectedStructuralIndication === 'other') {
-        indications.push(`Structural: Other - ${otherStructuralIndication}`);
-      } else {
-        const indication = structuralIndications.find(ind => ind.code === selectedStructuralIndication);
-        indications.push(`Structural: ${indication.code} - ${indication.description}`);
-      }
-    }
-    
-    // Billing guidance section
-    let billingGuidance = '\n\n' + '='.repeat(60) + '\nBILLING GUIDANCE & NCCI COMPLIANCE\n' + '='.repeat(60);
-    
-    // Billable codes
-    if (bundlingAnalysis.billable.length > 0) {
-      billingGuidance += '\n\nCODES TO BILL:\n';
-      bundlingAnalysis.billable.forEach(item => {
-        billingGuidance += `\n${item.code} - ${item.reason}`;
-      });
-    }
-    
-    // Bundled codes
-    if (bundlingAnalysis.bundled.length > 0) {
-      billingGuidance += '\n\nCODES NOT SEPARATELY BILLABLE (Bundled):\n';
-      bundlingAnalysis.bundled.forEach(item => {
-        billingGuidance += `\n${item.code} - ${item.reason}`;
-      });
-    }
-    
-    // Warnings and special considerations
-    if (bundlingAnalysis.warnings.length > 0) {
-      billingGuidance += '\n\n⚠️ IMPORTANT BILLING CONSIDERATIONS:\n';
-      bundlingAnalysis.warnings.forEach((warning, index) => {
-        billingGuidance += `\n\n${index + 1}. ${warning.type}:\n${warning.message}`;
-        if (warning.criteria && warning.criteria.length > 0) {
-          warning.criteria.forEach(criterion => {
-            billingGuidance += `\n   • ${criterion}`;
-          });
-        }
-      });
-    }
-    
-    billingGuidance += '\n\n' + '='.repeat(60);
-    billingGuidance += '\nNOTE: Always verify with current NCCI edits and payer-specific policies.';
-    billingGuidance += '\nDocument medical necessity for all separately billed services.';
-    billingGuidance += '\n' + '='.repeat(60);
-    
-    // Get procedure date display text
-    const getProcedureDateDisplay = () => {
-      switch (procedureDateOption) {
-        case 'today': return 'Today';
-        case 'this_week': return 'This Week';
-        case 'this_month': return 'This Month';
-        case 'other': return procedureDateText || 'Not specified';
-        default: return 'Not specified';
-      }
-    };
-    
-    return `${'*'.repeat(60)}
-CONFIDENTIAL - For coding reference only
-Do not forward. Delete after billing complete.
-Contains limited dataset - not full PHI.
-${'*'.repeat(60)}
-
-Physician: ${cardiologistName}
-
-Case Information:
-Case ID: ${caseId}
-Procedure Timeframe: ${getProcedureDateDisplay()}
-Location: ${selectedLocation}
-${indications.length > 0 ? `
-${'='.repeat(60)}
-PROCEDURE INDICATION(S) / ICD-10:
-${'='.repeat(60)}
-${indications.join('\n')}
-` : ''}
-CPT Codes Performed (2026):
-${codesText}${sedationText}
-
-Total Procedures: ${allCodes.length}${includeSedation ? ` + Moderate Sedation (${15 + (sedationUnits * 15)} minutes)` : ''}${billingGuidance}
-
-${'*'.repeat(60)}
-Generated by CathCPT - Coding Reference Tool
-This document does not contain Protected Health Information (PHI)
-${'*'.repeat(60)}`;
-  };
-
-  const handleGenerateReport = async () => {
+  const handleSubmitCharges = async () => {
     // Validate required fields
     if (!caseId) {
       alert('Please enter a Case ID or MRN (last 4 digits)');
@@ -1728,23 +1879,8 @@ ${'*'.repeat(60)}`;
 
     // Check for blocking billing rule errors
     if (hasBlockingErrors) {
-      alert('Please resolve all billing rule errors before generating the report.');
+      alert('Please resolve all billing rule errors before submitting charges.');
       return;
-    }
-
-    // Check for PHI if auto-scrub is enabled
-    if (phiMatches.length > 0 && !phiBypassOnce) {
-      if (phiAutoScrub) {
-        handlePHIScrub();
-      } else {
-        // Show PHI warning modal and block report generation
-        setShowPHIWarning(true);
-        return; // Stop here - user must take action in modal
-      }
-    }
-    // Reset bypass flag after use
-    if (phiBypassOnce) {
-      setPhiBypassOnce(false);
     }
 
     // Check that all PCI codes have vessel modifiers (all three sections)
@@ -1770,35 +1906,86 @@ ${'*'.repeat(60)}`;
     // Save to history
     await saveToHistory();
 
-    // Show the success message with the report
-    setShowSuccessMessage(true);
-  };
-  
-  // Copy report to clipboard function
-  const copyReportToClipboard = async () => {
-    const reportText = generateEmailBody();
-    try {
-      await navigator.clipboard.writeText(reportText);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 3000);
-    } catch (err) {
-      // Fallback: select the textarea content
-      const textarea = document.getElementById('report-textarea');
-      if (textarea) {
-        textarea.select();
-        textarea.setSelectionRange(0, 99999); // For mobile
-        try {
-          document.execCommand('copy');
-          setCopySuccess(true);
-          setTimeout(() => setCopySuccess(false), 3000);
-        } catch (e) {
-          alert('Please manually select and copy the text from the report box.');
+    // Build combined charge from all selected codes
+    const allCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3];
+    const pciCodeList = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945', '0913T', '0914T'];
+    const diagnosticCathCodes = ['93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461'];
+    const hasPCI = allCodes.some(c => pciCodeList.includes(c.code));
+
+    const codeStrings = allCodes.map(c => {
+      const isPCICode = pciCodeList.includes(c.code);
+      const isDiagnosticCath = diagnosticCathCodes.includes(c.code);
+      const vessel = codeVessels[c.code] || codeVesselsV2[c.code] || codeVesselsV3[c.code];
+
+      if (isPCICode && vessel) {
+        const modifier = vessel.match(/\(([^)]+)\)/)?.[1] || '';
+        return `${c.code}-${modifier}`;
+      }
+      if (isDiagnosticCath && hasPCI) {
+        return `${c.code}-59`;
+      }
+      return c.code;
+    });
+
+    // Add sedation codes if included
+    if (includeSedation) {
+      codeStrings.push('99152');
+      if (sedationUnits > 0) {
+        for (let i = 0; i < sedationUnits; i++) {
+          codeStrings.push('99153');
         }
       }
     }
+
+    const descriptionStrings = allCodes.map(c => c.description || c.summary || '');
+    if (includeSedation) {
+      descriptionStrings.push('Moderate sedation, initial 15 min');
+      if (sedationUnits > 0) {
+        for (let i = 0; i < sedationUnits; i++) {
+          descriptionStrings.push('Moderate sedation, addl 15 min');
+        }
+      }
+    }
+
+    // Calculate RVU
+    const rvuCalc = calculateRVUAndReimbursement();
+    const totalRVU = parseFloat(rvuCalc.totalWorkRVU) || 0;
+    const totalPayment = totalRVU * 36.04;
+
+    // Collect diagnoses from selected indications
+    const diagnoses: string[] = [];
+    if (selectedCardiacIndication && selectedCardiacIndication !== 'other') {
+      diagnoses.push(selectedCardiacIndication);
+    }
+    if (selectedPeripheralIndication && selectedPeripheralIndication !== 'other') {
+      diagnoses.push(selectedPeripheralIndication);
+    }
+    if (selectedStructuralIndication && selectedStructuralIndication !== 'other') {
+      diagnoses.push(selectedStructuralIndication);
+    }
+
+    // Get charge date
+    const chargeDate = new Date().toISOString().split('T')[0];
+
+    // Save combined charge
+    await saveCharge({
+      inpatientId: caseId,
+      chargeDate,
+      cptCode: codeStrings.join(' + '),
+      cptDescription: descriptionStrings.join(' + '),
+      rvu: totalRVU,
+      diagnoses,
+      submittedByUserName: cardiologistName || undefined
+    });
+
+    // Show confirmation
+    setSubmittedChargeInfo({
+      codeCount: codeStrings.length,
+      totalRVU,
+      estimatedPayment: totalPayment
+    });
+    setShowChargeSubmitted(true);
   };
-  
-  const [copySuccess, setCopySuccess] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-colors">
@@ -1880,162 +2067,206 @@ ${'*'.repeat(60)}`;
           </div>
         </div>
 
-        {/* Settings Panel */}
+        {/* Settings Modal */}
         {showSettings && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">Settings</h2>
-              <button onClick={() => setShowSettings(false)}>
-                <X size={24} className="text-gray-500 hover:text-gray-700" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Physician Name
-                </label>
-                <input
-                  type="text"
-                  value={cardiologistName}
-                  onChange={(e) => setCardiologistName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
-                  placeholder="Dr. John Smith"
-                />
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800">Settings</h2>
+                <button onClick={() => setShowSettings(false)}>
+                  <X size={24} className="text-gray-500 hover:text-gray-700" />
+                </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cath Lab Locations
-                </label>
-                <div className="space-y-2 mb-3">
-                  {cathLocations.map((location, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                      <span className="flex-grow text-gray-700">{location}</span>
-                      <button
-                        onClick={() => removeLocation(location)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Physician Name
+                  </label>
                   <input
                     type="text"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addLocation()}
-                    className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
-                    placeholder="Add new location"
+                    value={cardiologistName}
+                    onChange={(e) => setCardiologistName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
+                    placeholder="Dr. John Smith"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cath Lab Locations
+                  </label>
+                  <div className="space-y-2 mb-3">
+                    {cathLocations.map((location, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                        <span className="flex-grow text-gray-700">{location}</span>
+                        <button
+                          onClick={() => removeLocation(location)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newLocation}
+                      onChange={(e) => setNewLocation(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addLocation()}
+                      className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
+                      placeholder="Add new location"
+                    />
+                    <button
+                      onClick={addLocation}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Code Group Settings */}
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CPT Code Categories
+                  </label>
                   <button
-                    onClick={addLocation}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                    onClick={() => { setShowSettings(false); setShowCodeGroupSettings(true); }}
+                    className="w-full flex items-center justify-between p-3 border border-indigo-200 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
                   >
-                    Add
+                    <div className="flex items-center gap-2">
+                      <List size={18} className="text-indigo-600" />
+                      <span className="text-indigo-700 font-medium">Manage Code Categories</span>
+                    </div>
+                    <ChevronRight size={18} className="text-indigo-600" />
                   </button>
+                  <p className="text-xs text-gray-500 mt-1">Show/hide CPT code groups based on your specialty</p>
+                </div>
+
+                {/* Dev Mode */}
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Developer Options
+                  </label>
+                  <button
+                    onClick={handleOpenDevMode}
+                    className="w-full flex items-center justify-between p-3 border border-yellow-300 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-yellow-600 font-semibold">🛠️ Dev Mode</span>
+                      {devModeSettings?.enabled && (
+                        <span className="px-2 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded">
+                          {devModeSettings.userTier === 'pro' ? `Pro ${devModeSettings.userRole}` : 'Individual'}
+                        </span>
+                      )}
+                    </div>
+                    <ChevronRight size={18} className="text-yellow-600" />
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1">Test Pro features without a backend</p>
                 </div>
               </div>
 
-              {/* PHI Settings */}
-              <div className="pt-4 border-t border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  PHI Protection Settings
-                </label>
-                <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={phiAutoScrub}
-                    onChange={async (e) => {
-                      setPhiAutoScrub(e.target.checked);
-                      await window.storage.set('cathcpt_phi_settings', JSON.stringify({ autoScrub: e.target.checked }));
-                    }}
-                    className="w-5 h-5 text-indigo-600"
-                  />
-                  <div>
-                    <div className="font-semibold text-gray-800">Auto-scrub PHI</div>
-                    <div className="text-sm text-gray-600">Automatically remove detected PHI before generating reports</div>
-                  </div>
-                </label>
+              <div className="p-4 border-t border-gray-200">
+                <button
+                  onClick={saveSettings}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Save size={20} />
+                  Save Settings
+                </button>
               </div>
-
-              <button
-                onClick={saveSettings}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
-              >
-                <Save size={20} />
-                Save Settings
-              </button>
             </div>
           </div>
         )}
 
-        {/* PHI Warning Modal */}
-        {showPHIWarning && (
+        {/* Dev Mode Modal */}
+        {showDevMode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
-              <div className="p-4 bg-red-600">
-                <div className="flex items-center gap-3">
-                  <Shield size={32} className="text-white" />
-                  <div>
-                    <h2 className="text-xl font-bold text-white">PHI Detected</h2>
-                    <p className="text-red-100 text-sm">Protected Health Information found</p>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  🛠️ Dev Mode
+                </h2>
+                <button onClick={() => setShowDevMode(false)}>
+                  <X size={24} className="text-gray-500 hover:text-gray-700" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <p className="text-sm text-gray-600">
+                  Test different user modes without requiring a backend. Changes will reload the app.
+                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    User Mode
+                  </label>
+                  <div className="space-y-2">
+                    <label className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedDevTier === 'individual' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="devTier"
+                        checked={selectedDevTier === 'individual'}
+                        onChange={() => { setSelectedDevTier('individual'); setSelectedDevRole(null); }}
+                        className="w-4 h-4 text-indigo-600"
+                      />
+                      <div>
+                        <div className="font-semibold text-gray-800">Individual</div>
+                        <div className="text-sm text-gray-600">Default mode - Cath Lab only, email export</div>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedDevTier === 'pro' && selectedDevRole === 'physician' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="devTier"
+                        checked={selectedDevTier === 'pro' && selectedDevRole === 'physician'}
+                        onChange={() => { setSelectedDevTier('pro'); setSelectedDevRole('physician'); }}
+                        className="w-4 h-4 text-indigo-600"
+                      />
+                      <div>
+                        <div className="font-semibold text-gray-800">Pro Physician</div>
+                        <div className="text-sm text-gray-600">Cath Lab + Rounds tab, sync enabled</div>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedDevTier === 'pro' && selectedDevRole === 'admin' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="devTier"
+                        checked={selectedDevTier === 'pro' && selectedDevRole === 'admin'}
+                        onChange={() => { setSelectedDevTier('pro'); setSelectedDevRole('admin'); }}
+                        className="w-4 h-4 text-indigo-600"
+                      />
+                      <div>
+                        <div className="font-semibold text-gray-800">Pro Admin</div>
+                        <div className="text-sm text-gray-600">Admin portal access</div>
+                      </div>
+                    </label>
                   </div>
                 </div>
-              </div>
-              <div className="p-4">
-                <p className="text-gray-700 mb-4">
-                  The following potential PHI was detected in your case information:
-                </p>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                  <ul className="space-y-2">
-                    {phiMatches.map((match, idx) => (
-                      <li key={idx} className="flex items-center gap-2 text-sm">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          match.severity === 'high'
-                            ? 'bg-red-200 text-red-800'
-                            : 'bg-yellow-200 text-yellow-800'
-                        }`}>
-                          {match.severity.toUpperCase()}
-                        </span>
-                        <span className="text-gray-700">
-                          {match.pattern}: <code className="bg-gray-100 px-1 rounded">{match.value}</code>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  HIPAA requires that PHI be removed before sharing billing documents. Choose an action below:
-                </p>
-                <div className="space-y-2">
+
+                <div className="flex gap-2 pt-4">
+                  {devModeSettings?.enabled && (
+                    <button
+                      onClick={handleDisableDevMode}
+                      className="flex-1 py-2 px-4 border border-red-300 text-red-700 rounded-lg font-medium hover:bg-red-50"
+                    >
+                      Disable Dev Mode
+                    </button>
+                  )}
                   <button
-                    onClick={() => {
-                      handlePHIScrub();
-                      setShowPHIWarning(false);
-                    }}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                    onClick={handleApplyDevMode}
+                    className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
                   >
-                    <Shield size={20} />
-                    Scrub PHI & Generate Report
-                  </button>
-                  <button
-                    onClick={() => setShowPHIWarning(false)}
-                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-colors"
-                  >
-                    Go Back & Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowPHIWarning(false);
-                      setPhiBypassOnce(true);
-                      setPendingReportGeneration(true);
-                    }}
-                    className="w-full border border-red-300 text-red-600 hover:bg-red-50 font-medium py-2 px-4 rounded-lg text-sm transition-colors"
-                  >
-                    Proceed Anyway (Not Recommended)
+                    Apply & Reload
                   </button>
                 </div>
               </div>
@@ -2376,68 +2607,19 @@ ${'*'.repeat(60)}`;
             </div>
           </div>
 
-          {/* HIPAA Privacy Notice */}
-          <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertCircle size={24} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-bold text-yellow-800 mb-1">HIPAA Privacy Notice</h3>
-                <p className="text-sm text-yellow-800">
-                  Do <strong>NOT</strong> enter patient names or full dates of birth. Use internal
-                  case IDs only. This tool is for coding assistance only and does
-                  not store Protected Health Information (PHI).
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter Case ID or MRN (last 4 digits only) *
+                Case ID / Patient Identifier *
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={caseId}
-                  onChange={(e) => setCaseId(e.target.value)}
-                  maxLength={50}
-                  style={phiMatches.length > 0 ? { border: '3px solid #EF4444', borderRadius: '8px' } : {}}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800 ${
-                    phiMatches.length > 0 ? '' : 'border-gray-300'
-                  }`}
-                  placeholder="e.g., CASE-1234"
-                />
-                {phiMatches.length > 0 && (
-                  <button
-                    onClick={handlePHIScrub}
-                    style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', padding: '4px 8px', backgroundColor: '#EF4444', color: 'white', fontSize: '12px', fontWeight: 'bold', borderRadius: '4px', border: 'none' }}
-                  >
-                    Scrub PHI
-                  </button>
-                )}
-              </div>
-              {/* PHI Warning */}
-              {phiMatches.length > 0 && (
-                <div style={{ marginTop: '8px', padding: '12px', backgroundColor: '#FEE2E2', border: '2px solid #EF4444', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                    <AlertCircle size={18} style={{ color: '#DC2626', flexShrink: 0 }} />
-                    <div>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#991B1B', margin: 0 }}>⚠️ Potential PHI Detected!</p>
-                      <ul style={{ fontSize: '12px', color: '#B91C1C', marginTop: '4px', paddingLeft: '16px' }}>
-                        {phiMatches.map((match, idx) => (
-                          <li key={idx} style={{ marginBottom: '4px' }}>
-                            <span style={{ backgroundColor: '#FECACA', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                              {match.pattern}
-                            </span>: "{match.value}"
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <p className="text-xs text-gray-500 mt-1">For internal reference only - do not enter full MRN</p>
+              <input
+                type="text"
+                value={caseId}
+                onChange={(e) => setCaseId(e.target.value)}
+                maxLength={50}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
+                placeholder="e.g., CASE-1234 or MRN"
+              />
             </div>
 
             <div>
@@ -2606,7 +2788,7 @@ ${'*'.repeat(60)}`;
             )}
           </div>
 
-          {/* Peripheral Vascular Indications */}
+          {/* Peripheral Indications */}
           <div className="mb-6">
             <button
               onClick={() => setExpandedIndicationSections(prev => ({ ...prev, peripheral: !prev.peripheral }))}
@@ -2614,7 +2796,7 @@ ${'*'.repeat(60)}`;
             >
               {expandedIndicationSections.peripheral ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
               <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-              Peripheral Vascular Indications
+              Peripheral Indications
               {selectedPeripheralIndication && <Check size={18} className="text-green-600 ml-auto" />}
             </button>
             {expandedIndicationSections.peripheral && (
@@ -2690,7 +2872,7 @@ ${'*'.repeat(60)}`;
             )}
           </div>
 
-          {/* Structural Heart Indications */}
+          {/* Structural Indications */}
           <div>
             <button
               onClick={() => setExpandedIndicationSections(prev => ({ ...prev, structural: !prev.structural }))}
@@ -2698,7 +2880,7 @@ ${'*'.repeat(60)}`;
             >
               {expandedIndicationSections.structural ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
               <span className="w-3 h-3 bg-purple-500 rounded-full"></span>
-              Structural Heart Indications
+              Structural Indications
               {selectedStructuralIndication && <Check size={18} className="text-green-600 ml-auto" />}
             </button>
             {expandedIndicationSections.structural && (
@@ -2972,7 +3154,11 @@ ${'*'.repeat(60)}`;
           )}
 
           {/* No Results Message */}
-          {searchQuery && Object.keys(filterCodes(cptCategories, searchQuery)).length === 0 && (
+          {searchQuery &&
+            Object.keys(filterCodes(cptCategories, searchQuery)).length === 0 &&
+            Object.keys(filterCodes(echoCategories, searchQuery)).length === 0 &&
+            Object.keys(filterCodes(epCategories, searchQuery)).length === 0 &&
+            customCodes.filter(c => c.code.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <Search size={48} className="mx-auto mb-3 opacity-50" />
               <p>No codes found matching "{searchQuery}"</p>
@@ -3249,11 +3435,14 @@ ${'*'.repeat(60)}`;
                 );
               }
 
-              // Skip peripheral subcategories - they're rendered inside parent dropdowns
+              // Skip subcategories - they're rendered inside parent dropdowns
               const peripheralAngiographyCategories = ['Aortoiliac/Abdominal', 'Lower Extremity', 'Upper Extremity', 'Renal', 'Mesenteric', 'Pelvic'];
               const peripheralInterventionCategories = ['Iliac', 'Femoral/Popliteal', 'Tibial/Peroneal', 'Inframalleolar'];
+              const venousCategories = ['Venography', 'IVC Filter', 'Venous Stenting', 'Venous Thrombectomy'];
+              const miscCategories = ['Thrombolysis', 'Arterial Thrombectomy', 'Retrieval'];
+              const endovascularCategories = ['Carotid/Cerebrovascular', 'Carotid Stenting', 'Thoracic Aortography', 'EVAR', 'TEVAR', 'Subclavian/Innominate', 'Renal Intervention', 'Mesenteric Intervention'];
 
-              if (peripheralAngiographyCategories.includes(category) || peripheralInterventionCategories.includes(category)) {
+              if (peripheralAngiographyCategories.includes(category) || peripheralInterventionCategories.includes(category) || venousCategories.includes(category) || miscCategories.includes(category) || endovascularCategories.includes(category)) {
                 return null;
               }
 
@@ -3446,18 +3635,152 @@ ${'*'.repeat(60)}`;
               </div>
             );})}
 
+            {/* Echo Search Results */}
+            {searchQuery && Object.entries(filterCodes(echoCategories, searchQuery)).map(([category, codes]) => (
+              <div key={`search-echo-${category}`} className="border border-sky-200 rounded-lg overflow-hidden">
+                <div className="p-3 bg-sky-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2.5 h-2.5 bg-sky-500 rounded-full"></span>
+                    <span className="font-semibold text-sky-900">Echocardiography - {category}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {codes.map((cpt) => {
+                      const isSelected = isCodeSelected(cpt.code);
+                      const codeKey = `search-echo-${category}-${cpt.code}`;
+                      return (
+                        <div
+                          key={codeKey}
+                          onClick={() => toggleCode(cpt.code, cpt.description)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-sky-500 bg-sky-100' : 'border-gray-200 hover:border-sky-300 bg-white'}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-sky-500 border-sky-500' : 'border-gray-300'}`}>
+                              {isSelected && <Check size={14} className="text-white" />}
+                            </div>
+                            <div className="flex-grow">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sky-900">{cpt.code}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(cpt.code); }}
+                                  className={`p-1 rounded transition-all favorite-star ${isFavorite(cpt.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                >
+                                  <Star size={14} className={isFavorite(cpt.code) ? 'fill-current' : ''} />
+                                </button>
+                                {cpt.isAddOn && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>}
+                                {cpt.rvu && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">RVU: {cpt.rvu}</span>}
+                              </div>
+                              <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* EP Search Results */}
+            {searchQuery && Object.entries(filterCodes(epCategories, searchQuery)).map(([category, codes]) => (
+              <div key={`search-ep-${category}`} className="border border-violet-200 rounded-lg overflow-hidden">
+                <div className="p-3 bg-violet-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2.5 h-2.5 bg-violet-500 rounded-full"></span>
+                    <span className="font-semibold text-violet-900">Electrophysiology - {category}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {codes.map((cpt) => {
+                      const isSelected = isCodeSelected(cpt.code);
+                      const codeKey = `search-ep-${category}-${cpt.code}`;
+                      return (
+                        <div
+                          key={codeKey}
+                          onClick={() => toggleCode(cpt.code, cpt.description)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-violet-500 bg-violet-100' : 'border-gray-200 hover:border-violet-300 bg-white'}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}>
+                              {isSelected && <Check size={14} className="text-white" />}
+                            </div>
+                            <div className="flex-grow">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-violet-900">{cpt.code}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(cpt.code); }}
+                                  className={`p-1 rounded transition-all favorite-star ${isFavorite(cpt.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                >
+                                  <Star size={14} className={isFavorite(cpt.code) ? 'fill-current' : ''} />
+                                </button>
+                                {cpt.isAddOn && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>}
+                                {cpt.rvu && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">RVU: {cpt.rvu}</span>}
+                              </div>
+                              <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Custom Codes Search Results */}
+            {searchQuery && customCodes.filter(c => c.code.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 && (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="p-3 bg-gray-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2.5 h-2.5 bg-gray-500 rounded-full"></span>
+                    <span className="font-semibold text-gray-900">Custom Codes</span>
+                  </div>
+                  <div className="space-y-2">
+                    {customCodes.filter(c => c.code.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase())).map((customCode) => {
+                      const isSelected = isCodeSelected(customCode.code);
+                      const codeKey = `search-custom-${customCode.code}`;
+                      return (
+                        <div
+                          key={codeKey}
+                          onClick={() => toggleCode(customCode.code, customCode.description)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-gray-500 bg-gray-100' : 'border-gray-200 hover:border-gray-400 bg-white'}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-gray-500 border-gray-500' : 'border-gray-300'}`}>
+                              {isSelected && <Check size={14} className="text-white" />}
+                            </div>
+                            <div className="flex-grow">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-900">{customCode.code}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(customCode.code); }}
+                                  className={`p-1 rounded transition-all favorite-star ${isFavorite(customCode.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                >
+                                  <Star size={14} className={isFavorite(customCode.code) ? 'fill-current' : ''} />
+                                </button>
+                                {customCode.rvu && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">RVU: {customCode.rvu}</span>}
+                              </div>
+                              <div className="text-sm text-gray-700 mt-1">{customCode.description}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Peripheral Vascular Angiography Parent Dropdown */}
             {!searchQuery && (
-              <div className="border border-slate-300 rounded-lg overflow-hidden">
+              <div className="border border-sky-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Peripheral Vascular Angiography')}
-                  className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+                  className="w-full flex items-center justify-between p-4 bg-sky-50 hover:bg-sky-100 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-slate-600 rounded-full"></span>
-                    <span className="font-semibold text-slate-900 text-left">Peripheral Vascular Angiography</span>
+                    <span className="w-3 h-3 bg-sky-600 rounded-full"></span>
+                    <span className="font-semibold text-sky-900 text-left">Peripheral Vascular Angiography</span>
                   </div>
-                  {expandedCategories['Peripheral Vascular Angiography'] ? <ChevronDown size={20} className="text-slate-700" /> : <ChevronRight size={20} className="text-slate-700" />}
+                  {expandedCategories['Peripheral Vascular Angiography'] ? <ChevronDown size={20} className="text-sky-700" /> : <ChevronRight size={20} className="text-sky-700" />}
                 </button>
 
                 {expandedCategories['Peripheral Vascular Angiography'] && (
@@ -3646,8 +3969,661 @@ ${'*'.repeat(60)}`;
                 )}
               </div>
             )}
+
+            {/* Venous Interventions Parent Dropdown */}
+            {!searchQuery && (
+              <div className="border border-indigo-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory('Venous Interventions')}
+                  className="w-full flex items-center justify-between p-4 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-indigo-600 rounded-full"></span>
+                    <span className="font-semibold text-indigo-900 text-left">Venous Interventions</span>
+                  </div>
+                  {expandedCategories['Venous Interventions'] ? <ChevronDown size={20} className="text-indigo-700" /> : <ChevronRight size={20} className="text-indigo-700" />}
+                </button>
+
+                {expandedCategories['Venous Interventions'] && (
+                  <div className="p-4 space-y-3">
+                    {['Venography', 'IVC Filter', 'Venous Stenting', 'Venous Thrombectomy'].map((subcat) => {
+                      const subColors = categoryColors[subcat] || defaultCategoryColor;
+                      const subCodes = cptCategories[subcat] || [];
+                      return (
+                        <div key={subcat} className={`border ${subColors.border} rounded-lg overflow-hidden`}>
+                          <button
+                            onClick={() => toggleCategory(`venous-${subcat}`)}
+                            className={`w-full flex items-center justify-between p-3 ${subColors.bg} ${subColors.hoverBg}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 ${subColors.dot} rounded-full`}></span>
+                              <span className={`font-semibold ${subColors.text} text-left`}>{subcat}</span>
+                              {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length > 0 && (
+                                <span className="px-2 py-0.5 bg-indigo-600 text-white text-xs rounded-full">
+                                  {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length}
+                                </span>
+                              )}
+                            </div>
+                            {expandedCategories[`venous-${subcat}`] ? <ChevronDown size={18} className={subColors.text} /> : <ChevronRight size={18} className={subColors.text} />}
+                          </button>
+                          {expandedCategories[`venous-${subcat}`] && (
+                            <div className="p-3 space-y-2">
+                              {subCodes.map((cpt) => {
+                                const isSelected = isCodeSelected(cpt.code);
+                                const codeKey = `venous-${subcat}-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow text-left">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-indigo-900">{cpt.code}</span>
+                                            {cpt.summary && cpt.description !== cpt.summary && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }}
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-indigo-200 text-indigo-700' : 'hover:bg-gray-200 text-gray-500 hover:text-indigo-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); toggleFavorite(cpt.code); }}
+                                              className={`p-1 rounded transition-all favorite-star ${isFavorite(cpt.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                            >
+                                              <Star size={14} className={isFavorite(cpt.code) ? 'fill-current' : ''} />
+                                            </button>
+                                            {cpt.isAddOn && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && cpt.description !== cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-indigo-300">
+                                              {cpt.description}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Miscellaneous Parent Dropdown */}
+            {!searchQuery && (
+              <div className="border border-gray-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory('Miscellaneous')}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-gray-600 rounded-full"></span>
+                    <span className="font-semibold text-gray-900 text-left">Miscellaneous</span>
+                  </div>
+                  {expandedCategories['Miscellaneous'] ? <ChevronDown size={20} className="text-gray-700" /> : <ChevronRight size={20} className="text-gray-700" />}
+                </button>
+
+                {expandedCategories['Miscellaneous'] && (
+                  <div className="p-4 space-y-3">
+                    {['Thrombolysis', 'Arterial Thrombectomy', 'Retrieval'].map((subcat) => {
+                      const subColors = categoryColors[subcat] || defaultCategoryColor;
+                      const subCodes = cptCategories[subcat] || [];
+                      return (
+                        <div key={subcat} className={`border ${subColors.border} rounded-lg overflow-hidden`}>
+                          <button
+                            onClick={() => toggleCategory(`misc-${subcat}`)}
+                            className={`w-full flex items-center justify-between p-3 ${subColors.bg} ${subColors.hoverBg}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 ${subColors.dot} rounded-full`}></span>
+                              <span className={`font-semibold ${subColors.text} text-left`}>{subcat}</span>
+                              {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length > 0 && (
+                                <span className="px-2 py-0.5 bg-gray-600 text-white text-xs rounded-full">
+                                  {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length}
+                                </span>
+                              )}
+                            </div>
+                            {expandedCategories[`misc-${subcat}`] ? <ChevronDown size={18} className={subColors.text} /> : <ChevronRight size={18} className={subColors.text} />}
+                          </button>
+                          {expandedCategories[`misc-${subcat}`] && (
+                            <div className="p-3 space-y-2">
+                              {subCodes.map((cpt) => {
+                                const isSelected = isCodeSelected(cpt.code);
+                                const codeKey = `misc-${subcat}-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow text-left">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-indigo-900">{cpt.code}</span>
+                                            {cpt.summary && cpt.description !== cpt.summary && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }}
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-indigo-200 text-indigo-700' : 'hover:bg-gray-200 text-gray-500 hover:text-indigo-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); toggleFavorite(cpt.code); }}
+                                              className={`p-1 rounded transition-all favorite-star ${isFavorite(cpt.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                            >
+                                              <Star size={14} className={isFavorite(cpt.code) ? 'fill-current' : ''} />
+                                            </button>
+                                            {cpt.isAddOn && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && cpt.description !== cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-indigo-300">
+                                              {cpt.description}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Endovascular Parent Dropdown */}
+            {!searchQuery && (
+              <div className="border border-rose-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory('Endovascular')}
+                  className="w-full flex items-center justify-between p-4 bg-rose-50 hover:bg-rose-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-rose-600 rounded-full"></span>
+                    <span className="font-semibold text-rose-900 text-left">Endovascular</span>
+                  </div>
+                  {expandedCategories['Endovascular'] ? <ChevronDown size={20} className="text-rose-700" /> : <ChevronRight size={20} className="text-rose-700" />}
+                </button>
+
+                {expandedCategories['Endovascular'] && (
+                  <div className="p-4 space-y-3">
+                    {['Carotid/Cerebrovascular', 'Carotid Stenting', 'Thoracic Aortography', 'EVAR', 'TEVAR', 'Subclavian/Innominate', 'Renal Intervention', 'Mesenteric Intervention'].map((subcat) => {
+                      const subColors = categoryColors[subcat] || defaultCategoryColor;
+                      const subCodes = cptCategories[subcat] || [];
+                      return (
+                        <div key={subcat} className={`border ${subColors.border} rounded-lg overflow-hidden`}>
+                          <button
+                            onClick={() => toggleCategory(`endovascular-${subcat}`)}
+                            className={`w-full flex items-center justify-between p-3 ${subColors.bg} ${subColors.hoverBg}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 ${subColors.dot} rounded-full`}></span>
+                              <span className={`font-semibold ${subColors.text} text-left`}>{subcat}</span>
+                              {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code && !sc.isDivider)).length > 0 && (
+                                <span className="px-2 py-0.5 bg-rose-600 text-white text-xs rounded-full">
+                                  {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code && !sc.isDivider)).length}
+                                </span>
+                              )}
+                            </div>
+                            {expandedCategories[`endovascular-${subcat}`] ? <ChevronDown size={18} className={subColors.text} /> : <ChevronRight size={18} className={subColors.text} />}
+                          </button>
+                          {expandedCategories[`endovascular-${subcat}`] && (
+                            <div className="p-3 space-y-2">
+                              {subCodes.map((cpt) => {
+                                if (cpt.isDivider) {
+                                  return (
+                                    <div key={cpt.code} className="py-2 mt-2 first:mt-0">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-grow h-px bg-gray-300"></div>
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider px-2">{cpt.summary}</span>
+                                        <div className="flex-grow h-px bg-gray-300"></div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                const isSelected = isCodeSelected(cpt.code);
+                                const codeKey = `endovascular-${subcat}-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow text-left">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-indigo-900">{cpt.code}</span>
+                                            {cpt.summary && cpt.description !== cpt.summary && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }}
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-indigo-200 text-indigo-700' : 'hover:bg-gray-200 text-gray-500 hover:text-indigo-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); toggleFavorite(cpt.code); }}
+                                              className={`p-1 rounded transition-all favorite-star ${isFavorite(cpt.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                            >
+                                              <Star size={14} className={isFavorite(cpt.code) ? 'fill-current' : ''} />
+                                            </button>
+                                            {cpt.isAddOn && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && cpt.description !== cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-indigo-300">
+                                              {cpt.description}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Echocardiography Parent Dropdown */}
+            {!searchQuery && (
+              <div className="border border-sky-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory('Echocardiography')}
+                  className="w-full flex items-center justify-between p-4 bg-sky-50 hover:bg-sky-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-sky-600 rounded-full"></span>
+                    <span className="font-semibold text-sky-900 text-left">Echocardiography</span>
+                  </div>
+                  {expandedCategories['Echocardiography'] ? <ChevronDown size={20} className="text-sky-700" /> : <ChevronRight size={20} className="text-sky-700" />}
+                </button>
+
+                {expandedCategories['Echocardiography'] && (
+                  <div className="p-4 space-y-3">
+                    {Object.keys(echoCategories).map((subcat) => {
+                      const subColors = categoryColors[subcat] || defaultCategoryColor;
+                      const subCodes = echoCategories[subcat] || [];
+                      return (
+                        <div key={subcat} className={`border ${subColors.border} rounded-lg overflow-hidden`}>
+                          <button
+                            onClick={() => toggleCategory(`echo-${subcat}`)}
+                            className={`w-full flex items-center justify-between p-3 ${subColors.bg} ${subColors.hoverBg}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 ${subColors.dot} rounded-full`}></span>
+                              <span className={`font-semibold ${subColors.text} text-left`}>{subcat}</span>
+                              {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length > 0 && (
+                                <span className="px-2 py-0.5 bg-sky-600 text-white text-xs rounded-full">
+                                  {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length}
+                                </span>
+                              )}
+                            </div>
+                            {expandedCategories[`echo-${subcat}`] ? <ChevronDown size={18} className={subColors.text} /> : <ChevronRight size={18} className={subColors.text} />}
+                          </button>
+                          {expandedCategories[`echo-${subcat}`] && (
+                            <div className="p-3 space-y-2">
+                              {subCodes.map((cpt) => {
+                                const isSelected = isCodeSelected(cpt.code);
+                                const codeKey = `echo-${subcat}-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-sky-500 bg-sky-50' : 'border-gray-200 hover:border-sky-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-sky-500 border-sky-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow text-left">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-sky-900">{cpt.code}</span>
+                                            {cpt.summary && cpt.description !== cpt.summary && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }}
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-sky-200 text-sky-700' : 'hover:bg-gray-200 text-gray-500 hover:text-sky-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); toggleFavorite(cpt.code); }}
+                                              className={`p-1 rounded transition-all favorite-star ${isFavorite(cpt.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                            >
+                                              <Star size={14} className={isFavorite(cpt.code) ? 'fill-current' : ''} />
+                                            </button>
+                                            {cpt.isAddOn && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>}
+                                            {cpt.rvu && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">RVU: {cpt.rvu}</span>}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && cpt.description !== cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-sky-300">
+                                              {cpt.description}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Electrophysiology Parent Dropdown */}
+            {!searchQuery && (
+              <div className="border border-violet-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory('Electrophysiology')}
+                  className="w-full flex items-center justify-between p-4 bg-violet-50 hover:bg-violet-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-violet-600 rounded-full"></span>
+                    <span className="font-semibold text-violet-900 text-left">Electrophysiology</span>
+                  </div>
+                  {expandedCategories['Electrophysiology'] ? <ChevronDown size={20} className="text-violet-700" /> : <ChevronRight size={20} className="text-violet-700" />}
+                </button>
+
+                {expandedCategories['Electrophysiology'] && (
+                  <div className="p-4 space-y-3">
+                    {Object.keys(epCategories).map((subcat) => {
+                      const subColors = categoryColors[subcat] || defaultCategoryColor;
+                      const subCodes = epCategories[subcat] || [];
+                      return (
+                        <div key={subcat} className={`border ${subColors.border} rounded-lg overflow-hidden`}>
+                          <button
+                            onClick={() => toggleCategory(`ep-${subcat}`)}
+                            className={`w-full flex items-center justify-between p-3 ${subColors.bg} ${subColors.hoverBg}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 ${subColors.dot} rounded-full`}></span>
+                              <span className={`font-semibold ${subColors.text} text-left`}>{subcat}</span>
+                              {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length > 0 && (
+                                <span className="px-2 py-0.5 bg-violet-600 text-white text-xs rounded-full">
+                                  {selectedCodes.filter(c => subCodes.some(sc => sc.code === c.code)).length}
+                                </span>
+                              )}
+                            </div>
+                            {expandedCategories[`ep-${subcat}`] ? <ChevronDown size={18} className={subColors.text} /> : <ChevronRight size={18} className={subColors.text} />}
+                          </button>
+                          {expandedCategories[`ep-${subcat}`] && (
+                            <div className="p-3 space-y-2">
+                              {subCodes.map((cpt) => {
+                                const isSelected = isCodeSelected(cpt.code);
+                                const codeKey = `ep-${subcat}-${cpt.code}`;
+                                return (
+                                  <div key={codeKey} className="space-y-2">
+                                    <div
+                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-violet-300'}`}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}>
+                                          {isSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <div className="flex-grow text-left">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-violet-900">{cpt.code}</span>
+                                            {cpt.summary && cpt.description !== cpt.summary && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); toggleDescription(codeKey); }}
+                                                className={`p-1 rounded transition-colors ${expandedDescriptions[codeKey] ? 'bg-violet-200 text-violet-700' : 'hover:bg-gray-200 text-gray-500 hover:text-violet-600'}`}
+                                                title={expandedDescriptions[codeKey] ? 'Hide full description' : 'Show full description'}
+                                              >
+                                                <Maximize2 size={14} />
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); toggleFavorite(cpt.code); }}
+                                              className={`p-1 rounded transition-all favorite-star ${isFavorite(cpt.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                            >
+                                              <Star size={14} className={isFavorite(cpt.code) ? 'fill-current' : ''} />
+                                            </button>
+                                            {cpt.isAddOn && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">ADD-ON</span>}
+                                            {cpt.rvu && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">RVU: {cpt.rvu}</span>}
+                                          </div>
+                                          <div className="text-sm text-gray-700 mt-1">{cpt.summary || cpt.description}</div>
+                                          {cpt.summary && cpt.description !== cpt.summary && expandedDescriptions[codeKey] && (
+                                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 border-l-2 border-violet-300">
+                                              {cpt.description}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Other (Custom Codes) Section */}
+            {!searchQuery && (
+              <div className="border border-gray-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategory('Other')}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-gray-500 rounded-full"></span>
+                    <span className="font-semibold text-gray-900 text-left">Other (Custom Codes)</span>
+                    {customCodes.length > 0 && (
+                      <span className="px-2 py-0.5 bg-gray-500 text-white text-xs rounded-full">
+                        {customCodes.length}
+                      </span>
+                    )}
+                  </div>
+                  {expandedCategories['Other'] ? <ChevronDown size={20} className="text-gray-700" /> : <ChevronRight size={20} className="text-gray-700" />}
+                </button>
+
+                {expandedCategories['Other'] && (
+                  <div className="p-4 space-y-3">
+                    {/* Add Custom Code Button */}
+                    <button
+                      onClick={() => {
+                        setEditingCustomCode(null);
+                        setNewCustomCode('');
+                        setNewCustomDescription('');
+                        setNewCustomRVU('');
+                        setShowAddCustomCode(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      <Plus size={18} />
+                      <span className="font-medium">Add Custom CPT Code</span>
+                    </button>
+
+                    {/* Custom Codes List */}
+                    {customCodes.map((customCode) => {
+                      const isSelected = isCodeSelected(customCode.code);
+                      const codeKey = `custom-${customCode.code}`;
+                      return (
+                        <div key={codeKey} className="space-y-2">
+                          <div
+                            onClick={() => toggleCode(customCode.code, customCode.description)}
+                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-gray-500 bg-gray-100' : 'border-gray-200 hover:border-gray-400'}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-gray-500 border-gray-500' : 'border-gray-300'}`}>
+                                {isSelected && <Check size={14} className="text-white" />}
+                              </div>
+                              <div className="flex-grow text-left">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-gray-900">{customCode.code}</span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleEditCustomCode(customCode); }}
+                                    className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteCustomCode(customCode); }}
+                                    className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-600 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toggleFavorite(customCode.code); }}
+                                    className={`p-1 rounded transition-all favorite-star ${isFavorite(customCode.code) ? 'active' : 'text-gray-400 hover:text-amber-400'}`}
+                                  >
+                                    <Star size={14} className={isFavorite(customCode.code) ? 'fill-current' : ''} />
+                                  </button>
+                                  {customCode.rvu && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">RVU: {customCode.rvu}</span>}
+                                </div>
+                                <div className="text-sm text-gray-700 mt-1">{customCode.description}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {customCodes.length === 0 && (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        No custom codes yet. Add codes not in the standard library.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Add Custom Code Modal */}
+        {showAddCustomCode && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl w-full max-w-md">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingCustomCode ? 'Edit Custom Code' : 'Add Custom CPT Code'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowAddCustomCode(false);
+                    setEditingCustomCode(null);
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    CPT Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustomCode}
+                    onChange={(e) => setNewCustomCode(e.target.value.toUpperCase())}
+                    placeholder="e.g., 12345"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono"
+                    maxLength={6}
+                    disabled={!!editingCustomCode}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">5-digit code or 4 digits + letter</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={newCustomDescription}
+                    onChange={(e) => setNewCustomDescription(e.target.value)}
+                    placeholder="Enter code description"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    RVU (optional)
+                  </label>
+                  <input
+                    type="number"
+                    value={newCustomRVU}
+                    onChange={(e) => setNewCustomRVU(e.target.value)}
+                    placeholder="e.g., 2.50"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 px-4 py-3 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setShowAddCustomCode(false);
+                    setEditingCustomCode(null);
+                  }}
+                  className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveCustomCode}
+                  disabled={!newCustomCode.trim() || !newCustomDescription.trim()}
+                  className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {editingCustomCode ? 'Update' : 'Add Code'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
 
         {/* Billing Rules Engine - Real-time Validation */}
@@ -4102,90 +5078,46 @@ ${'*'.repeat(60)}`;
 
         {/* Submit Section */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Generate Coding Report</h2>
-          
-          {showSuccessMessage ? (
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Submit Charges</h2>
+
+          {showChargeSubmitted && submittedChargeInfo ? (
             <div className="space-y-4">
               {/* Success Header */}
-              <div className="flex items-center gap-2 p-3 bg-green-100 border border-green-300 rounded-lg">
-                <Check size={20} className="text-green-600" />
-                <span className="font-semibold text-green-800">Report Generated Successfully!</span>
+              <div className="flex flex-col items-center gap-3 p-6 bg-green-50 border border-green-200 rounded-lg">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <Check size={32} className="text-green-600" />
+                </div>
+                <span className="text-lg font-semibold text-green-800">Charge Submitted Successfully</span>
               </div>
-              
-              {/* Security Warning */}
-              <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle size={24} className="text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-bold text-red-800 mb-1">⚠️ SECURE EMAIL ONLY</h3>
-                    <p className="text-sm text-red-700">
-                      If sharing this report electronically, use your organization's <strong>secure/encrypted email system only</strong>. 
-                      Do not send via personal email or unencrypted channels.
-                    </p>
-                  </div>
+
+              {/* Summary */}
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Codes submitted</span>
+                  <span className="font-medium text-gray-900">{submittedChargeInfo.codeCount}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total RVU</span>
+                  <span className="font-medium text-gray-900">{submittedChargeInfo.totalRVU.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-gray-200 pt-2">
+                  <span className="text-gray-600">Est. Medicare Payment</span>
+                  <span className="font-semibold text-green-700">${submittedChargeInfo.estimatedPayment.toFixed(2)}</span>
                 </div>
               </div>
-              
-              {/* Instructions */}
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-                <p className="font-semibold mb-2">To use this report:</p>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>Click the <strong>"Copy Report"</strong> button below</li>
-                  <li>Paste into your billing system or secure document</li>
-                  <li>If emailing, use your organization's secure email only</li>
-                  <li>Delete the report after billing is complete</li>
-                </ol>
-              </div>
-              
-              {/* Copy Button */}
-              <button
-                onClick={copyReportToClipboard}
-                className={`w-full py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${
-                  copySuccess 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                }`}
-              >
-                {copySuccess ? (
-                  <>
-                    <Check size={20} />
-                    Copied to Clipboard!
-                  </>
-                ) : (
-                  <>
-                    📋 Copy Report to Clipboard
-                  </>
-                )}
-              </button>
-              
-              {/* Report Preview */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Report Preview (click inside to select all):
-                </label>
-                <textarea
-                  id="report-textarea"
-                  readOnly
-                  value={generateEmailBody()}
-                  className="w-full h-72 p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-indigo-500"
-                  onClick={(e) => {
-                    e.target.select();
-                    e.target.setSelectionRange(0, 99999);
-                  }}
-                />
-              </div>
-              
-              {/* Close / New Report Button */}
+
+              {/* Buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowSuccessMessage(false)}
-                  className="flex-1 py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+                  onClick={() => setShowChargeSubmitted(false)}
+                  className="flex-1 py-2.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
                 >
                   Close
                 </button>
                 <button
                   onClick={() => {
-                    setShowSuccessMessage(false);
+                    setShowChargeSubmitted(false);
+                    setSubmittedChargeInfo(null);
                     setSelectedCodes([]);
                     setSelectedCodesVessel2([]);
                     setSelectedCodesVessel3([]);
@@ -4202,33 +5134,25 @@ ${'*'.repeat(60)}`;
                     setSelectedPeripheralIndication('');
                     setSelectedStructuralIndication('');
                   }}
-                  className="flex-1 py-2 px-4 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition-colors"
+                  className="flex-1 py-2.5 px-4 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition-colors"
                 >
-                  Start New Report
+                  Submit Another
                 </button>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Security reminder before generating */}
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                <p className="flex items-center gap-2">
-                  <Shield size={18} className="text-yellow-600" />
-                  <span>This tool generates a limited dataset report for coding purposes only.</span>
-                </p>
-              </div>
-              
               <button
-                id="generate-report-btn"
-                onClick={handleGenerateReport}
+                id="submit-charges-btn"
+                onClick={handleSubmitCharges}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
                 <Check size={20} />
-                Generate Coding Report
+                Submit Charges
               </button>
-              
+
               <p className="text-xs text-gray-500 text-center">
-                Report will be displayed for copying. No data is transmitted or stored.
+                Charges will be saved and available for review in Admin Portal.
               </p>
             </div>
           )}
@@ -4238,17 +5162,26 @@ ${'*'.repeat(60)}`;
         <div className="text-center text-sm text-gray-500 pb-4">
           <div className="mb-3 p-3 bg-gray-100 rounded-lg">
             <p className="text-xs text-gray-600">
-              <strong>Privacy Notice:</strong> CathCPT is a coding assistance tool only.
-              No Protected Health Information (PHI) is stored or transmitted.
+              <strong>Privacy Notice:</strong> All data is encrypted at rest.
               Users are responsible for HIPAA compliance when sharing generated reports.
             </p>
           </div>
           <p>CPT® codes © American Medical Association. All rights reserved.</p>
           <p className="mt-1">CathCPT uses 2026 CPT codes</p>
-          <p className="mt-1 text-xs">Last Updated: February 2026 - v2.0</p>
+          <p className="mt-1 text-xs">Last Updated: February 2026 - v2.4</p>
           <p className="mt-4 text-lg font-bold" style={{ color: '#7C3AED' }}>A product of Lumen Innovations</p>
         </div>
       </div>
+
+      {/* Code Group Settings Modal */}
+      <CodeGroupSettings
+        isOpen={showCodeGroupSettings}
+        onClose={() => setShowCodeGroupSettings(false)}
+        onSettingsChanged={() => {
+          // Settings are saved to storage - they will take effect on next app load
+          // No action needed here - stay on the settings screen
+        }}
+      />
     </div>
   );
 };

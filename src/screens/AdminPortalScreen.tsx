@@ -5,7 +5,8 @@ import {
   UserCog,
   ClipboardList,
   Settings,
-  RefreshCw
+  RefreshCw,
+  BarChart3
 } from 'lucide-react';
 import { AdminTab, UserMode, Hospital, Inpatient } from '../types';
 import { StoredCharge } from '../services/chargesService';
@@ -15,6 +16,7 @@ import { PatientRosterTab } from '../components/admin/PatientRosterTab';
 import { PhysicianManagementTab } from '../components/admin/PhysicianManagementTab';
 import { AuditLogTab } from '../components/admin/AuditLogTab';
 import { PracticeSettingsTab } from '../components/admin/PracticeSettingsTab';
+import { ReportsTab } from '../components/admin/ReportsTab';
 
 interface AdminPortalScreenProps {
   userMode: UserMode;
@@ -78,6 +80,7 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
     { key: 'patientRoster', label: 'Patients', icon: <Users className="w-4 h-4" /> },
     { key: 'physicians', label: 'Team', icon: <UserCog className="w-4 h-4" /> },
     { key: 'auditLog', label: 'Audit', icon: <ClipboardList className="w-4 h-4" /> },
+    { key: 'reports', label: 'Reports', icon: <BarChart3 className="w-4 h-4" /> },
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -163,6 +166,15 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
         )}
         {activeTab === 'auditLog' && (
           <AuditLogTab orgId={orgId} />
+        )}
+        {activeTab === 'reports' && (
+          <ReportsTab
+            orgId={orgId}
+            hospitals={hospitals}
+            patients={patients}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
         )}
         {activeTab === 'settings' && (
           <PracticeSettingsTab

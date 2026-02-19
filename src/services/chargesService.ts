@@ -2,6 +2,7 @@
 // Works with Capacitor Preferences for iOS/Android builds
 
 import { InpatientCharge, InpatientChargeCode, PatientDiagnoses } from '../types';
+import { logger } from './logger';
 
 const CHARGES_KEY = 'inpatient_charges';
 const CHARGE_CODES_KEY = 'inpatient_charge_codes';
@@ -42,7 +43,7 @@ export const getStoredCharges = async (): Promise<StoredCharge[]> => {
     }
     return [];
   } catch (error) {
-    console.error('Error loading charges:', error);
+    logger.error('Error loading charges', error);
     return [];
   }
 };
@@ -63,7 +64,7 @@ export const saveCharge = async (charge: Omit<StoredCharge, 'id' | 'createdAt' |
   try {
     await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
   } catch (error) {
-    console.error('Error saving charge:', error);
+    logger.error('Error saving charge', error);
   }
 
   return newCharge;
@@ -247,7 +248,7 @@ export const getStoredDiagnoses = async (): Promise<Record<string, string[]>> =>
     }
     return {};
   } catch (error) {
-    console.error('Error loading diagnoses:', error);
+    logger.error('Error loading diagnoses', error);
     return {};
   }
 };
@@ -260,7 +261,7 @@ export const saveDiagnoses = async (inpatientId: string, diagnoses: string[]): P
   try {
     await window.storage.set(PATIENT_DIAGNOSES_KEY, JSON.stringify(allDiagnoses));
   } catch (error) {
-    console.error('Error saving diagnoses:', error);
+    logger.error('Error saving diagnoses', error);
   }
 };
 

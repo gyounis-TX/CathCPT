@@ -87,18 +87,6 @@ export interface BillingContext {
   indication?: string;
 }
 
-export interface PHIMatch {
-  pattern: string;
-  value: string;
-  field: string;
-  severity: 'high' | 'medium' | 'low';
-}
-
-export interface PHISettings {
-  strictMode: boolean;
-  autoScrub: boolean;
-}
-
 // ==================== Pro Mode Types ====================
 
 // User tier and role
@@ -150,7 +138,7 @@ export interface CallListEntry {
 }
 
 // Admin sub-tab navigation
-export type AdminTab = 'chargeQueue' | 'patientRoster' | 'physicians' | 'auditLog' | 'settings';
+export type AdminTab = 'chargeQueue' | 'patientRoster' | 'physicians' | 'auditLog' | 'reports' | 'settings';
 
 // Audit log entry
 export type AuditAction =
