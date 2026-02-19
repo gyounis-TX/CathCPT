@@ -175,6 +175,7 @@ export interface AuditLogEntry {
   listContext: PatientListType | null;
   metadata?: {
     chargeId?: string;
+    chargeDate?: string;
     previousStatus?: string;
     newStatus?: string;
     previousCptCode?: string;
@@ -269,6 +270,15 @@ export interface CathCaseStatus {
   reviewedAt?: string;
   enteredBy?: string;
   enteredAt?: string;
+}
+
+// ==================== PHI Scanner Types ====================
+
+export interface PHIMatch {
+  pattern: string;
+  value: string;
+  field: string;
+  severity: 'high' | 'medium' | 'low';
 }
 
 // ==================== Custom Code Types ====================

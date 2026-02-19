@@ -14,6 +14,7 @@ import {
 import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { getFirebaseAuth } from './firebaseConfig';
 import { getDevModeSettings, mockHospitals, mockCathLabs, mockPracticeMembers } from './devMode';
+import { logger } from './logger';
 
 const PRACTICE_CONNECTION_KEY = 'practice_connection';
 
@@ -60,7 +61,7 @@ export async function getPracticeConnection(): Promise<PracticeConnection | null
     }
     return null;
   } catch (error) {
-    console.error('Error loading practice connection:', error);
+    logger.error('Error loading practice connection', error);
     return null;
   }
 }
@@ -74,7 +75,7 @@ async function savePracticeConnection(connection: PracticeConnection | null): Pr
       await window.storage.remove(PRACTICE_CONNECTION_KEY);
     }
   } catch (error) {
-    console.error('Error saving practice connection:', error);
+    logger.error('Error saving practice connection', error);
     throw error;
   }
 }
@@ -132,6 +133,24 @@ export async function connectToPractice(practiceCode: string): Promise<PracticeC
   // Save locally
   await savePracticeConnection(connection);
 
+  return connection;
+}
+
+// Create connection from a redeemed invite (called after invite registration)
+export async function createConnectionFromInvite(invite: {
+  organizationId: string;
+  organizationName: string;
+  code: string;
+}): Promise<PracticeConnection> {
+  const connection: PracticeConnection = {
+    practiceCode: invite.code,
+    organizationId: invite.organizationId,
+    organizationName: invite.organizationName,
+    connectedAt: new Date().toISOString(),
+    isActive: true
+  };
+
+  await savePracticeConnection(connection);
   return connection;
 }
 
@@ -354,7 +373,7 @@ export async function getPracticeMembers(orgId: string): Promise<PracticeMember[
 export async function removePracticeMember(orgId: string, userId: string): Promise<void> {
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    console.log('[Dev] Removed member:', userId);
+    logger.info('[Dev] Removed member');
     return;
   }
 
@@ -372,7 +391,7 @@ export async function removePracticeMember(orgId: string, userId: string): Promi
 export async function changeMemberRole(orgId: string, userId: string, newRole: UserRole): Promise<void> {
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    console.log('[Dev] Changed role for', userId, 'to', newRole);
+    logger.info('[Dev] Changed member role');
     return;
   }
 
@@ -388,7 +407,7 @@ export async function regeneratePracticeCode(orgId: string): Promise<string> {
 
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    console.log('[Dev] Regenerated practice code:', newCode);
+    logger.info('[Dev] Regenerated practice code');
     return newCode;
   }
 
@@ -444,7 +463,7 @@ export async function addHospital(orgId: string, name: string): Promise<Hospital
 
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    console.log('[Dev] Added hospital:', name);
+    logger.info('[Dev] Added hospital');
     return newHospital;
   }
 
@@ -459,7 +478,7 @@ export async function addHospital(orgId: string, name: string): Promise<Hospital
 export async function deactivateHospital(orgId: string, hospitalId: string): Promise<void> {
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    console.log('[Dev] Deactivated hospital:', hospitalId);
+    logger.info('[Dev] Deactivated hospital');
     return;
   }
 
@@ -482,7 +501,7 @@ export async function addCathLab(orgId: string, name: string, hospitalId?: strin
 
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    console.log('[Dev] Added cath lab:', name);
+    logger.info('[Dev] Added cath lab');
     return newLab;
   }
 
@@ -493,7 +512,7 @@ export async function addCathLab(orgId: string, name: string, hospitalId?: strin
 export async function deactivateCathLab(orgId: string, cathLabId: string): Promise<void> {
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    console.log('[Dev] Deactivated cath lab:', cathLabId);
+    logger.info('[Dev] Deactivated cath lab');
     return;
   }
 

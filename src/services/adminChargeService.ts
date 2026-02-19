@@ -34,10 +34,11 @@ async function getAllCharges(): Promise<StoredCharge[]> {
 /** Get charge queue items for admin, with filters applied */
 export async function getChargeQueue(
   orgId: string,
-  filters: ChargeQueueFilters
+  filters: ChargeQueueFilters,
+  knownPatients?: Inpatient[]
 ): Promise<ChargeQueueItem[]> {
   const allCharges = await getAllCharges();
-  const patients = await getAllOrgInpatients(orgId);
+  const patients = knownPatients || await getAllOrgInpatients(orgId);
   const patientMap = new Map(patients.map(p => [p.id, p]));
 
   let items: ChargeQueueItem[] = [];
@@ -153,7 +154,7 @@ export async function batchMarkChargesBilled(
       userName: adminName,
       targetPatientId: null,
       targetPatientName: null,
-      details: `Batch billed ${success} charge${success !== 1 ? 's' : ''}`,
+      details: `Batch billed ${success} charge${success !== 1 ? 's' : ''} (various DOS)`,
       listContext: null,
       metadata: { batchSize: success }
     });
@@ -184,7 +185,9 @@ export async function getChargeStats(orgId: string): Promise<{
     c.status === 'billed' && c.billedAt && c.billedAt.split('T')[0] >= weekAgo
   );
 
-  const totalRVUPending = pending.reduce((sum, c) => sum + (c.rvu || 0), 0);
+  // Sum RVU and $ for all active (non-billed) charges to match the table footer
+  const active = allCharges.filter(c => c.status === 'pending' || c.status === 'entered');
+  const totalRVUPending = active.reduce((sum, c) => sum + (c.rvu || 0), 0);
   const totalPaymentPending = calculateMedicarePayment(totalRVUPending);
 
   return {

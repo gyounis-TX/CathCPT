@@ -184,6 +184,11 @@ export const AuditLogTab: React.FC<AuditLogTabProps> = ({ orgId }) => {
                         {entry.targetPatientName}
                       </span>
                     )}
+                    {entry.metadata?.chargeDate && (
+                      <span className="inline-block mt-1 ml-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded">
+                        DOS: {entry.metadata.chargeDate}
+                      </span>
+                    )}
                   </div>
 
                   {/* Action Badge */}

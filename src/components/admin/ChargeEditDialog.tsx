@@ -61,6 +61,7 @@ export const ChargeEditDialog: React.FC<ChargeEditDialogProps> = ({
         listContext: null,
         metadata: {
           chargeId: charge.id,
+          chargeDate: charge.chargeDate,
           previousCptCode: previousCode,
           newCptCode: cptCode.trim()
         }

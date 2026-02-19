@@ -16,6 +16,8 @@ import { StoredCharge, markChargeEntered, markChargeBilled } from '../../service
 import { getPatientWithCharges } from '../../services/patientRosterService';
 import { logAuditEvent } from '../../services/auditService';
 import { calculateMedicarePayment, getAllInpatientCodes } from '../../data/inpatientCodes';
+import { getAllEPCodes } from '../../data/epCodes';
+import { getAllEchoCodes } from '../../data/echoCodes';
 import { ChargeEditDialog } from './ChargeEditDialog';
 
 interface PatientDetailPanelProps {
@@ -41,7 +43,7 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [editingCharge, setEditingCharge] = useState<StoredCharge | null>(null);
 
-  const allCodes = useMemo(() => getAllInpatientCodes(), []);
+  const allCodes = useMemo(() => [...getAllInpatientCodes(), ...getAllEPCodes(), ...getAllEchoCodes()], []);
 
   const getRVU = (cptCode: string): number => {
     if (cptCode.includes(' + ')) {
@@ -80,7 +82,7 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
       targetPatientName: patient?.patientName || null,
       details: `Marked charge ${charge.cptCode} as entered for ${patient?.patientName}`,
       listContext: null,
-      metadata: { chargeId: charge.id, previousStatus: charge.status, newStatus: 'entered' }
+      metadata: { chargeId: charge.id, chargeDate: charge.chargeDate, previousStatus: charge.status, newStatus: 'entered' }
     });
     await loadPatientData();
     onChargesUpdated();
@@ -96,7 +98,7 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
       targetPatientName: patient?.patientName || null,
       details: `Marked charge ${charge.cptCode} as billed for ${patient?.patientName}`,
       listContext: null,
-      metadata: { chargeId: charge.id, previousStatus: charge.status, newStatus: 'billed' }
+      metadata: { chargeId: charge.id, chargeDate: charge.chargeDate, previousStatus: charge.status, newStatus: 'billed' }
     });
     await loadPatientData();
     onChargesUpdated();

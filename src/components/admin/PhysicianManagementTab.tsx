@@ -1,52 +1,55 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Copy,
-  RefreshCw,
   Shield,
   User,
   MoreVertical,
   Check,
-  Key
+  UserPlus,
+  Clock,
+  X,
+  Mail
 } from 'lucide-react';
 import { PracticeMember, UserRole } from '../../types';
 import {
   getPracticeMembers,
   removePracticeMember,
   changeMemberRole,
-  regeneratePracticeCode,
   getPracticeDetails
 } from '../../services/practiceConnection';
+import { getOrgInvites, revokeInvite, InviteCode } from '../../services/inviteService';
 import { logAuditEvent } from '../../services/auditService';
 import { PhysicianDetailDialog } from './PhysicianDetailDialog';
+import { InvitePhysicianDialog } from './InvitePhysicianDialog';
 
 interface PhysicianManagementTabProps {
   orgId: string;
+  orgName: string;
   currentUserId: string;
   currentUserName: string;
 }
 
 export const PhysicianManagementTab: React.FC<PhysicianManagementTabProps> = ({
   orgId,
+  orgName,
   currentUserId,
   currentUserName
 }) => {
   const [members, setMembers] = useState<PracticeMember[]>([]);
-  const [practiceCode, setPracticeCode] = useState('');
-  const [practiceName, setPracticeName] = useState('');
+  const [invites, setInvites] = useState<InviteCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [selectedMember, setSelectedMember] = useState<PracticeMember | null>(null);
-  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    const [memberList, details] = await Promise.all([
+    const [memberList, inviteList] = await Promise.all([
       getPracticeMembers(orgId),
-      getPracticeDetails(orgId)
+      getOrgInvites(orgId)
     ]);
     setMembers(memberList);
-    setPracticeCode(details.practiceCode);
-    setPracticeName(details.name);
+    setInvites(inviteList);
     setIsLoading(false);
   }, [orgId]);
 
@@ -54,44 +57,29 @@ export const PhysicianManagementTab: React.FC<PhysicianManagementTabProps> = ({
     loadData();
   }, [loadData]);
 
-  const handleCopyCode = async () => {
+  const handleCopyCode = async (code: string) => {
     try {
-      await navigator.clipboard.writeText(practiceCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
     } catch {
-      // Fallback for iOS
       const textArea = document.createElement('textarea');
-      textArea.value = practiceCode;
+      textArea.value = code;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
     }
   };
 
-  const handleRegenerateCode = async () => {
-    if (!confirm('Regenerate the practice code? The old code will no longer work. Current members will not be affected.')) {
+  const handleRevokeInvite = async (invite: InviteCode) => {
+    if (!confirm(`Revoke invite for Dr. ${invite.lastName}? They will no longer be able to use this code.`)) {
       return;
     }
-
-    setIsRegenerating(true);
-    const newCode = await regeneratePracticeCode(orgId);
-    setPracticeCode(newCode);
-
-    await logAuditEvent(orgId, {
-      action: 'practice_code_regenerated',
-      userId: currentUserId,
-      userName: currentUserName,
-      targetPatientId: null,
-      targetPatientName: null,
-      details: 'Regenerated practice invite code',
-      listContext: null
-    });
-
-    setIsRegenerating(false);
+    await revokeInvite(orgId, invite.code, currentUserId, currentUserName);
+    await loadData();
   };
 
   const handleChangeRole = async (userId: string, newRole: 'physician' | 'admin') => {
@@ -130,6 +118,9 @@ export const PhysicianManagementTab: React.FC<PhysicianManagementTabProps> = ({
     });
   };
 
+  const pendingInvites = invites.filter(i => i.status === 'pending');
+  const redeemedInvites = invites.filter(i => i.status === 'redeemed');
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
@@ -140,45 +131,77 @@ export const PhysicianManagementTab: React.FC<PhysicianManagementTabProps> = ({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {/* Invite Code Card */}
-      <div className="m-4 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-4 text-white">
-        <div className="flex items-center gap-2 mb-2">
-          <Key className="w-5 h-5" />
-          <h3 className="font-semibold">Practice Invite Code</h3>
-        </div>
-        <p className="text-blue-100 text-xs mb-3">
-          Share this code with physicians. They enter it in Settings &gt; Practice Connection.
-        </p>
-
-        <div className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-3 mb-3">
-          <span className="flex-1 text-2xl font-mono font-bold tracking-widest text-center">
-            {practiceCode || 'Loading...'}
-          </span>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={handleCopyCode}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium"
-          >
-            {copied ? (
-              <><Check className="w-4 h-4" />Copied!</>
-            ) : (
-              <><Copy className="w-4 h-4" />Copy Code</>
-            )}
-          </button>
-          <button
-            onClick={handleRegenerateCode}
-            disabled={isRegenerating}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-            Regenerate
-          </button>
-        </div>
+      {/* Invite Button */}
+      <div className="m-4">
+        <button
+          onClick={() => setShowInviteDialog(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+        >
+          <UserPlus className="w-5 h-5" />
+          Invite Physician
+        </button>
       </div>
 
-      {/* Members List */}
+      {/* Pending Invites */}
+      {pendingInvites.length > 0 && (
+        <>
+          <div className="px-4 mb-2">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              Pending Invites ({pendingInvites.length})
+            </h3>
+          </div>
+
+          <div className="divide-y divide-gray-100 mx-4 mb-4 bg-white rounded-lg border border-gray-200">
+            {pendingInvites.map(invite => (
+              <div key={invite.code} className="flex items-center gap-3 px-4 py-3">
+                {/* Avatar */}
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      Dr. {invite.firstName} {invite.lastName}
+                    </p>
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">
+                      Pending
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Mail className="w-3 h-3" />
+                    <span className="truncate">{invite.email}</span>
+                  </div>
+                </div>
+
+                {/* Code + Actions */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleCopyCode(invite.code)}
+                    className="flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs font-mono text-gray-700"
+                  >
+                    {copiedCode === invite.code ? (
+                      <><Check className="w-3 h-3 text-green-600" /> Copied</>
+                    ) : (
+                      <><Copy className="w-3 h-3" /> {invite.code}</>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleRevokeInvite(invite)}
+                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                    title="Revoke invite"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Team Members */}
       <div className="px-4 mb-2">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
           Team Members ({members.length})
@@ -237,13 +260,23 @@ export const PhysicianManagementTab: React.FC<PhysicianManagementTabProps> = ({
 
       <div className="h-4" /> {/* Bottom padding */}
 
-      {/* Detail Dialog */}
+      {/* Dialogs */}
       <PhysicianDetailDialog
         isOpen={!!selectedMember}
         member={selectedMember}
         onClose={() => setSelectedMember(null)}
         onChangeRole={handleChangeRole}
         onRemove={handleRemoveMember}
+      />
+
+      <InvitePhysicianDialog
+        isOpen={showInviteDialog}
+        orgId={orgId}
+        orgName={orgName}
+        adminId={currentUserId}
+        adminName={currentUserName}
+        onClose={() => setShowInviteDialog(false)}
+        onInviteCreated={loadData}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 // @ts-nocheck
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { ChevronDown, ChevronRight, Check, Settings, X, Save, Info, AlertCircle, DollarSign, Maximize2, Shield, Search, Star, FileText, History, Clock, Download, Trash2, BookOpen, Lightbulb, List, Sparkles, Plus, Edit2 } from 'lucide-react';
-import { CaseTemplate, SavedCase, RuleViolation } from './types';
+import { CaseTemplate, SavedCase, RuleViolation, Inpatient, Hospital, CathLab, PHIMatch } from './types';
 import { builtInTemplates, createCustomTemplate } from './data/templates';
 import { runBillingRules, createBillingContext, getRule } from './data/billingRules';
 import { cptCategories } from './data/cptCategories';
@@ -10,7 +10,10 @@ import { epCategories } from './data/epCodes';
 import { getCustomCodes, addCustomCode, updateCustomCode, deleteCustomCode, CustomCPTCode } from './services/customCodes';
 import { getDevModeSettings, enableDevMode, setDevModeUserType, disableDevMode, DevModeSettings } from './services/devMode';
 import { logger } from './services/logger';
-import { saveCharge } from './services/chargesService';
+import { saveCharge, updateCharge, formatDateForStorage, StoredCharge, CaseSnapshot } from './services/chargesService';
+import { logAuditEvent } from './services/auditService';
+import { scanFieldsForPHI, scrubPHI } from './services/phiScanner';
+import { searchICD10Codes } from './data/icd10Codes';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
 
 // Category color mapping for visual distinction
@@ -95,8 +98,48 @@ const categoryColors: Record<string, { dot: string; bg: string; text: string; bo
 // Default colors for categories not in mapping
 const defaultCategoryColor = { dot: 'bg-gray-500', bg: 'bg-gray-50', text: 'text-gray-900', border: 'border-gray-200', hoverBg: 'hover:bg-gray-100' };
 
-const CardiologyCPTApp = () => {
-  const [caseId, setCaseId] = useState('');
+// Indication code lookup sets for diagnosis auto-recall
+const cardiacIndicationCodes = new Set([
+  'I21.09','I21.4','I25.110','I25.10','I25.119','I50.9','I50.23','R94.31','I25.700',
+  'I48.91','I34.0','I34.1','I35.0','I35.1','I42.0','I42.1','I47.2','R07.9','I63.9',
+  'I11.0','Z95.1','Z95.5','I50.43','I25.5','I25.2'
+]);
+const peripheralIndicationCodes = new Set([
+  'I70.219','I70.269','I73.9','I70.213','I70.261','I70.262','I70.263','I70.25','I70.0',
+  'I74.3','I74.5','I70.1','I77.1','I65.2','E11.51','I96','I70.92','Z95.820'
+]);
+const structuralIndicationCodes = new Set([
+  'I35.0','I34.0','I34.1','I35.1','I35.2','I34.2','Q21.1','Q21.0','Q21.8','I37.0',
+  'I36.0','I36.1','I38','I50.9','I48.91','Q22.0','Q22.1','T82.0','I34.8','I42.2'
+]);
+
+interface CardiologyCPTAppProps {
+  isProMode?: boolean;
+  patients?: Inpatient[];
+  hospitals?: Hospital[];
+  cathLabs?: CathLab[];
+  patientDiagnoses?: Record<string, string[]>;
+  orgId?: string;
+  userName?: string;
+  onPatientCreated?: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => Inpatient;
+  onChargeUpdated?: () => void;
+}
+
+export interface CardiologyCPTAppHandle {
+  openHistory: () => void;
+  openUpdates: () => void;
+  openSettings: () => void;
+  loadChargeForEdit: (charge: StoredCharge, patient: Inpatient) => void;
+}
+
+const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userName = '', onPatientCreated, onChargeUpdated }, ref) => {
+  // Patient matching state (replaces caseId)
+  const [patientName, setPatientName] = useState('');
+  const [patientDob, setPatientDob] = useState(''); // stored as YYYY-MM-DD
+  const [patientDobDisplay, setPatientDobDisplay] = useState(''); // displayed as MM/DD/YYYY
+  const [matchedPatient, setMatchedPatient] = useState<Inpatient | null>(null);
+  const [patientSuggestions, setPatientSuggestions] = useState<Inpatient[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [procedureDateOption, setProcedureDateOption] = useState('');
   const [procedureDateText, setProcedureDateText] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
@@ -126,7 +169,8 @@ const CardiologyCPTApp = () => {
   const [imagingVessels, setImagingVessels] = useState({});
   const [dcbVessels, setDcbVessels] = useState({});
   const [expandedPCIVessels, setExpandedPCIVessels] = useState({});
-  const [expandedIndicationSections, setExpandedIndicationSections] = useState({ cardiac: false, peripheral: false, structural: false });
+  const [expandedIndicationSections, setExpandedIndicationSections] = useState({ cardiac: true, peripheral: false, structural: false });
+  const [indicationSearch, setIndicationSearch] = useState('');
   const [expandedSedation, setExpandedSedation] = useState(false);
 
   // === NEW FEATURE STATE ===
@@ -178,7 +222,102 @@ const CardiologyCPTApp = () => {
   const [cardiologistName, setCardiologistName] = useState('');
   const [cathLocations, setCathLocations] = useState([]);
   const [newLocation, setNewLocation] = useState('');
-  
+
+  // PHI scanning state (individual mode only)
+  const [phiMatches, setPhiMatches] = useState<PHIMatch[]>([]);
+  const [showPHIWarning, setShowPHIWarning] = useState(false);
+  const [phiAutoScrub, setPhiAutoScrub] = useState(false);
+  const [phiBypassOnce, setPhiBypassOnce] = useState(false);
+  const [pendingReportGeneration, setPendingReportGeneration] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Edit-mode state (for editing existing charges from Rounds)
+  const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
+  const [editingChargeDate, setEditingChargeDate] = useState<string | null>(null);
+
+  // Expose methods for App.tsx header buttons
+  useImperativeHandle(ref, () => ({
+    openHistory: () => setShowHistoryModal(true),
+    openUpdates: () => setShow2026Updates(true),
+    openSettings: () => setShowSettings(true),
+    loadChargeForEdit: (charge: StoredCharge, patient: Inpatient) => {
+      // Set editing state
+      setEditingChargeId(charge.id);
+      setEditingChargeDate(charge.chargeDate);
+
+      // Set patient info
+      setMatchedPatient(patient);
+      setPatientName(patient.patientName);
+      setPatientDob(patient.dob || '');
+      setPatientDobDisplay('');
+      setShowSuggestions(false);
+      setPatientSuggestions([]);
+
+      // Set procedure date
+      setProcedureDateOption('other');
+      setProcedureDateText(charge.chargeDate);
+
+      // Set location
+      setSelectedLocation(patient.hospitalName || '');
+
+      // Load case snapshot if available
+      if (charge.caseSnapshot) {
+        const snap = charge.caseSnapshot;
+        setSelectedCodes(snap.codes.primary);
+        setSelectedCodesVessel2(snap.codes.vessel2);
+        setSelectedCodesVessel3(snap.codes.vessel3);
+        setCodeVessels(snap.vessels.v1);
+        setCodeVesselsV2(snap.vessels.v2);
+        setCodeVesselsV3(snap.vessels.v3);
+        setIncludeSedation(snap.sedation.included);
+        setSedationUnits(snap.sedation.units);
+
+        // Set indication category and value
+        if (snap.indicationCategory) {
+          setIndicationCategory(snap.indicationCategory);
+        }
+        if (snap.indication) {
+          // Determine which indication type it belongs to
+          if (cardiacIndicationCodes.has(snap.indication)) {
+            setSelectedCardiacIndication(snap.indication);
+            setSelectedPeripheralIndication('');
+            setSelectedStructuralIndication('');
+          } else if (peripheralIndicationCodes.has(snap.indication)) {
+            setSelectedPeripheralIndication(snap.indication);
+            setSelectedCardiacIndication('');
+            setSelectedStructuralIndication('');
+          } else if (structuralIndicationCodes.has(snap.indication)) {
+            setSelectedStructuralIndication(snap.indication);
+            setSelectedCardiacIndication('');
+            setSelectedPeripheralIndication('');
+          }
+        }
+      }
+
+      // Clear any previous submission state
+      setShowChargeSubmitted(false);
+      setSubmittedChargeInfo(null);
+    },
+  }));
+
+  // Auto-recall diagnoses when a patient match is selected
+  useEffect(() => {
+    if (!matchedPatient) return;
+    const codes = patientDiagnoses[matchedPatient.id];
+    if (!codes || codes.length === 0) return;
+
+    // Match each diagnosis code against the indication lists
+    for (const code of codes) {
+      if (cardiacIndicationCodes.has(code)) {
+        setSelectedCardiacIndication(code);
+      } else if (peripheralIndicationCodes.has(code)) {
+        setSelectedPeripheralIndication(code);
+      } else if (structuralIndicationCodes.has(code)) {
+        setSelectedStructuralIndication(code);
+      }
+    }
+  }, [matchedPatient, patientDiagnoses]);
+
   // Initialize default settings and load from storage
   useEffect(() => {
     const loadSettings = async () => {
@@ -196,6 +335,12 @@ const CardiologyCPTApp = () => {
         } else {
           // Set defaults if no saved locations
           setCathLocations(['Main Hospital Cath Lab', 'Outpatient Surgery Center']);
+        }
+
+        // Load PHI auto-scrub setting
+        const phiScrubResult = await window.storage.get('phiAutoScrub');
+        if (phiScrubResult?.value) {
+          setPhiAutoScrub(phiScrubResult.value === 'true');
         }
 
         // Load favorites
@@ -260,6 +405,28 @@ const CardiologyCPTApp = () => {
       setRuleViolations([]);
     }
   }, [selectedCodes, selectedCodesVessel2, selectedCodesVessel3, codeVessels, codeVesselsV2, codeVesselsV3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication]);
+
+  // PHI scanning on patient name (individual mode only)
+  useEffect(() => {
+    if (isProMode) {
+      setPhiMatches([]);
+      return;
+    }
+    if (patientName.trim().length >= 2) {
+      const matches = scanFieldsForPHI({ patientName });
+      setPhiMatches(matches);
+    } else {
+      setPhiMatches([]);
+    }
+  }, [patientName, isProMode]);
+
+  // After PHI warning modal dismissal, re-trigger submission if pending
+  useEffect(() => {
+    if (pendingReportGeneration && !showPHIWarning) {
+      setPendingReportGeneration(false);
+      handleSubmitCharges();
+    }
+  }, [pendingReportGeneration, showPHIWarning]);
 
   // Official Coronary Artery Modifier Guide
   const coronaryModifiers = [
@@ -521,7 +688,7 @@ const CardiologyCPTApp = () => {
     const newCase: SavedCase = {
       id: `case-${Date.now()}`,
       timestamp: Date.now(),
-      caseId: caseId,
+      caseId: patientName || '',
       location: selectedLocation,
       codes: {
         primary: selectedCodes,
@@ -541,10 +708,35 @@ const CardiologyCPTApp = () => {
     const updatedHistory = [newCase, ...caseHistory].slice(0, 50); // Keep last 50
     setCaseHistory(updatedHistory);
     await window.storage.set('cathcpt_case_history', JSON.stringify(updatedHistory));
-  }, [caseId, selectedLocation, selectedCodes, selectedCodesVessel2, selectedCodesVessel3, codeVessels, codeVesselsV2, codeVesselsV3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication, caseHistory]);
+  }, [patientName, selectedLocation, selectedCodes, selectedCodesVessel2, selectedCodesVessel3, codeVessels, codeVesselsV2, codeVesselsV3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication, caseHistory]);
+
+  // Auto-format DOB as MM/DD/YYYY and convert to YYYY-MM-DD for storage
+  const handlePatientDobChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    let display = '';
+    if (digits.length <= 2) {
+      display = digits;
+    } else if (digits.length <= 4) {
+      display = digits.slice(0, 2) + '/' + digits.slice(2);
+    } else {
+      display = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+    }
+    setPatientDobDisplay(display);
+    if (digits.length === 8) {
+      const mm = digits.slice(0, 2);
+      const dd = digits.slice(2, 4);
+      const yyyy = digits.slice(4, 8);
+      setPatientDob(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setPatientDob('');
+    }
+  };
 
   const loadFromHistory = useCallback((savedCase: SavedCase) => {
-    setCaseId(savedCase.caseId);
+    setPatientName(savedCase.caseId);
+    setMatchedPatient(null);
+    setPatientDob('');
+    setPatientDobDisplay('');
     setSelectedLocation(savedCase.location);
     setSelectedCodes(savedCase.codes.primary);
     setSelectedCodesVessel2(savedCase.codes.vessel2);
@@ -1007,6 +1199,10 @@ const CardiologyCPTApp = () => {
     '36227': { workRVU: 2.50, totalRVU: 6.00, fee: 216 },
     '36228': { workRVU: 3.00, totalRVU: 7.00, fee: 252 },
 
+    // Carotid Angiography S&I
+    '75676': { workRVU: 1.07, totalRVU: 2.80, fee: 101 },
+    '75680': { workRVU: 1.30, totalRVU: 3.40, fee: 122 },
+
     // Carotid Stenting
     '37215': { workRVU: 18.00, totalRVU: 42.00, fee: 1512 },
     '37216': { workRVU: 16.00, totalRVU: 38.00, fee: 1369 },
@@ -1030,6 +1226,21 @@ const CardiologyCPTApp = () => {
     '34710': { workRVU: 10.00, totalRVU: 24.00, fee: 865 },
     '34711': { workRVU: 5.00, totalRVU: 12.00, fee: 432 },
     '34712': { workRVU: 3.50, totalRVU: 8.50, fee: 306 },
+    '34713': { workRVU: 3.03, totalRVU: 7.12, fee: 256 },
+    '34714': { workRVU: 6.19, totalRVU: 14.78, fee: 532 },
+    '34717': { workRVU: 40.77, totalRVU: 92.50, fee: 3330 },
+    '34718': { workRVU: 20.00, totalRVU: 46.00, fee: 1656 },
+    '34808': { workRVU: 3.57, totalRVU: 8.50, fee: 306 },
+    '34812': { workRVU: 4.41, totalRVU: 10.50, fee: 378 },
+    '34820': { workRVU: 7.82, totalRVU: 18.50, fee: 666 },
+    '34833': { workRVU: 10.24, totalRVU: 24.50, fee: 882 },
+    '34834': { workRVU: 3.83, totalRVU: 9.00, fee: 324 },
+    '0254T': { workRVU: 28.00, totalRVU: 65.00, fee: 2340 },
+    '0255T': { workRVU: 10.00, totalRVU: 24.00, fee: 864 },
+
+    // Vascular Embolization
+    '37241': { workRVU: 4.62, totalRVU: 10.75, fee: 387 },
+    '37242': { workRVU: 5.25, totalRVU: 12.50, fee: 450 },
 
     // TEVAR
     '33880': { workRVU: 35.00, totalRVU: 82.00, fee: 2954 },
@@ -1040,13 +1251,151 @@ const CardiologyCPTApp = () => {
     '33889': { workRVU: 15.00, totalRVU: 35.00, fee: 1261 },
     '33891': { workRVU: 18.00, totalRVU: 42.00, fee: 1512 },
 
+    // Renal/Visceral Intervention
+    '37220': { workRVU: 6.37, totalRVU: 15.25, fee: 549 },
+    '37221': { workRVU: 7.44, totalRVU: 17.50, fee: 630 },
+
+    // Renal Denervation
+    '0338T': { workRVU: 8.00, totalRVU: 19.00, fee: 684 },
+    '0339T': { workRVU: 10.00, totalRVU: 24.00, fee: 864 },
+
     // Subclavian/Innominate Interventions
     '37226': { workRVU: 9.00, totalRVU: 21.00, fee: 756 },
     '37227': { workRVU: 11.00, totalRVU: 26.00, fee: 937 },
     '37236': { workRVU: 8.50, totalRVU: 20.00, fee: 720 },
     '37237': { workRVU: 4.25, totalRVU: 10.00, fee: 360 },
     '37246': { workRVU: 6.00, totalRVU: 14.00, fee: 504 },
-    '37247': { workRVU: 3.00, totalRVU: 7.00, fee: 252 }
+    '37247': { workRVU: 3.00, totalRVU: 7.00, fee: 252 },
+
+    // Echocardiography - TTE
+    '93306': { workRVU: 1.30, totalRVU: 3.22, fee: 116 },
+    '93307': { workRVU: 0.92, totalRVU: 2.28, fee: 82 },
+    '93308': { workRVU: 0.53, totalRVU: 1.31, fee: 47 },
+
+    // Echocardiography - Doppler Add-ons
+    '93320': { workRVU: 0.38, totalRVU: 0.94, fee: 34 },
+    '93321': { workRVU: 0.21, totalRVU: 0.52, fee: 19 },
+    '93325': { workRVU: 0.17, totalRVU: 0.42, fee: 15 },
+
+    // Echocardiography - TEE
+    '93312': { workRVU: 2.13, totalRVU: 5.28, fee: 190 },
+    '93313': { workRVU: 0.96, totalRVU: 2.38, fee: 86 },
+    '93314': { workRVU: 1.17, totalRVU: 2.90, fee: 104 },
+    '93315': { workRVU: 2.50, totalRVU: 6.20, fee: 223 },
+    '93316': { workRVU: 1.10, totalRVU: 2.73, fee: 98 },
+    '93317': { workRVU: 1.40, totalRVU: 3.47, fee: 125 },
+    '93318': { workRVU: 2.75, totalRVU: 6.82, fee: 246 },
+
+    // Echocardiography - Stress Echo
+    '93350': { workRVU: 1.10, totalRVU: 2.73, fee: 98 },
+    '93351': { workRVU: 1.50, totalRVU: 3.72, fee: 134 },
+
+    // Echocardiography - Congenital
+    '93303': { workRVU: 1.75, totalRVU: 4.34, fee: 156 },
+    '93304': { workRVU: 0.85, totalRVU: 2.11, fee: 76 },
+
+    // Echocardiography - Contrast & Strain (Add-ons)
+    '93352': { workRVU: 0.15, totalRVU: 0.37, fee: 13 },
+    '93356': { workRVU: 0.25, totalRVU: 0.62, fee: 22 },
+
+    // Echocardiography - 3D Echo
+    '93355': { workRVU: 4.50, totalRVU: 11.16, fee: 402 },
+    '76376': { workRVU: 0.20, totalRVU: 0.50, fee: 18 },
+    '76377': { workRVU: 0.50, totalRVU: 1.24, fee: 45 },
+
+    // Echocardiography - Intracardiac Echo
+    '93662': { workRVU: 2.00, totalRVU: 4.96, fee: 179 },
+
+    // Electrophysiology - EP Studies (Diagnostic)
+    '93600': { workRVU: 3.75, totalRVU: 9.30, fee: 335 },
+    '93602': { workRVU: 3.24, totalRVU: 8.03, fee: 289 },
+    '93603': { workRVU: 3.24, totalRVU: 8.03, fee: 289 },
+    '93609': { workRVU: 3.84, totalRVU: 9.52, fee: 343 },
+    '93610': { workRVU: 3.35, totalRVU: 8.31, fee: 299 },
+    '93612': { workRVU: 3.24, totalRVU: 8.03, fee: 289 },
+    '93613': { workRVU: 4.50, totalRVU: 11.16, fee: 402 },
+    '93618': { workRVU: 4.11, totalRVU: 10.19, fee: 367 },
+    '93619': { workRVU: 10.23, totalRVU: 25.37, fee: 914 },
+    '93620': { workRVU: 3.82, totalRVU: 9.47, fee: 341 },
+    '93621': { workRVU: 2.14, totalRVU: 5.31, fee: 191 },
+    '93622': { workRVU: 2.50, totalRVU: 6.20, fee: 223 },
+    '93623': { workRVU: 1.76, totalRVU: 4.36, fee: 157 },
+    '93624': { workRVU: 6.86, totalRVU: 17.01, fee: 613 },
+    '93631': { workRVU: 9.88, totalRVU: 24.50, fee: 883 },
+    '93640': { workRVU: 4.55, totalRVU: 11.28, fee: 406 },
+    '93641': { workRVU: 5.50, totalRVU: 13.64, fee: 491 },
+    '93642': { workRVU: 2.79, totalRVU: 6.92, fee: 249 },
+
+    // Electrophysiology - Ablation
+    '93650': { workRVU: 9.28, totalRVU: 23.01, fee: 829 },
+    '93653': { workRVU: 18.79, totalRVU: 46.60, fee: 1680 },
+    '93654': { workRVU: 27.32, totalRVU: 67.75, fee: 2442 },
+    '93655': { workRVU: 6.50, totalRVU: 16.12, fee: 581 },
+    '93656': { workRVU: 24.25, totalRVU: 60.14, fee: 2167 },
+    '93657': { workRVU: 5.00, totalRVU: 12.40, fee: 447 },
+
+    // Electrophysiology - Pacemaker Implant
+    '33206': { workRVU: 7.91, totalRVU: 19.62, fee: 707 },
+    '33207': { workRVU: 7.59, totalRVU: 18.82, fee: 678 },
+    '33208': { workRVU: 9.69, totalRVU: 24.03, fee: 866 },
+    '33212': { workRVU: 4.83, totalRVU: 11.98, fee: 432 },
+    '33213': { workRVU: 5.14, totalRVU: 12.75, fee: 460 },
+    '33227': { workRVU: 5.11, totalRVU: 12.67, fee: 457 },
+    '33228': { workRVU: 5.36, totalRVU: 13.29, fee: 479 },
+    '33229': { workRVU: 5.64, totalRVU: 13.99, fee: 504 },
+
+    // Electrophysiology - ICD Implant
+    '33249': { workRVU: 13.81, totalRVU: 34.25, fee: 1234 },
+    '33230': { workRVU: 6.60, totalRVU: 16.37, fee: 590 },
+    '33231': { workRVU: 6.28, totalRVU: 15.57, fee: 561 },
+    '33240': { workRVU: 7.00, totalRVU: 17.36, fee: 626 },
+    '33262': { workRVU: 6.81, totalRVU: 16.89, fee: 609 },
+    '33263': { workRVU: 7.07, totalRVU: 17.53, fee: 632 },
+    '33264': { workRVU: 7.35, totalRVU: 18.23, fee: 657 },
+
+    // Electrophysiology - CRT (BiV) Implant
+    '33224': { workRVU: 8.50, totalRVU: 21.08, fee: 760 },
+    '33225': { workRVU: 5.00, totalRVU: 12.40, fee: 447 },
+    '33226': { workRVU: 5.75, totalRVU: 14.26, fee: 514 },
+
+    // Electrophysiology - Leadless Pacemaker (33274 already in Structural)
+    '33275': { workRVU: 10.50, totalRVU: 26.03, fee: 938 },
+
+    // Electrophysiology - Subcutaneous ICD
+    '33270': { workRVU: 12.38, totalRVU: 30.70, fee: 1106 },
+    '33271': { workRVU: 5.50, totalRVU: 13.64, fee: 491 },
+    '33272': { workRVU: 6.00, totalRVU: 14.88, fee: 536 },
+    '33273': { workRVU: 5.25, totalRVU: 13.02, fee: 469 },
+
+    // Electrophysiology - Device Revision/Upgrade
+    '33214': { workRVU: 7.75, totalRVU: 19.22, fee: 693 },
+    '33215': { workRVU: 4.50, totalRVU: 11.16, fee: 402 },
+    '33216': { workRVU: 4.85, totalRVU: 12.03, fee: 433 },
+    '33217': { workRVU: 6.50, totalRVU: 16.12, fee: 581 },
+    '33218': { workRVU: 4.25, totalRVU: 10.54, fee: 380 },
+    '33220': { workRVU: 5.50, totalRVU: 13.64, fee: 491 },
+    '33221': { workRVU: 5.50, totalRVU: 13.64, fee: 491 },
+    '33222': { workRVU: 4.00, totalRVU: 9.92, fee: 357 },
+    '33223': { workRVU: 4.50, totalRVU: 11.16, fee: 402 },
+
+    // Electrophysiology - Lead Extraction
+    '33234': { workRVU: 8.50, totalRVU: 21.08, fee: 760 },
+    '33235': { workRVU: 10.50, totalRVU: 26.03, fee: 938 },
+    '33241': { workRVU: 22.00, totalRVU: 54.56, fee: 1966 },
+    '33244': { workRVU: 12.00, totalRVU: 29.76, fee: 1072 },
+
+    // Electrophysiology - Loop Recorder
+    '33285': { workRVU: 2.25, totalRVU: 5.58, fee: 201 },
+    '33286': { workRVU: 1.50, totalRVU: 3.72, fee: 134 },
+
+    // Electrophysiology - External Cardioversion
+    '92960': { workRVU: 2.72, totalRVU: 6.75, fee: 243 },
+    '92961': { workRVU: 5.25, totalRVU: 13.02, fee: 469 },
+
+    // Electrophysiology - Tilt Table / Autonomic Testing
+    '95921': { workRVU: 1.25, totalRVU: 3.10, fee: 112 },
+    '95922': { workRVU: 1.50, totalRVU: 3.72, fee: 134 },
+    '95924': { workRVU: 2.75, totalRVU: 6.82, fee: 246 }
   };
 
   // Top 25 cardiac procedure indications with ICD-10 codes (most to least common)
@@ -1560,7 +1909,7 @@ const CardiologyCPTApp = () => {
     }));
   };
 
-  const toggleCode = (code, description) => {
+  const toggleCode = (code, description, summary) => {
     setSelectedCodes(prev => {
       const exists = prev.find(c => c.code === code);
       if (exists) {
@@ -1572,7 +1921,7 @@ const CardiologyCPTApp = () => {
         });
         return prev.filter(c => c.code !== code);
       } else {
-        return [...prev, { code, description }];
+        return [...prev, { code, description, summary: summary || '' }];
       }
     });
   };
@@ -1585,7 +1934,7 @@ const CardiologyCPTApp = () => {
   };
 
   // Helper functions for Vessel 2
-  const toggleCodeV2 = (code, description) => {
+  const toggleCodeV2 = (code, description, summary) => {
     setSelectedCodesVessel2(prev => {
       const exists = prev.find(c => c.code === code);
       if (exists) {
@@ -1596,7 +1945,7 @@ const CardiologyCPTApp = () => {
         });
         return prev.filter(c => c.code !== code);
       } else {
-        return [...prev, { code, description }];
+        return [...prev, { code, description, summary: summary || '' }];
       }
     });
   };
@@ -1609,7 +1958,7 @@ const CardiologyCPTApp = () => {
   };
 
   // Helper functions for Vessel 3
-  const toggleCodeV3 = (code, description) => {
+  const toggleCodeV3 = (code, description, summary) => {
     setSelectedCodesVessel3(prev => {
       const exists = prev.find(c => c.code === code);
       if (exists) {
@@ -1620,7 +1969,7 @@ const CardiologyCPTApp = () => {
         });
         return prev.filter(c => c.code !== code);
       } else {
-        return [...prev, { code, description }];
+        return [...prev, { code, description, summary: summary || '' }];
       }
     });
   };
@@ -1850,20 +2199,112 @@ const CardiologyCPTApp = () => {
     }
   };
 
+  // Generate formatted email body for individual mode clipboard/email export
+  const generateEmailBody = () => {
+    const rvuCalc = calculateRVUAndReimbursement();
+    const allCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3];
+    const pciCodeList = ['92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945', '0913T', '0914T'];
+    const diagnosticCathCodes = ['93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461'];
+    const hasPCI = allCodes.some(c => pciCodeList.includes(c.code));
+
+    let chargeDate = '';
+    if (procedureDateOption === 'today') {
+      chargeDate = formatDateForStorage(new Date());
+    } else if (procedureDateOption === 'yesterday') {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      chargeDate = formatDateForStorage(d);
+    } else {
+      chargeDate = procedureDateText;
+    }
+
+    const currentIndication = selectedCardiacIndication || selectedPeripheralIndication || selectedStructuralIndication || '';
+
+    let body = '';
+    body += '========================================\n';
+    body += '  CONFIDENTIAL - BILLING INFORMATION\n';
+    body += '========================================\n\n';
+    body += `Physician: ${cardiologistName || 'Not specified'}\n`;
+    body += `Case ID / Patient: ${patientName || 'Not specified'}\n`;
+    body += `Date of Procedure: ${chargeDate}\n`;
+    body += `Location: ${selectedLocation || 'Not specified'}\n`;
+    body += '\n--- Procedure Indication (ICD-10) ---\n';
+    if (currentIndication && currentIndication !== 'other') {
+      body += `  ${currentIndication}\n`;
+    }
+    if (selectedCardiacIndication === 'other' && otherCardiacIndication) {
+      body += `  Cardiac: ${otherCardiacIndication}\n`;
+    }
+    if (selectedPeripheralIndication === 'other' && otherPeripheralIndication) {
+      body += `  Peripheral: ${otherPeripheralIndication}\n`;
+    }
+    if (selectedStructuralIndication === 'other' && otherStructuralIndication) {
+      body += `  Structural: ${otherStructuralIndication}\n`;
+    }
+    body += '\n--- CPT Codes ---\n';
+    allCodes.forEach(c => {
+      const isPCICode = pciCodeList.includes(c.code);
+      const isDiagnosticCath = diagnosticCathCodes.includes(c.code);
+      const vessel = codeVessels[c.code] || codeVesselsV2[c.code] || codeVesselsV3[c.code];
+      let displayCode = c.code;
+      if (isPCICode && vessel) {
+        const modifier = vessel.match(/\(([^)]+)\)/)?.[1] || '';
+        displayCode = `${c.code}-${modifier}`;
+      } else if (isDiagnosticCath && hasPCI) {
+        displayCode = `${c.code}-59`;
+      }
+      const desc = c.description || c.summary || '';
+      body += `  ${displayCode}  ${desc}\n`;
+    });
+    if (includeSedation) {
+      body += '  99152  Moderate sedation, initial 15 min\n';
+      if (sedationUnits > 0) {
+        body += `  99153 x${sedationUnits}  Moderate sedation, additional ${sedationUnits * 15} min\n`;
+      }
+    }
+    body += '\n--- Billing Summary ---\n';
+    body += `Total Work RVU: ${rvuCalc.totalWorkRVU}\n`;
+    body += `Total RVU: ${rvuCalc.totalRVU}\n`;
+    body += `Estimated Medicare Payment: $${(parseFloat(rvuCalc.totalWorkRVU) * 36.04).toFixed(2)}\n`;
+    body += '\n';
+
+    // Bundling/billing guidance from rule violations
+    const activeViolations = ruleViolations.filter(v => !overriddenRules.includes(v.ruleId));
+    if (activeViolations.length > 0) {
+      body += '--- Billing Guidance ---\n';
+      activeViolations.forEach(v => {
+        body += `  [${v.severity.toUpperCase()}] ${v.message}\n`;
+        if (v.suggestion) body += `    Suggestion: ${v.suggestion}\n`;
+      });
+      body += '\n';
+    }
+
+    body += '========================================\n';
+    body += '  This information is confidential and\n';
+    body += '  intended solely for billing purposes.\n';
+    body += '========================================\n';
+
+    return body;
+  };
+
   const handleSubmitCharges = async () => {
     // Validate required fields
-    if (!caseId) {
-      alert('Please enter a Case ID or MRN (last 4 digits)');
+    if (!patientName.trim()) {
+      alert('Please enter a patient name');
+      return;
+    }
+    if (!matchedPatient && !patientDob) {
+      alert('Please enter a date of birth for new patients');
       return;
     }
 
     if (!procedureDateOption) {
-      alert('Please select a procedure timeframe');
+      alert('Please select a procedure date');
       return;
     }
 
-    if (procedureDateOption === 'other' && !procedureDateText) {
-      alert('Please enter a procedure timeframe description');
+    if ((procedureDateOption === 'this_week' || procedureDateOption === 'other') && !procedureDateText) {
+      alert('Please select a date from the date picker');
       return;
     }
 
@@ -1901,6 +2342,24 @@ const CardiologyCPTApp = () => {
     if (allMissing.length > 0) {
       alert(`Please select vessel/modifier for the following PCI codes:\n\n${allMissing.join('\n')}\n\nVessel modifiers are required for Medicare billing.`);
       return;
+    }
+
+    // Individual mode: PHI check before submission
+    if (!isProMode) {
+      const matches = scanFieldsForPHI({ patientName });
+      if (matches.length > 0 && !phiBypassOnce) {
+        if (phiAutoScrub) {
+          // Auto-scrub and continue
+          setPatientName(scrubPHI(patientName));
+          setMatchedPatient(null);
+        } else {
+          // Show PHI warning modal, return early
+          setPhiMatches(matches);
+          setShowPHIWarning(true);
+          setPendingReportGeneration(true);
+          return;
+        }
+      }
     }
 
     // Save to history
@@ -1964,19 +2423,88 @@ const CardiologyCPTApp = () => {
       diagnoses.push(selectedStructuralIndication);
     }
 
-    // Get charge date
-    const chargeDate = new Date().toISOString().split('T')[0];
+    // Get charge date based on selected timeframe (uses local date, not UTC)
+    let chargeDate: string;
+    if (procedureDateOption === 'today') {
+      chargeDate = formatDateForStorage(new Date());
+    } else if (procedureDateOption === 'yesterday') {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      chargeDate = formatDateForStorage(d);
+    } else {
+      // this_week or other — use the date picker value
+      chargeDate = procedureDateText;
+    }
 
-    // Save combined charge
-    await saveCharge({
-      inpatientId: caseId,
-      chargeDate,
-      cptCode: codeStrings.join(' + '),
-      cptDescription: descriptionStrings.join(' + '),
-      rvu: totalRVU,
-      diagnoses,
-      submittedByUserName: cardiologistName || undefined
-    });
+    // Auto-create inpatient record if no match and DOB is provided
+    let resolvedPatient = matchedPatient;
+    if (!resolvedPatient && patientDob && onPatientCreated) {
+      const hospitalMatch = hospitals.find(h => h.name === selectedLocation);
+      resolvedPatient = onPatientCreated({
+        patientName: patientName.trim(),
+        dob: patientDob,
+        hospitalId: hospitalMatch?.id || '',
+        hospitalName: selectedLocation,
+        isActive: true
+      }, diagnoses);
+      setMatchedPatient(resolvedPatient);
+    }
+
+    // Build case snapshot for future re-editing
+    const caseSnapshot: CaseSnapshot = {
+      codes: { primary: selectedCodes, vessel2: selectedCodesVessel2, vessel3: selectedCodesVessel3 },
+      vessels: { v1: codeVessels, v2: codeVesselsV2, v3: codeVesselsV3 },
+      indicationCategory,
+      indication: selectedCardiacIndication || selectedPeripheralIndication || selectedStructuralIndication || '',
+      sedation: { included: includeSedation, units: sedationUnits }
+    };
+
+    if (editingChargeId) {
+      // Edit mode — update existing charge
+      await updateCharge(editingChargeId, {
+        cptCode: codeStrings.join(' + '),
+        cptDescription: descriptionStrings.join(' + '),
+        rvu: totalRVU,
+        diagnoses,
+        caseSnapshot
+      });
+
+      // Clear editing state
+      setEditingChargeId(null);
+      setEditingChargeDate(null);
+
+      // Notify parent to refresh charges
+      await onChargeUpdated?.();
+    } else {
+      // Normal mode — save new charge
+      const savedCathCharge = await saveCharge({
+        inpatientId: resolvedPatient ? resolvedPatient.id : `cath-${patientName.trim()}-${patientDob}`,
+        chargeDate,
+        cptCode: codeStrings.join(' + '),
+        cptDescription: descriptionStrings.join(' + '),
+        rvu: totalRVU,
+        diagnoses,
+        submittedByUserName: userName || cardiologistName || undefined,
+        caseSnapshot
+      });
+
+      // Log charge_submitted audit event
+      if (orgId) {
+        logAuditEvent(orgId, {
+          action: 'charge_submitted',
+          userId: 'user-1',
+          userName: userName || cardiologistName || 'Unknown',
+          targetPatientId: resolvedPatient?.id || null,
+          targetPatientName: resolvedPatient?.patientName || patientName.trim(),
+          details: `Submitted cath lab charge ${codeStrings.join(' + ')} for ${resolvedPatient?.patientName || patientName.trim()}`,
+          listContext: null,
+          metadata: { chargeId: savedCathCharge.id, chargeDate, newStatus: 'pending' }
+        });
+      }
+
+      // Notify parent to refresh charges (so Rounds sees the new charge)
+      await onChargeUpdated?.();
+    }
 
     // Show confirmation
     setSubmittedChargeInfo({
@@ -1985,87 +2513,12 @@ const CardiologyCPTApp = () => {
       estimatedPayment: totalPayment
     });
     setShowChargeSubmitted(true);
+    setPhiBypassOnce(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-colors">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 flex flex-wrap justify-between items-center gap-4">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            {/* CathCPT App Icon - Matching uploaded design */}
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shadow-lg flex-shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <defs>
-                  <linearGradient id="bgGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#D4A84B"/>
-                    <stop offset="50%" stopColor="#C49A3D"/>
-                    <stop offset="100%" stopColor="#9A7830"/>
-                  </linearGradient>
-                  <linearGradient id="textGold" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#F5E6B0"/>
-                    <stop offset="25%" stopColor="#E8D48A"/>
-                    <stop offset="50%" stopColor="#D4B254"/>
-                    <stop offset="75%" stopColor="#B8922E"/>
-                    <stop offset="100%" stopColor="#8B6914"/>
-                  </linearGradient>
-                </defs>
-                {/* Background */}
-                <rect width="100" height="100" rx="18" fill="url(#bgGold)"/>
-                {/* Anatomical Heart */}
-                <g transform="translate(28, 5) scale(0.52)">
-                  <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
-                  <path d="M32,18 C26,4 42,0 42,0 C42,0 58,4 52,18" fill="#7A1230"/>
-                  <path d="M56,14 C64,6 74,8 78,14" stroke="#7A1230" strokeWidth="7" fill="none" strokeLinecap="round"/>
-                  <path d="M28,14 C20,6 10,8 6,14" stroke="#7A1230" strokeWidth="7" fill="none" strokeLinecap="round"/>
-                  <path d="M42,28 C38,48 34,68 30,85" stroke="#A82040" strokeWidth="2" fill="none" opacity="0.5"/>
-                  <path d="M42,28 C46,48 50,68 54,85" stroke="#A82040" strokeWidth="2" fill="none" opacity="0.5"/>
-                  <path d="M22,42 C28,58 26,75 24,85" stroke="#A82040" strokeWidth="1.5" fill="none" opacity="0.4"/>
-                  <path d="M62,42 C56,58 58,75 60,85" stroke="#A82040" strokeWidth="1.5" fill="none" opacity="0.4"/>
-                </g>
-                {/* CPT Text */}
-                <text x="50" y="64" fontSize="34" fontWeight="900" fill="url(#textGold)" textAnchor="middle" fontFamily="Arial Black, sans-serif" style={{textShadow: '1px 2px 2px rgba(90,64,16,0.4)'}}>CPT</text>
-                {/* CathCPT label */}
-                <text x="50" y="90" fontSize="14" fontWeight="bold" fill="#6B4423" textAnchor="middle" fontFamily="Arial, sans-serif">CathCPT</text>
-              </svg>
-            </div>
-            
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-amber-700 mb-1">CathCPT</h1>
-              <p className="text-sm sm:text-base text-gray-600">Interventional Cardiology Code Manager - 2026</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* History Button */}
-            <button
-              onClick={() => setShowHistoryModal(true)}
-              className="p-3 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors relative"
-              title="Case History"
-            >
-              <History size={24} className="text-blue-700" />
-              {caseHistory.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center">
-                  {caseHistory.length > 9 ? '9+' : caseHistory.length}
-                </span>
-              )}
-            </button>
-            {/* 2026 Updates Button */}
-            <button
-              onClick={() => setShow2026Updates(true)}
-              className="p-3 bg-yellow-100 hover:bg-yellow-200 rounded-lg transition-colors"
-              title="What's New in 2026"
-            >
-              <Lightbulb size={24} className="text-yellow-700" />
-            </button>
-            {/* Settings Button */}
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-3 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors"
-            >
-              <Settings size={24} className="text-indigo-700" />
-            </button>
-          </div>
-        </div>
 
         {/* Settings Modal */}
         {showSettings && (
@@ -2079,53 +2532,101 @@ const CardiologyCPTApp = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Physician Name
-                  </label>
-                  <input
-                    type="text"
-                    value={cardiologistName}
-                    onChange={(e) => setCardiologistName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
-                    placeholder="Dr. John Smith"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cath Lab Locations
-                  </label>
-                  <div className="space-y-2 mb-3">
-                    {cathLocations.map((location, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        <span className="flex-grow text-gray-700">{location}</span>
-                        <button
-                          onClick={() => removeLocation(location)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
+                {/* Physician Name — editable in individual mode, read-only in Pro */}
+                {isProMode ? (
+                  (userName || cardiologistName) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Physician
+                      </label>
+                      <p className="text-sm text-gray-900 font-medium px-4 py-2 bg-gray-50 rounded-lg">
+                        {userName || cardiologistName}
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Physician Name
+                    </label>
                     <input
                       type="text"
-                      value={newLocation}
-                      onChange={(e) => setNewLocation(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && addLocation()}
-                      className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
-                      placeholder="Add new location"
+                      value={cardiologistName}
+                      onChange={(e) => setCardiologistName(e.target.value)}
+                      placeholder="Dr. Smith"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
-                    <button
-                      onClick={addLocation}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
-                    >
-                      Add
-                    </button>
                   </div>
-                </div>
+                )}
+
+                {/* Cath Lab Locations — individual mode only */}
+                {!isProMode && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cath Lab Locations
+                    </label>
+                    <div className="space-y-2 mb-3">
+                      {cathLocations.map((loc, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="flex-1 text-sm text-gray-800 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">{loc}</span>
+                          <button
+                            onClick={() => {
+                              const updated = cathLocations.filter((_, idx) => idx !== i);
+                              setCathLocations(updated);
+                            }}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newLocation}
+                        onChange={(e) => setNewLocation(e.target.value)}
+                        placeholder="Add new location..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newLocation.trim()) {
+                            setCathLocations([...cathLocations, newLocation.trim()]);
+                            setNewLocation('');
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          if (newLocation.trim()) {
+                            setCathLocations([...cathLocations, newLocation.trim()]);
+                            setNewLocation('');
+                          }
+                        }}
+                        className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* PHI Auto-Scrub — individual mode only */}
+                {!isProMode && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={phiAutoScrub}
+                        onChange={(e) => setPhiAutoScrub(e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Auto-scrub PHI before export</span>
+                        <p className="text-xs text-gray-500">Automatically redact detected names, dates, and identifiers when generating reports</p>
+                      </div>
+                    </label>
+                  </div>
+                )}
 
                 {/* Code Group Settings */}
                 <div className="pt-4 border-t border-gray-200">
@@ -2169,13 +2670,27 @@ const CardiologyCPTApp = () => {
               </div>
 
               <div className="p-4 border-t border-gray-200">
-                <button
-                  onClick={saveSettings}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
-                >
-                  <Save size={20} />
-                  Save Settings
-                </button>
+                {!isProMode ? (
+                  <button
+                    onClick={async () => {
+                      await window.storage.set('cardiologistName', cardiologistName);
+                      await window.storage.set('cathLocations', JSON.stringify(cathLocations));
+                      await window.storage.set('phiAutoScrub', String(phiAutoScrub));
+                      setShowSettings(false);
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Save size={18} />
+                    Save Settings
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                  >
+                    Close
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -2269,6 +2784,69 @@ const CardiologyCPTApp = () => {
                     Apply & Reload
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PHI Warning Modal (individual mode only) */}
+        {showPHIWarning && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+              <div className="bg-red-600 px-4 py-3">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Shield size={20} />
+                  PHI Warning
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                <p className="text-sm text-gray-700">
+                  The following potential PHI was detected in the patient name field:
+                </p>
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-1">
+                  {phiMatches.map((m, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-red-800">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${m.severity === 'high' ? 'bg-red-500' : m.severity === 'medium' ? 'bg-yellow-500' : 'bg-gray-400'}`} />
+                      <span className="font-medium">{m.pattern}:</span>
+                      <span>"{m.value}"</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Individual mode exports are not HIPAA-hardened. Consider scrubbing PHI before generating reports.
+                </p>
+              </div>
+              <div className="p-4 border-t border-gray-200 flex gap-2">
+                <button
+                  onClick={() => {
+                    setPatientName(scrubPHI(patientName));
+                    setMatchedPatient(null);
+                    setShowPHIWarning(false);
+                    setPendingReportGeneration(true);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  Scrub & Generate
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPHIWarning(false);
+                    setPendingReportGeneration(false);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors text-sm"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPHIWarning(false);
+                    setPhiBypassOnce(true);
+                    setPendingReportGeneration(true);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-red-100 hover:bg-red-200 text-red-800 font-semibold rounded-lg transition-colors text-sm"
+                >
+                  Proceed Anyway
+                </button>
               </div>
             </div>
           </div>
@@ -2607,33 +3185,194 @@ const CardiologyCPTApp = () => {
             </div>
           </div>
 
+          {/* Edit mode banner */}
+          {editingChargeId && (
+            <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-300 rounded-lg mb-2">
+              <div className="flex items-center gap-2">
+                <Edit2 size={16} className="text-amber-600" />
+                <span className="text-sm font-medium text-amber-800">
+                  Editing charge for {editingChargeDate} — {patientName}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingChargeId(null);
+                  setEditingChargeDate(null);
+                  setSelectedCodes([]);
+                  setSelectedCodesVessel2([]);
+                  setSelectedCodesVessel3([]);
+                  setCodeVessels({});
+                  setCodeVesselsV2({});
+                  setCodeVesselsV3({});
+                  setPatientName('');
+                  setPatientDob('');
+                  setPatientDobDisplay('');
+                  setMatchedPatient(null);
+                  setShowSuggestions(false);
+                  setPatientSuggestions([]);
+                  setProcedureDateOption('');
+                  setProcedureDateText('');
+                  setSelectedLocation('');
+                  setIncludeSedation(false);
+                  setSedationUnits(0);
+                  setSelectedCardiacIndication('');
+                  setSelectedPeripheralIndication('');
+                  setSelectedStructuralIndication('');
+                  setIndicationSearch('');
+                }}
+                className="px-3 py-1 text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
+              >
+                Cancel Edit
+              </button>
+            </div>
+          )}
+
           <div className="space-y-4">
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Case ID / Patient Identifier *
+                Patient Name *
               </label>
               <input
                 type="text"
-                value={caseId}
-                onChange={(e) => setCaseId(e.target.value)}
-                maxLength={50}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
-                placeholder="e.g., CASE-1234 or MRN"
+                value={patientName}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPatientName(val);
+                  if (matchedPatient) {
+                    setMatchedPatient(null);
+                  }
+                  if (val.length >= 2 && patients.length > 0) {
+                    const lower = val.toLowerCase();
+                    const matches = patients.filter(p =>
+                      p.isActive && p.patientName.toLowerCase().includes(lower)
+                    ).slice(0, 8);
+                    setPatientSuggestions(matches);
+                    setShowSuggestions(matches.length > 0);
+                  } else {
+                    setPatientSuggestions([]);
+                    setShowSuggestions(false);
+                  }
+                }}
+                onFocus={() => {
+                  if (patientSuggestions.length > 0 && !matchedPatient) {
+                    setShowSuggestions(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay to allow click on suggestion
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                maxLength={100}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800 ${!isProMode && phiMatches.length > 0 ? 'border-red-400 ring-1 ring-red-300' : 'border-gray-300'}`}
+                placeholder="Last, First"
               />
+              {/* Autocomplete dropdown */}
+              {showSuggestions && patientSuggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {patientSuggestions.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setPatientName(p.patientName);
+                        setMatchedPatient(p);
+                        setPatientDob('');
+                        setPatientDobDisplay('');
+                        setShowSuggestions(false);
+                        setPatientSuggestions([]);
+                        // Auto-select hospital as location if available
+                        if (p.hospitalName) {
+                          setSelectedLocation(p.hospitalName);
+                        }
+                      }}
+                    >
+                      <div className="font-medium text-gray-800">{p.patientName}</div>
+                      <div className="text-xs text-gray-500">{p.hospitalName || 'No hospital'}{p.dob ? ` · DOB: ${p.dob}` : ''}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Match indicator chip */}
+              {matchedPatient && (
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full text-sm text-green-700">
+                  <Check size={14} className="text-green-600" />
+                  <span>Linked: {matchedPatient.patientName}{matchedPatient.hospitalName ? ` — ${matchedPatient.hospitalName}` : ''}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMatchedPatient(null);
+                      setPatientName('');
+                      setPatientDob('');
+                      setPatientDobDisplay('');
+                    }}
+                    className="ml-1 text-green-500 hover:text-green-700"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              {/* DOB field for new (unmatched) patients */}
+              {!matchedPatient && patientName.length > 0 && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date of Birth *
+                  </label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={patientDobDisplay}
+                    onChange={(e) => handlePatientDobChange(e.target.value)}
+                    placeholder="MM/DD/YYYY"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-800"
+                  />
+                </div>
+              )}
+
+              {/* PHI Warning — individual mode only */}
+              {!isProMode && phiMatches.length > 0 && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-300 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-red-800">Potential PHI Detected</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {phiMatches.map((m, i) => (
+                          <li key={i} className="text-xs text-red-700">
+                            <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${m.severity === 'high' ? 'bg-red-500' : m.severity === 'medium' ? 'bg-yellow-500' : 'bg-gray-400'}`} />
+                            {m.pattern}: "{m.value}"
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPatientName(scrubPHI(patientName));
+                          setMatchedPatient(null);
+                        }}
+                        className="mt-2 px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors"
+                      >
+                        Scrub PHI
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Procedure Timeframe *
+                Procedure Date *
               </label>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 {[
                   { value: 'today', label: 'Today' },
-                  { value: 'this_week', label: 'This Week' },
-                  { value: 'this_month', label: 'This Month' },
+                  { value: 'yesterday', label: 'Yesterday' },
+                  { value: 'this_week', label: 'Last Week' },
                   { value: 'other', label: 'Other' }
                 ].map((option) => (
-                  <label 
+                  <label
                     key={option.value}
                     className={`flex items-center justify-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
                       procedureDateOption === option.value
@@ -2648,9 +3387,7 @@ const CardiologyCPTApp = () => {
                       checked={procedureDateOption === option.value}
                       onChange={(e) => {
                         setProcedureDateOption(e.target.value);
-                        if (e.target.value !== 'other') {
-                          setProcedureDateText('');
-                        }
+                        setProcedureDateText('');
                       }}
                       className="sr-only"
                     />
@@ -2658,16 +3395,53 @@ const CardiologyCPTApp = () => {
                   </label>
                 ))}
               </div>
+              {/* Last Week: show Mon-Sun day buttons */}
+              {procedureDateOption === 'this_week' && (() => {
+                const today = new Date();
+                const dayOfWeek = today.getDay(); // 0=Sun
+                // Last Monday = go back to this Monday, then subtract 7
+                const lastMonday = new Date(today);
+                lastMonday.setDate(today.getDate() - dayOfWeek - 6); // Mon of last week
+                const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const days = dayLabels.map((label, i) => {
+                  const d = new Date(lastMonday);
+                  d.setDate(lastMonday.getDate() + i);
+                  return {
+                    label,
+                    date: d.toISOString().split('T')[0],
+                    dayNum: d.getDate()
+                  };
+                });
+                return (
+                  <div className="grid grid-cols-7 gap-1">
+                    {days.map((day) => (
+                      <button
+                        key={day.date}
+                        type="button"
+                        onClick={() => setProcedureDateText(day.date)}
+                        className={`flex flex-col items-center py-2 px-1 rounded-lg border-2 text-xs font-medium transition-all ${
+                          procedureDateText === day.date
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        <span className="text-[10px] text-gray-400">{day.label}</span>
+                        <span className="text-sm font-semibold">{day.dayNum}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+              {/* Other: show date picker */}
               {procedureDateOption === 'other' && (
                 <input
-                  type="text"
+                  type="date"
                   value={procedureDateText}
+                  max={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setProcedureDateText(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="e.g., Last Tuesday, 2 weeks ago, Q4 2025"
                 />
               )}
-              <p className="text-xs text-gray-500 mt-1">Use relative dates only - do not enter specific dates</p>
             </div>
 
             <div>
@@ -2675,22 +3449,62 @@ const CardiologyCPTApp = () => {
                 Procedure Location *
               </label>
               <div className="space-y-2">
-                {cathLocations.map((location, index) => (
-                  <label key={index} className="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 hover:bg-gray-50 transition-all">
-                    <input
-                      type="radio"
-                      name="location"
-                      value={location}
-                      checked={selectedLocation === location}
-                      onChange={(e) => setSelectedLocation(e.target.value)}
-                      className="w-4 h-4 text-indigo-600"
-                    />
-                    <span className="text-gray-700">{location}</span>
-                  </label>
-                ))}
-                {cathLocations.length === 0 && (
-                  <p className="text-gray-500 text-sm italic">No locations configured. Please add locations in Settings.</p>
-                )}
+                {(() => {
+                  // Individual mode: use local cathLocations from Settings
+                  // Pro mode: use admin-managed hospitals + cathLabs props
+                  if (!isProMode) {
+                    if (cathLocations.length === 0) {
+                      return <p className="text-gray-500 text-sm italic">No locations configured. Add cath lab locations in Settings.</p>;
+                    }
+                    return cathLocations.map((location, index) => (
+                      <label key={`loc-${index}`} className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedLocation === location
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="location"
+                          value={location}
+                          checked={selectedLocation === location}
+                          onChange={(e) => setSelectedLocation(e.target.value)}
+                          className="w-4 h-4 text-indigo-600"
+                        />
+                        <span className="text-gray-700">{location}</span>
+                      </label>
+                    ));
+                  }
+                  const hospitalNames = hospitals.filter(h => h.isActive).map(h => h.name);
+                  const cathLabNames = cathLabs.filter(l => l.isActive).map(l => l.name);
+                  // Deduplicate: cathLabs that aren't already a hospital name
+                  const cathOnly = cathLabNames.filter(name => !hospitalNames.includes(name));
+                  const mergedLocations = [...hospitalNames, ...cathOnly];
+                  if (mergedLocations.length === 0) {
+                    return <p className="text-gray-500 text-sm italic">No locations configured. Ask your admin to add hospitals and cath labs in the Admin Portal.</p>;
+                  }
+                  return mergedLocations.map((location, index) => (
+                    <label key={`loc-${index}`} className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedLocation === location
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="location"
+                        value={location}
+                        checked={selectedLocation === location}
+                        onChange={(e) => setSelectedLocation(e.target.value)}
+                        className="w-4 h-4 text-indigo-600"
+                      />
+                      <span className="text-gray-700">{location}</span>
+                      {index < hospitalNames.length ? (
+                        <span className="ml-auto text-xs text-gray-400">Hospital</span>
+                      ) : (
+                        <span className="ml-auto text-xs text-gray-400">Cath Lab</span>
+                      )}
+                    </label>
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -2703,7 +3517,66 @@ const CardiologyCPTApp = () => {
             Procedure Indications (ICD-10)
           </h2>
           <p className="text-sm text-gray-600 mb-4">Select one indication from each applicable category</p>
-          
+
+          {/* ICD-10 Search */}
+          <div className="mb-4">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={indicationSearch}
+                onChange={(e) => setIndicationSearch(e.target.value)}
+                placeholder="Search ICD-10 codes (e.g., I25.10, chest pain)"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+            {indicationSearch.length >= 2 && (() => {
+              const results = searchICD10Codes(indicationSearch).slice(0, 8);
+              if (results.length === 0) {
+                return (
+                  <div className="mt-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500">
+                    No matching ICD-10 codes found
+                  </div>
+                );
+              }
+              return (
+                <div className="mt-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+                  {results.map(code => {
+                    // Determine which category this code belongs to for selection
+                    const isCardiac = code.category === 'primary';
+                    const isComorbid = code.category === 'comorbid';
+                    const isSelected =
+                      selectedCardiacIndication === code.code ||
+                      selectedPeripheralIndication === code.code ||
+                      selectedStructuralIndication === code.code;
+                    return (
+                      <button
+                        key={code.code}
+                        type="button"
+                        onClick={() => {
+                          // Set as cardiac indication (most common for cath lab)
+                          if (isCardiac || isComorbid) {
+                            setSelectedCardiacIndication(code.code);
+                          } else {
+                            setSelectedStructuralIndication(code.code);
+                          }
+                          setIndicationSearch('');
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 active:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
+                          isSelected ? 'bg-indigo-50' : ''
+                        }`}
+                      >
+                        <span className="font-mono font-medium text-gray-900 whitespace-nowrap">{code.code}</span>
+                        <span className="text-gray-600 truncate">{code.description}</span>
+                        {isSelected && <Check size={16} className="text-indigo-600 ml-auto flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Cardiac Indications */}
           <div className="mb-6">
             <button
@@ -3091,7 +3964,7 @@ const CardiologyCPTApp = () => {
                   return (
                     <div
                       key={`fav-${cpt.code}`}
-                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-between ${
                         isSelected
                           ? 'border-indigo-500 bg-indigo-50'
@@ -3209,7 +4082,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -3290,7 +4163,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCodeV2(cpt.code, cpt.description)}
+                                      onClick={() => toggleCodeV2(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -3371,7 +4244,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCodeV3(cpt.code, cpt.description)}
+                                      onClick={() => toggleCodeV3(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -3491,7 +4364,7 @@ const CardiologyCPTApp = () => {
                         return (
                           <div key={cpt.code} className="space-y-2">
                             <div
-                              onClick={() => toggleCode(cpt.code, cpt.description)}
+                              onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                               className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
                                 isSelected
                                   ? 'border-indigo-500 bg-indigo-50'
@@ -3650,7 +4523,7 @@ const CardiologyCPTApp = () => {
                       return (
                         <div
                           key={codeKey}
-                          onClick={() => toggleCode(cpt.code, cpt.description)}
+                          onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                           className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-sky-500 bg-sky-100' : 'border-gray-200 hover:border-sky-300 bg-white'}`}
                         >
                           <div className="flex items-start gap-3">
@@ -3695,7 +4568,7 @@ const CardiologyCPTApp = () => {
                       return (
                         <div
                           key={codeKey}
-                          onClick={() => toggleCode(cpt.code, cpt.description)}
+                          onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                           className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-violet-500 bg-violet-100' : 'border-gray-200 hover:border-violet-300 bg-white'}`}
                         >
                           <div className="flex items-start gap-3">
@@ -3740,7 +4613,7 @@ const CardiologyCPTApp = () => {
                       return (
                         <div
                           key={codeKey}
-                          onClick={() => toggleCode(customCode.code, customCode.description)}
+                          onClick={() => toggleCode(customCode.code, customCode.description, customCode.description)}
                           className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-gray-500 bg-gray-100' : 'border-gray-200 hover:border-gray-400 bg-white'}`}
                         >
                           <div className="flex items-start gap-3">
@@ -3825,7 +4698,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -3920,7 +4793,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -4014,7 +4887,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -4107,7 +4980,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -4211,7 +5084,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -4304,7 +5177,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-sky-500 bg-sky-50' : 'border-gray-200 hover:border-sky-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -4398,7 +5271,7 @@ const CardiologyCPTApp = () => {
                                 return (
                                   <div key={codeKey} className="space-y-2">
                                     <div
-                                      onClick={() => toggleCode(cpt.code, cpt.description)}
+                                      onClick={() => toggleCode(cpt.code, cpt.description, cpt.summary)}
                                       className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-violet-300'}`}
                                     >
                                       <div className="flex items-start gap-3">
@@ -4491,7 +5364,7 @@ const CardiologyCPTApp = () => {
                       return (
                         <div key={codeKey} className="space-y-2">
                           <div
-                            onClick={() => toggleCode(customCode.code, customCode.description)}
+                            onClick={() => toggleCode(customCode.code, customCode.description, customCode.description)}
                             className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'border-gray-500 bg-gray-100' : 'border-gray-200 hover:border-gray-400'}`}
                           >
                             <div className="flex items-start gap-3">
@@ -5019,8 +5892,12 @@ const CardiologyCPTApp = () => {
 
                   {/* Breakdown Table - Physician Only */}
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
                       <h3 className="font-semibold text-gray-800">Physician Work RVU Breakdown</h3>
+                      <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
+                        <span>RVU</span>
+                        <span>Est $</span>
+                      </div>
                     </div>
                     <div className="divide-y divide-gray-200">
                       {rvuCalc.breakdown.length === 0 ? (
@@ -5029,23 +5906,23 @@ const CardiologyCPTApp = () => {
                         </div>
                       ) : (
                         rvuCalc.breakdown.map((item, idx) => (
-                          <div key={idx} className={`px-4 py-3 flex items-center justify-between hover:bg-gray-50 ${item.noData ? 'bg-yellow-50' : ''}`}>
-                            <div>
-                              <div className="font-semibold text-gray-800">{item.code}</div>
+                          <div key={idx} className={`px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 ${item.noData ? 'bg-yellow-50' : ''}`}>
+                            <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                              <span className="font-mono font-semibold text-gray-800 flex-shrink-0">{item.code}</span>
                               {item.description && (
-                                <div className="text-xs text-gray-500">{item.description}</div>
+                                <span className="text-sm text-gray-500 truncate">{item.description}</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-6 text-sm">
+                            <div className="flex items-center gap-4 text-sm flex-shrink-0">
                               {item.noData ? (
                                 <div className="text-yellow-600 text-xs">RVU data pending</div>
                               ) : (
                                 <>
-                                  <div className="text-blue-700">
-                                    Work RVU: <span className="font-semibold">{item.workRVU.toFixed(2)}</span>
+                                  <div className="text-blue-700 whitespace-nowrap">
+                                    <span className="font-semibold">{item.workRVU.toFixed(2)}</span>
                                   </div>
-                                  <div className="text-green-700 font-bold">
-                                    ${(item.workRVU * 36.04).toFixed(2)}
+                                  <div className="text-green-700 font-bold whitespace-nowrap">
+                                    ${(item.workRVU * 36.04).toFixed(0)}
                                   </div>
                                 </>
                               )}
@@ -5078,7 +5955,7 @@ const CardiologyCPTApp = () => {
 
         {/* Submit Section */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Submit Charges</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">{editingChargeId ? 'Update Charge' : 'Submit Charges'}</h2>
 
           {showChargeSubmitted && submittedChargeInfo ? (
             <div className="space-y-4">
@@ -5087,29 +5964,91 @@ const CardiologyCPTApp = () => {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                   <Check size={32} className="text-green-600" />
                 </div>
-                <span className="text-lg font-semibold text-green-800">Charge Submitted Successfully</span>
+                <span className="text-lg font-semibold text-green-800">{editingChargeId ? 'Charge Updated Successfully' : 'Charge Submitted Successfully'}</span>
               </div>
 
-              {/* Summary */}
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Codes submitted</span>
-                  <span className="font-medium text-gray-900">{submittedChargeInfo.codeCount}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total RVU</span>
-                  <span className="font-medium text-gray-900">{submittedChargeInfo.totalRVU.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t border-gray-200 pt-2">
-                  <span className="text-gray-600">Est. Medicare Payment</span>
-                  <span className="font-semibold text-green-700">${submittedChargeInfo.estimatedPayment.toFixed(2)}</span>
-                </div>
-              </div>
+              {/* Pro Mode Summary */}
+              {isProMode && (
+                <>
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Codes submitted</span>
+                      <span className="font-medium text-gray-900">{submittedChargeInfo.codeCount}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total RVU</span>
+                      <span className="font-medium text-gray-900">{submittedChargeInfo.totalRVU.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm border-t border-gray-200 pt-2">
+                      <span className="text-gray-600">Est. Medicare Payment</span>
+                      <span className="font-semibold text-green-700">${submittedChargeInfo.estimatedPayment.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 text-center">
+                    Charge is available for review in the Admin Portal.
+                  </p>
+                </>
+              )}
+
+              {/* Individual Mode: Clipboard copy + Report preview */}
+              {!isProMode && (
+                <>
+                  <button
+                    onClick={async () => {
+                      const report = generateEmailBody();
+                      try {
+                        await navigator.clipboard.writeText(report);
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2500);
+                      } catch {
+                        // Fallback for older browsers
+                        const textarea = document.createElement('textarea');
+                        textarea.value = report;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2500);
+                      }
+                    }}
+                    className={`w-full py-3 px-4 font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                      copySuccess
+                        ? 'bg-green-600 text-white'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }`}
+                  >
+                    {copySuccess ? (
+                      <>
+                        <Check size={18} />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Download size={18} />
+                        Copy Report to Clipboard
+                      </>
+                    )}
+                  </button>
+                  <textarea
+                    readOnly
+                    value={generateEmailBody()}
+                    onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                    className="w-full h-64 px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono bg-gray-50 text-gray-800 resize-y"
+                  />
+                </>
+              )}
 
               {/* Buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowChargeSubmitted(false)}
+                  onClick={() => {
+                    setShowChargeSubmitted(false);
+                    setEditingChargeId(null);
+                    setEditingChargeDate(null);
+                  }}
                   className="flex-1 py-2.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
                 >
                   Close
@@ -5118,13 +6057,20 @@ const CardiologyCPTApp = () => {
                   onClick={() => {
                     setShowChargeSubmitted(false);
                     setSubmittedChargeInfo(null);
+                    setEditingChargeId(null);
+                    setEditingChargeDate(null);
                     setSelectedCodes([]);
                     setSelectedCodesVessel2([]);
                     setSelectedCodesVessel3([]);
                     setCodeVessels({});
                     setCodeVesselsV2({});
                     setCodeVesselsV3({});
-                    setCaseId('');
+                    setPatientName('');
+                    setPatientDob('');
+                    setPatientDobDisplay('');
+                    setMatchedPatient(null);
+                    setShowSuggestions(false);
+                    setPatientSuggestions([]);
                     setProcedureDateOption('');
                     setProcedureDateText('');
                     setSelectedLocation('');
@@ -5133,6 +6079,9 @@ const CardiologyCPTApp = () => {
                     setSelectedCardiacIndication('');
                     setSelectedPeripheralIndication('');
                     setSelectedStructuralIndication('');
+                    setIndicationSearch('');
+                    setCopySuccess(false);
+                    setPhiBypassOnce(false);
                   }}
                   className="flex-1 py-2.5 px-4 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg transition-colors"
                 >
@@ -5145,14 +6094,22 @@ const CardiologyCPTApp = () => {
               <button
                 id="submit-charges-btn"
                 onClick={handleSubmitCharges}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                className={`w-full font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                  editingChargeId
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                }`}
               >
                 <Check size={20} />
-                Submit Charges
+                {editingChargeId ? 'Update Charge' : 'Submit Charges'}
               </button>
 
               <p className="text-xs text-gray-500 text-center">
-                Charges will be saved and available for review in Admin Portal.
+                {editingChargeId
+                  ? 'This will update the existing charge. Status will reset to pending if previously entered.'
+                  : isProMode
+                    ? 'Charges will be saved and available for review in Admin Portal.'
+                    : 'Charges will be saved locally. Use "Copy Report to Clipboard" to email to your billing office.'}
               </p>
             </div>
           )}
@@ -5160,10 +6117,11 @@ const CardiologyCPTApp = () => {
 
         {/* Footer with HIPAA notice */}
         <div className="text-center text-sm text-gray-500 pb-4">
-          <div className="mb-3 p-3 bg-gray-100 rounded-lg">
-            <p className="text-xs text-gray-600">
-              <strong>Privacy Notice:</strong> All data is encrypted at rest.
-              Users are responsible for HIPAA compliance when sharing generated reports.
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-800">
+              <strong>PHI Caution:</strong> This application processes protected health information (PHI).
+              All data is encrypted at rest and in transit. Do not share patient information
+              outside of authorized clinical and billing workflows.
             </p>
           </div>
           <p>CPT® codes © American Medical Association. All rights reserved.</p>
@@ -5184,6 +6142,6 @@ const CardiologyCPTApp = () => {
       />
     </div>
   );
-};
+});
 
 export default CardiologyCPTApp;

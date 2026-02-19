@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, Users, Shield, Settings, LogIn, LogOut, RefreshCw, AlertCircle, Wifi, WifiOff } from 'lucide-react';
-import CardiologyCPTApp from './CardiologyCPTApp';
+import React, { useState, useEffect, useRef } from 'react';
+import { Heart, Users, Shield, Settings, LogIn, LogOut, RefreshCw, AlertCircle, Wifi, WifiOff, History, Lightbulb } from 'lucide-react';
+import CardiologyCPTApp, { CardiologyCPTAppHandle } from './CardiologyCPTApp';
 import { LoginScreen } from './screens/LoginScreen';
 import { RoundsScreen } from './screens/RoundsScreen';
 import { AdminPortalScreen } from './screens/AdminPortalScreen';
@@ -9,15 +9,19 @@ import { AddChargeDialog } from './components/AddChargeDialog';
 import { CallListPickerDialog } from './components/CallListPickerDialog';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
 import { PracticeCodeSetup } from './components/PracticeCodeSetup';
-import { UserMode, Inpatient, Hospital, CallListEntry } from './types';
-import { getUserMode, checkUnlockDevMode, DevModeSettings, getDevModeSettings, setDevModeUserType, disableDevMode } from './services/devMode';
+import { LockScreen } from './components/LockScreen';
+import { HIPAABanner } from './components/HIPAABanner';
+import { useInactivityTimer } from './hooks/useInactivityTimer';
+import { UserMode, Inpatient, Hospital, CathLab, CallListEntry } from './types';
+import { getUserMode, checkUnlockDevMode, DevModeSettings, getDevModeSettings, setDevModeUserType, disableDevMode, mockCharges } from './services/devMode';
 import { getCurrentSession, signOut, AuthUser } from './services/authService';
 import { initializeFirebase, isFirebaseConfigured } from './services/firebaseConfig';
 import { getSyncStatus, SyncStatus, processSyncQueue, setOnlineStatus } from './services/syncService';
-import { getPracticeConnection, getHospitals } from './services/practiceConnection';
+import { getPracticeConnection, getHospitals, getCathLabs } from './services/practiceConnection';
 import { getOrgInpatients } from './services/inpatientService';
 import { getCallListEntries, addToCallList, removeFromCallList, clearCallList } from './services/callListService';
 import { logAuditEvent } from './services/auditService';
+import { logger } from './services/logger';
 import {
   StoredCharge,
   getChargesByPatientAndDate,
@@ -31,7 +35,6 @@ import {
 
 // Active tab type
 type AppTab = 'cathlab' | 'rounds' | 'admin';
-
 
 const App: React.FC = () => {
   // Auth state
@@ -72,6 +75,10 @@ const App: React.FC = () => {
 
   // Practice data
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [cathLabs, setCathLabs] = useState<CathLab[]>([]);
+
+  // Ref for CathCPT header buttons
+  const cathCPTRef = useRef<CardiologyCPTAppHandle>(null);
 
   // Patients state (for Rounds)
   const [patients, setPatients] = useState<Inpatient[]>([]);
@@ -86,6 +93,12 @@ const App: React.FC = () => {
 
   // Dev mode state
   const [devModeSettings, setDevModeSettings] = useState<DevModeSettings | null>(null);
+
+  // HIPAA acknowledgment state
+  const [hipaaAcknowledged, setHipaaAcknowledged] = useState<boolean | null>(null);
+
+  // Session timeout — locks after 5 minutes of inactivity (HIPAA)
+  const { isLocked, unlock: unlockSession } = useInactivityTimer(authUser !== null);
 
   // Initialize app
   useEffect(() => {
@@ -112,6 +125,18 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Background screenshot prevention — shows privacy overlay in task switcher
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const overlay = document.getElementById('privacy-overlay');
+      if (overlay) {
+        overlay.style.display = document.hidden ? 'flex' : 'none';
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const initializeApp = async () => {
     try {
       setInitStep('checking credentials...');
@@ -126,6 +151,10 @@ const App: React.FC = () => {
           setAuthUser(user);
         }
       }
+
+      // Check HIPAA acknowledgment
+      const hipaaResult = await window.storage.get('hipaa_ack_timestamp');
+      setHipaaAcknowledged(!!hipaaResult?.value);
 
       setInitStep('loading settings...');
       const devSettings = await getDevModeSettings();
@@ -152,7 +181,7 @@ const App: React.FC = () => {
       setInitStep('done');
     } catch (error) {
       setInitStep('error: ' + (error instanceof Error ? error.message : String(error)));
-      console.error('App initialization error:', error);
+      logger.error('App initialization error', error);
     } finally {
       setIsInitializing(false);
     }
@@ -166,6 +195,8 @@ const App: React.FC = () => {
   const loadHospitals = async () => {
     const hospitalList = await getHospitals();
     setHospitals(hospitalList);
+    const labList = await getCathLabs();
+    setCathLabs(labList);
   };
 
   const loadPatients = async (orgId: string | null) => {
@@ -182,6 +213,23 @@ const App: React.FC = () => {
 
   const loadChargesAndDiagnoses = async () => {
     const loadedCharges = await getChargesByPatientAndDate();
+
+    // Merge mock charges when in dev mode so Rounds and admin patients see them
+    const devSettings = await getDevModeSettings();
+    if (devSettings?.enabled) {
+      for (const mc of mockCharges) {
+        const charge = mc as StoredCharge;
+        if (!loadedCharges[charge.inpatientId]) {
+          loadedCharges[charge.inpatientId] = {};
+        }
+        // Only add mock charge if no stored charge exists for that patient/date
+        // (stored charges take priority — mock charges may have been persisted after billing)
+        if (!loadedCharges[charge.inpatientId][charge.chargeDate]) {
+          loadedCharges[charge.inpatientId][charge.chargeDate] = charge;
+        }
+      }
+    }
+
     setCharges(loadedCharges);
 
     const loadedDiagnoses = await getStoredDiagnoses();
@@ -314,6 +362,42 @@ const App: React.FC = () => {
     setShowAddPatient(false);
   };
 
+  const handleCreatePatientFromCharge = (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]): Inpatient => {
+    const orgId = userMode.organizationId || 'org-1';
+    const userId = authUser?.id || 'user-1';
+    const userName = authUser?.displayName || 'Unknown';
+
+    const newPatient: Inpatient = {
+      ...patient,
+      id: `patient-${Date.now()}`,
+      organizationId: orgId,
+      primaryPhysicianId: userId,
+      createdAt: new Date().toISOString()
+    };
+
+    setPatients(prev => [...prev, newPatient]);
+
+    if (diagnoses.length > 0) {
+      setPatientDiagnoses(prev => ({
+        ...prev,
+        [newPatient.id]: diagnoses
+      }));
+      saveDiagnoses(newPatient.id, diagnoses);
+    }
+
+    logAuditEvent(orgId, {
+      action: 'patient_added',
+      userId,
+      userName,
+      targetPatientId: newPatient.id,
+      targetPatientName: newPatient.patientName,
+      details: `Auto-added patient ${newPatient.patientName} from cath lab charge`,
+      listContext: 'my'
+    });
+
+    return newPatient;
+  };
+
   const handleDischargePatient = (patient: Inpatient) => {
     const orgId = userMode.organizationId || 'org-1';
     const userId = authUser?.id || 'user-1';
@@ -351,6 +435,26 @@ const App: React.FC = () => {
       targetPatientName: patient.patientName,
       details: `Removed patient ${patient.patientName} from practice`,
       listContext: 'practice'
+    });
+  };
+
+  const handleRemoveFromMyList = (patient: Inpatient) => {
+    const orgId = userMode.organizationId || 'org-1';
+    const userId = authUser?.id || 'user-1';
+    const userName = authUser?.displayName || 'Unknown';
+
+    setPatients(prev => prev.map(p =>
+      p.id === patient.id ? { ...p, primaryPhysicianId: '' } : p
+    ));
+
+    logAuditEvent(orgId, {
+      action: 'patient_removed',
+      userId,
+      userName,
+      targetPatientId: patient.id,
+      targetPatientName: patient.patientName,
+      details: `Removed patient ${patient.patientName} from my list`,
+      listContext: 'my'
     });
   };
 
@@ -476,16 +580,41 @@ const App: React.FC = () => {
       }));
     }
 
-    console.log('Charge saved:', savedCharge);
+    // Log charge_submitted audit event
+    const orgId = userMode.organizationId;
+    if (orgId) {
+      logAuditEvent(orgId, {
+        action: 'charge_submitted',
+        userId: authUser?.id || 'user-1',
+        userName: authUser?.displayName || 'Unknown',
+        targetPatientId: patientId,
+        targetPatientName: selectedPatientForCharge.patientName,
+        details: `Submitted charge ${codesDisplay} for ${selectedPatientForCharge.patientName}`,
+        listContext: null,
+        metadata: { chargeId: savedCharge.id, chargeDate: dateStr, newStatus: 'pending' }
+      });
+    }
+
+    logger.info('Charge saved');
     setShowAddCharge(false);
     setSelectedPatientForCharge(null);
   };
 
-  // Handle editing a charge (open dialog in edit mode)
+  // Handle editing a charge (open dialog in edit mode, or navigate to CathLab for snapshot edits)
   const handleEditCharge = (charge: StoredCharge, patient: Inpatient) => {
-    setEditingCharge(charge);
-    setSelectedPatientForCharge(patient);
-    setShowAddCharge(true);
+    if (charge.caseSnapshot) {
+      // Has case snapshot — open full CathLab case builder
+      setActiveTab('cathlab');
+      // Small delay to ensure CathLab tab is rendered before calling loadChargeForEdit
+      setTimeout(() => {
+        cathCPTRef.current?.loadChargeForEdit(charge, patient);
+      }, 50);
+    } else {
+      // Legacy charge (no snapshot) — use simple edit dialog
+      setEditingCharge(charge);
+      setSelectedPatientForCharge(patient);
+      setShowAddCharge(true);
+    }
   };
 
   // Handle updating an existing charge
@@ -516,10 +645,10 @@ const App: React.FC = () => {
           }));
         }
 
-        console.log('Charge updated:', updatedCharge);
+        logger.info('Charge updated');
       }
     } catch (error) {
-      console.error('Error updating charge:', error);
+      logger.error('Error updating charge', error);
       alert(error instanceof Error ? error.message : 'Failed to update charge');
     }
 
@@ -535,9 +664,9 @@ const App: React.FC = () => {
       await markChargeBilled(chargeId);
       // Reload charges to get updated status
       await loadChargesAndDiagnoses();
-      console.log('Charge marked as billed:', chargeId);
+      logger.info('Charge marked as billed');
     } catch (error) {
-      console.error('Error marking charge as billed:', error);
+      logger.error('Error marking charge as billed', error);
       alert('Failed to mark charge as billed');
     }
   };
@@ -595,6 +724,18 @@ const App: React.FC = () => {
     );
   }
 
+  // Show HIPAA acknowledgment if not yet accepted
+  if (hipaaAcknowledged === false) {
+    return (
+      <HIPAABanner
+        onAcknowledge={async () => {
+          await window.storage.set('hipaa_ack_timestamp', new Date().toISOString());
+          setHipaaAcknowledged(true);
+        }}
+      />
+    );
+  }
+
   // Show login screen
   if (showLogin) {
     return (
@@ -605,126 +746,200 @@ const App: React.FC = () => {
     );
   }
 
+  // Show lock screen when session is locked
+  if (isLocked && authUser) {
+    return (
+      <LockScreen
+        userEmail={authUser.email}
+        onUnlock={unlockSession}
+      />
+    );
+  }
+
   // Check if Pro mode with tab visibility
   const isProMode = userMode.tier === 'pro';
-  const showRoundsTab = isProMode && userMode.role === 'physician';
+  const showRoundsTab = isProMode && (userMode.role === 'physician' || userMode.role === 'admin');
   const showAdminTab = isProMode && userMode.role === 'admin';
   const showTabBar = showRoundsTab || showAdminTab;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Pro Mode Header with Sync Status */}
-      {isProMode && (
-        <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {userMode.isDevMode && (
-              <span className="px-2 py-0.5 bg-yellow-500 text-yellow-900 text-xs font-medium rounded">
-                DEV
-              </span>
-            )}
-            <span className="text-sm font-medium">
-              {userMode.organizationName || 'Pro Mode'}
-            </span>
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* === FIXED HEADER === */}
+      <div className="flex-shrink-0">
+        {/* Row 1: CathCPT branding + action buttons */}
+        <div className="bg-white px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            {/* Small CathCPT icon */}
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <defs>
+                  <linearGradient id="headerBgGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#D4A84B"/>
+                    <stop offset="50%" stopColor="#C49A3D"/>
+                    <stop offset="100%" stopColor="#9A7830"/>
+                  </linearGradient>
+                </defs>
+                <rect width="100" height="100" rx="18" fill="url(#headerBgGold)"/>
+                <g transform="translate(28, 5) scale(0.52)">
+                  <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
+                </g>
+                <text x="50" y="72" fontSize="36" fontWeight="900" fill="#F5E6B0" textAnchor="middle" fontFamily="Arial Black, sans-serif">CPT</text>
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold text-amber-700">CathCPT</h1>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Sync Status */}
+          <div className="flex items-center gap-1.5">
+            {/* History */}
             <button
-              onClick={handleSync}
-              disabled={syncStatus.isSyncing}
-              className="flex items-center gap-1.5 text-sm opacity-90 hover:opacity-100"
+              onClick={() => cathCPTRef.current?.openHistory()}
+              className="p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+              title="Case History"
             >
-              {syncStatus.isOnline ? (
-                <Wifi className="w-4 h-4" />
-              ) : (
-                <WifiOff className="w-4 h-4 text-yellow-300" />
-              )}
-              {syncStatus.pendingCount > 0 && (
-                <span className="px-1.5 py-0.5 bg-white/20 rounded text-xs">
-                  {syncStatus.pendingCount}
+              <History size={18} className="text-blue-600" />
+            </button>
+            {/* 2026 Updates */}
+            <button
+              onClick={() => cathCPTRef.current?.openUpdates()}
+              className="p-2 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors"
+              title="What's New in 2026"
+            >
+              <Lightbulb size={18} className="text-yellow-600" />
+            </button>
+            {/* Settings */}
+            <button
+              onClick={() => cathCPTRef.current?.openSettings()}
+              className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+              title="Settings"
+            >
+              <Settings size={18} className="text-indigo-600" />
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Blue practice bar */}
+        {isProMode && (
+          <div className="bg-blue-600 text-white px-4 py-1.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {userMode.isDevMode && (
+                <span className="px-2 py-0.5 bg-yellow-500 text-yellow-900 text-xs font-medium rounded">
+                  DEV
                 </span>
               )}
-              <RefreshCw className={`w-4 h-4 ${syncStatus.isSyncing ? 'animate-spin' : ''}`} />
-            </button>
-
-            {/* Logout */}
-            <button
-              onClick={handleLogout}
-              className="p-1 hover:bg-white/10 rounded"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tab Navigation (Pro Mode Only) */}
-      {showTabBar && (
-        <div className="bg-white border-b border-gray-200 px-4">
-          <div className="flex gap-4">
-            <button
-              onClick={() => setActiveTab('cathlab')}
-              className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'cathlab'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Heart className="w-4 h-4 inline mr-1.5" />
-              Cath Lab
-            </button>
-            {showRoundsTab && (
+              <span className="text-sm font-medium">
+                {userMode.organizationName || 'Pro Mode'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setActiveTab('rounds')}
+                onClick={handleSync}
+                disabled={syncStatus.isSyncing}
+                className="flex items-center gap-1.5 text-sm opacity-90 hover:opacity-100"
+              >
+                {syncStatus.isOnline ? (
+                  <Wifi className="w-4 h-4" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-yellow-300" />
+                )}
+                {syncStatus.pendingCount > 0 && (
+                  <span className="px-1.5 py-0.5 bg-white/20 rounded text-xs">
+                    {syncStatus.pendingCount}
+                  </span>
+                )}
+                <RefreshCw className={`w-4 h-4 ${syncStatus.isSyncing ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-1 hover:bg-white/10 rounded"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Row 3: Tab navigation */}
+        {showTabBar && (
+          <div className="bg-white border-b border-gray-200 px-4">
+            <div className="flex gap-4">
+              <button
+                onClick={() => setActiveTab('cathlab')}
                 className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'rounds'
+                  activeTab === 'cathlab'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Users className="w-4 h-4 inline mr-1.5" />
-                Rounds
+                <Heart className="w-4 h-4 inline mr-1.5" />
+                Cath Lab
               </button>
-            )}
-            {showAdminTab && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'admin'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Shield className="w-4 h-4 inline mr-1.5" />
-                Admin Portal
-              </button>
-            )}
+              {showRoundsTab && (
+                <button
+                  onClick={() => setActiveTab('rounds')}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'rounds'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Users className="w-4 h-4 inline mr-1.5" />
+                  Rounds
+                </button>
+              )}
+              {showAdminTab && (
+                <button
+                  onClick={() => setActiveTab('admin')}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'admin'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Shield className="w-4 h-4 inline mr-1.5" />
+                  Admin Portal
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Main Content */}
+      {/* === SCROLLABLE CONTENT === */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'cathlab' && <CardiologyCPTApp />}
+        {activeTab === 'cathlab' && (
+          <CardiologyCPTApp
+            ref={cathCPTRef}
+            isProMode={isProMode}
+            patients={patients}
+            hospitals={hospitals}
+            cathLabs={cathLabs}
+            patientDiagnoses={patientDiagnoses}
+            orgId={userMode.organizationId || 'mock-org-1'}
+            userName={authUser?.displayName || ''}
+            onPatientCreated={handleCreatePatientFromCharge}
+            onChargeUpdated={loadChargesAndDiagnoses}
+          />
+        )}
         {activeTab === 'rounds' && (
           <RoundsScreen
-            userMode={userMode}
-            hospitals={hospitals}
-            patients={patients}
-            currentUserId={authUser?.id || 'user-1'}
-            callListEntries={callListEntries}
-            onAddPatient={handleAddPatient}
-            onAddCharge={handleAddCharge}
-            onDischargePatient={handleDischargePatient}
-            onRemovePatient={handleRemovePatient}
-            onAddToCallList={handleOpenCallListPicker}
-            onRemoveFromCallList={handleRemoveFromCallList}
-            onClearCallList={handleClearCallList}
-            charges={charges}
-            diagnoses={patientDiagnoses}
-            onRefresh={handleRoundsRefresh}
-            onEditCharge={handleEditCharge}
-            onMarkChargeBilled={handleMarkChargeBilled}
-          />
+              userMode={userMode}
+              hospitals={hospitals}
+              patients={patients}
+              currentUserId={authUser?.id || 'user-1'}
+              callListEntries={callListEntries}
+              onAddPatient={handleAddPatient}
+              onAddCharge={handleAddCharge}
+              onDischargePatient={handleDischargePatient}
+              onRemovePatient={handleRemovePatient}
+              onAddToCallList={handleOpenCallListPicker}
+              onRemoveFromCallList={handleRemoveFromCallList}
+              onClearCallList={handleClearCallList}
+              charges={charges}
+              diagnoses={patientDiagnoses}
+              onRefresh={handleRoundsRefresh}
+              onEditCharge={handleEditCharge}
+              onMarkChargeBilled={handleMarkChargeBilled}
+              onRemoveFromMyList={handleRemoveFromMyList}
+            />
         )}
         {activeTab === 'admin' && (
           <AdminPortalScreen
@@ -863,6 +1078,18 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Privacy overlay — covers PHI content in iOS/Android task switcher */}
+      <div
+        id="privacy-overlay"
+        style={{ display: 'none' }}
+        className="fixed inset-0 bg-white z-[99999] flex flex-col items-center justify-center"
+      >
+        <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4">
+          <Heart className="w-8 h-8 text-white" />
+        </div>
+        <p className="text-lg font-semibold text-gray-700">CathCPT</p>
+      </div>
     </div>
   );
 };

@@ -2,6 +2,7 @@
 // Provides testing toggle for switching between Individual/Pro modes during development
 
 import { UserTier, UserRole, AuthUser } from './authService';
+import { logger } from './logger';
 
 const DEV_MODE_KEY = 'dev_mode_override';
 const DEV_MODE_UNLOCK_COUNT_KEY = 'dev_mode_unlock_count';
@@ -219,7 +220,7 @@ export const mockAuditEntries = [
     details: 'Submitted charge 99223 for Simpson, Homer',
     timestamp: new Date(Date.now() - 2 * 86400000).toISOString(),
     listContext: null,
-    metadata: { chargeId: 'mock-charge-1', newStatus: 'pending' }
+    metadata: { chargeId: 'mock-charge-1', chargeDate: new Date().toISOString().split('T')[0], newStatus: 'pending' }
   },
   {
     id: 'audit-mock-2',
@@ -231,7 +232,7 @@ export const mockAuditEntries = [
     details: 'Marked charge 99232 as entered for Simpson, Homer',
     timestamp: new Date(Date.now() - 43200000).toISOString(),
     listContext: null,
-    metadata: { chargeId: 'mock-charge-2', previousStatus: 'pending', newStatus: 'entered' }
+    metadata: { chargeId: 'mock-charge-2', chargeDate: new Date(Date.now() - 86400000).toISOString().split('T')[0], previousStatus: 'pending', newStatus: 'entered' }
   },
   {
     id: 'audit-mock-3',
@@ -243,7 +244,7 @@ export const mockAuditEntries = [
     details: 'Marked charge 99222 as billed for Burns, Montgomery',
     timestamp: new Date(Date.now() - 86400000).toISOString(),
     listContext: null,
-    metadata: { chargeId: 'mock-charge-4', previousStatus: 'entered', newStatus: 'billed' }
+    metadata: { chargeId: 'mock-charge-4', chargeDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], previousStatus: 'entered', newStatus: 'billed' }
   },
   {
     id: 'audit-mock-4',
@@ -266,7 +267,7 @@ export const mockAuditEntries = [
     details: 'Submitted charge 99222 for Burns, Montgomery',
     timestamp: new Date(Date.now() - 2.5 * 86400000).toISOString(),
     listContext: null,
-    metadata: { chargeId: 'mock-charge-4', newStatus: 'pending' }
+    metadata: { chargeId: 'mock-charge-4', chargeDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], newStatus: 'pending' }
   },
   {
     id: 'audit-mock-6',
@@ -292,8 +293,7 @@ export async function getDevModeSettings(): Promise<DevModeSettings | null> {
       }
     }
     return null;
-  } catch (error) {
-    console.error('Error loading dev mode settings:', error);
+  } catch {
     return null;
   }
 }
@@ -303,7 +303,7 @@ export async function saveDevModeSettings(settings: DevModeSettings): Promise<vo
   try {
     await window.storage.set(DEV_MODE_KEY, JSON.stringify(settings));
   } catch (error) {
-    console.error('Error saving dev mode settings:', error);
+    logger.error('Error saving dev mode settings', error);
     throw error;
   }
 }

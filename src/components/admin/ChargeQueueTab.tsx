@@ -5,15 +5,16 @@ import {
   Check,
   CheckCheck,
   Edit2,
-  ChevronDown,
   DollarSign,
   Clock
 } from 'lucide-react';
 import { ChargeQueueFilters, ChargeQueueItem, Hospital, Inpatient } from '../../types';
-import { StoredCharge, markChargeEntered, markChargeBilled } from '../../services/chargesService';
+import { StoredCharge, ChargeStatus, markChargeEntered, markChargeBilled } from '../../services/chargesService';
 import { getChargeQueue } from '../../services/adminChargeService';
 import { logAuditEvent } from '../../services/auditService';
 import { calculateMedicarePayment, getAllInpatientCodes } from '../../data/inpatientCodes';
+import { getAllEPCodes } from '../../data/epCodes';
+import { getAllEchoCodes } from '../../data/echoCodes';
 import { ChargeEditDialog } from './ChargeEditDialog';
 import { BatchBillConfirmDialog } from './BatchBillConfirmDialog';
 
@@ -24,6 +25,7 @@ interface ChargeQueueTabProps {
   currentUserId: string;
   currentUserName: string;
   onChargesUpdated: () => void;
+  refreshKey?: number;
 }
 
 export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
@@ -32,7 +34,8 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
   patients,
   currentUserId,
   currentUserName,
-  onChargesUpdated
+  onChargesUpdated,
+  refreshKey
 }) => {
   const [items, setItems] = useState<ChargeQueueItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -49,7 +52,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
     searchQuery: ''
   });
 
-  const allCodes = useMemo(() => getAllInpatientCodes(), []);
+  const allCodes = useMemo(() => [...getAllInpatientCodes(), ...getAllEPCodes(), ...getAllEchoCodes()], []);
 
   const getRVU = useCallback((cptCode: string): number => {
     if (cptCode.includes(' + ')) {
@@ -66,20 +69,21 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
 
   const loadQueue = useCallback(async () => {
     setIsLoading(true);
-    const queueItems = await getChargeQueue(orgId, filters);
+    const queueItems = await getChargeQueue(orgId, filters, patients);
     setItems(queueItems);
     setIsLoading(false);
-  }, [orgId, filters]);
+  }, [orgId, filters, patients]);
 
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
 
-  const handleRefreshAfterAction = async () => {
-    setSelectedIds(new Set());
-    await loadQueue();
-    onChargesUpdated();
-  };
+  // Reload when parent triggers refresh
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      loadQueue();
+    }
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectAll = () => {
     if (selectedIds.size === items.length) {
@@ -102,7 +106,14 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
   };
 
   const handleMarkEntered = async (item: ChargeQueueItem) => {
-    await markChargeEntered(item.charge.id, currentUserName);
+    // Optimistic update — change status immediately in UI
+    setItems(prev => prev.map(i =>
+      i.charge.id === item.charge.id
+        ? { ...i, charge: { ...i.charge, status: 'entered' as ChargeStatus, enteredAt: new Date().toISOString(), enteredBy: currentUserName } }
+        : i
+    ));
+    // Persist (pass full charge in case it's a mock not yet in storage)
+    await markChargeEntered(item.charge.id, currentUserName, item.charge);
     await logAuditEvent(orgId, {
       action: 'charge_marked_entered',
       userId: currentUserId,
@@ -111,13 +122,20 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
       targetPatientName: item.patient.patientName,
       details: `Marked charge ${item.charge.cptCode} as entered for ${item.patient.patientName}`,
       listContext: null,
-      metadata: { chargeId: item.charge.id, previousStatus: item.charge.status, newStatus: 'entered' }
+      metadata: { chargeId: item.charge.id, chargeDate: item.charge.chargeDate, previousStatus: item.charge.status, newStatus: 'entered' }
     });
-    await handleRefreshAfterAction();
+    onChargesUpdated();
   };
 
   const handleMarkBilled = async (item: ChargeQueueItem) => {
-    await markChargeBilled(item.charge.id, currentUserName);
+    // Optimistic update — change status immediately in UI
+    setItems(prev => prev.map(i =>
+      i.charge.id === item.charge.id
+        ? { ...i, charge: { ...i.charge, status: 'billed' as ChargeStatus, billedAt: new Date().toISOString(), billedBy: currentUserName } }
+        : i
+    ));
+    // Persist (pass full charge in case it's a mock not yet in storage)
+    await markChargeBilled(item.charge.id, currentUserName, item.charge);
     await logAuditEvent(orgId, {
       action: 'charge_marked_billed',
       userId: currentUserId,
@@ -126,9 +144,9 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
       targetPatientName: item.patient.patientName,
       details: `Marked charge ${item.charge.cptCode} as billed for ${item.patient.patientName}`,
       listContext: null,
-      metadata: { chargeId: item.charge.id, previousStatus: item.charge.status, newStatus: 'billed' }
+      metadata: { chargeId: item.charge.id, chargeDate: item.charge.chargeDate, previousStatus: item.charge.status, newStatus: 'billed' }
     });
-    await handleRefreshAfterAction();
+    onChargesUpdated();
   };
 
   const handleBatchAction = (action: 'entered' | 'billed') => {
@@ -137,7 +155,18 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
     setBatchAction({ items: selectedItems, action });
   };
 
-  // Get unique physicians for filter dropdown
+  const handleBatchCompleted = async () => {
+    setSelectedIds(new Set());
+    await loadQueue();
+    onChargesUpdated();
+  };
+
+  const handleEditSaved = async () => {
+    await loadQueue();
+    onChargesUpdated();
+  };
+
+  // Unique physicians for filter
   const physicians = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach(item => {
@@ -149,62 +178,99 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [items]);
 
+  const formatDOS = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">Pending</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">Pending</span>;
       case 'entered':
-        return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium flex items-center gap-1"><Check className="w-3 h-3" />Entered</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"><Check className="w-3 h-3" />Entered</span>;
       case 'billed':
-        return <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium flex items-center gap-1"><CheckCheck className="w-3 h-3" />Billed</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium"><CheckCheck className="w-3 h-3" />Billed</span>;
       default:
         return null;
     }
   };
 
+  // Visible items (filter out billed when in "all" mode, since optimistic update keeps them in array)
+  const visibleItems = useMemo(() => {
+    if (filters.status === 'all') {
+      return items.filter(i => i.charge.status !== 'billed');
+    }
+    return items.filter(i => i.charge.status === filters.status);
+  }, [items, filters.status]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Search & Filter Bar */}
-      <div className="px-4 py-3 bg-white border-b border-gray-200 space-y-2">
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
+      <div className="px-6 py-4 bg-white border-b border-gray-200 space-y-3">
+        <div className="flex gap-3 items-center">
+          <div className="flex-1 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={filters.searchQuery}
               onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
               placeholder="Search patient, MRN, or CPT..."
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1 px-3 py-2 border rounded-lg text-sm ${
-              showFilters ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700'
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
+              showFilters ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
             <Filter className="w-4 h-4" />
-            Filter
+            Filters
           </button>
+
+          {/* Batch actions */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-300">
+              <span className="text-sm font-medium text-blue-700">
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={() => handleBatchAction('entered')}
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Check className="w-4 h-4" />
+                Mark Entered
+              </button>
+              <button
+                onClick={() => handleBatchAction('billed')}
+                className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <CheckCheck className="w-4 h-4" />
+                Mark Billed
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Expanded Filters */}
         {showFilters && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-3">
             <select
               value={filters.status}
               onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
             >
               <option value="all">All Active</option>
               <option value="pending">Pending</option>
               <option value="entered">Entered</option>
+              <option value="billed">Billed</option>
             </select>
 
             <select
               value={filters.physicianId || ''}
               onChange={(e) => setFilters(prev => ({ ...prev, physicianId: e.target.value || null }))}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
             >
               <option value="">All Physicians</option>
               {physicians.map(p => (
@@ -215,7 +281,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
             <select
               value={filters.hospitalId || ''}
               onChange={(e) => setFilters(prev => ({ ...prev, hospitalId: e.target.value || null }))}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
             >
               <option value="">All Hospitals</option>
               {hospitals.map(h => (
@@ -224,182 +290,170 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
             </select>
           </div>
         )}
-
-        {/* Batch Action Bar */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-            <span className="text-sm font-medium text-blue-700">
-              {selectedIds.size} selected
-            </span>
-            <div className="flex-1" />
-            <button
-              onClick={() => handleBatchAction('entered')}
-              className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
-            >
-              <Check className="w-3.5 h-3.5" />
-              Mark Entered
-            </button>
-            <button
-              onClick={() => handleBatchAction('billed')}
-              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
-            >
-              <CheckCheck className="w-3.5 h-3.5" />
-              Mark Billed
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Queue List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <p className="text-gray-500">Loading charges...</p>
           </div>
-        ) : items.length === 0 ? (
+        ) : visibleItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-gray-500">
             <CheckCheck className="w-12 h-12 mb-3 text-gray-300" />
             <p className="text-lg font-medium">Queue is clear</p>
             <p className="text-sm">No charges match your filters</p>
           </div>
         ) : (
-          <>
-            {/* Select All Header */}
-            <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs text-gray-500 font-medium">
-              <button
-                onClick={handleSelectAll}
-                className={`w-5 h-5 rounded border flex items-center justify-center ${
-                  selectedIds.size === items.length
-                    ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'border-gray-300'
-                }`}
-              >
-                {selectedIds.size === items.length && <Check className="w-3 h-3" />}
-              </button>
-              <span className="flex-1">PATIENT</span>
-              <span className="w-20">PHYSICIAN</span>
-              <span className="w-16 text-center">CPT</span>
-              <span className="w-16 text-center">STATUS</span>
-              <span className="w-14 text-right">RVU</span>
-              <span className="w-16 text-right">$</span>
-              <span className="w-20"></span>
-            </div>
-
-            <div className="divide-y divide-gray-100">
-              {items.map(item => {
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="w-12 px-4 py-3 text-left">
+                  <button
+                    onClick={handleSelectAll}
+                    className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                      selectedIds.size === visibleItems.length && visibleItems.length > 0
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    {selectedIds.size === visibleItems.length && visibleItems.length > 0 && <Check className="w-3 h-3" />}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Patient</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">MRN</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">DOS</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Physician</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">CPT Code</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Status</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">RVU</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Payment</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {visibleItems.map(item => {
                 const rvu = item.charge.rvu || getRVU(item.charge.cptCode);
                 const payment = calculateMedicarePayment(rvu);
                 const isSelected = selectedIds.has(item.charge.id);
                 const isBilled = item.charge.status === 'billed';
 
                 return (
-                  <div
+                  <tr
                     key={item.charge.id}
-                    className={`flex items-center gap-3 px-4 py-3 ${
-                      isSelected ? 'bg-blue-50' : isBilled ? 'bg-gray-50' : 'bg-white'
+                    className={`transition-colors ${
+                      isSelected ? 'bg-blue-50' : isBilled ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'
                     }`}
                   >
                     {/* Checkbox */}
-                    <button
-                      onClick={() => toggleSelect(item.charge.id)}
-                      className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center ${
-                        isSelected
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'border-gray-300'
-                      }`}
-                    >
-                      {isSelected && <Check className="w-3 h-3" />}
-                    </button>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => toggleSelect(item.charge.id)}
+                        className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                          isSelected
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3" />}
+                      </button>
+                    </td>
 
                     {/* Patient */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {item.patient.patientName}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {item.patient.mrn && `MRN ${item.patient.mrn} • `}
-                        {item.charge.chargeDate}
-                      </p>
-                    </div>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-medium text-gray-900">{item.patient.patientName}</p>
+                    </td>
+
+                    {/* MRN */}
+                    <td className="px-4 py-3">
+                      <p className="text-sm text-gray-600">{item.patient.mrn || '—'}</p>
+                    </td>
+
+                    {/* DOS */}
+                    <td className="px-4 py-3">
+                      <p className="text-sm text-gray-700">{formatDOS(item.charge.chargeDate)}</p>
+                    </td>
 
                     {/* Physician */}
-                    <span className="w-20 text-xs text-gray-600 truncate hidden sm:block">
-                      {item.physicianName}
-                    </span>
+                    <td className="px-4 py-3">
+                      <p className="text-sm text-gray-600 truncate">{item.physicianName}</p>
+                    </td>
 
-                    {/* CPT */}
-                    <span className="w-16 text-center font-mono text-sm text-gray-900">
-                      {item.charge.cptCode.length > 7 ? item.charge.cptCode.substring(0, 7) + '...' : item.charge.cptCode}
-                    </span>
+                    {/* CPT Code */}
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-mono text-gray-900">{item.charge.cptCode}</p>
+                      {item.charge.cptDescription && (
+                        <p className="text-xs text-gray-500 truncate max-w-xs">{item.charge.cptDescription}</p>
+                      )}
+                    </td>
 
                     {/* Status */}
-                    <div className="w-16 flex justify-center">
+                    <td className="px-4 py-3 text-center">
                       {getStatusBadge(item.charge.status)}
-                    </div>
+                    </td>
 
                     {/* RVU */}
-                    <span className="w-14 text-right text-sm text-gray-700">
-                      {rvu.toFixed(2)}
-                    </span>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm font-medium text-gray-700">{rvu.toFixed(2)}</span>
+                    </td>
 
                     {/* Payment */}
-                    <span className="w-16 text-right text-sm text-green-600 font-medium">
-                      ${payment.toFixed(0)}
-                    </span>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm font-medium text-green-600">${payment.toFixed(0)}</span>
+                    </td>
 
                     {/* Actions */}
-                    <div className="w-20 flex items-center justify-end gap-1">
-                      {!isBilled && (
-                        <>
-                          <button
-                            onClick={() => setEditingCharge({
-                              charge: item.charge,
-                              patientName: item.patient.patientName
-                            })}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          {item.charge.status === 'pending' && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        {!isBilled && (
+                          <>
                             <button
-                              onClick={() => handleMarkEntered(item)}
-                              className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
-                              title="Mark Entered"
+                              onClick={() => setEditingCharge({ charge: item.charge, patientName: item.patient.patientName })}
+                              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Edit charge"
                             >
-                              <Check className="w-3.5 h-3.5" />
+                              <Edit2 className="w-4 h-4" />
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleMarkBilled(item)}
-                            className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-50 rounded"
-                            title="Mark Billed"
-                          >
-                            <CheckCheck className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                            {item.charge.status === 'pending' && (
+                              <button
+                                onClick={() => handleMarkEntered(item)}
+                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Mark as Entered"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleMarkBilled(item)}
+                              className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Mark as Billed"
+                            >
+                              <CheckCheck className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 );
               })}
-            </div>
-          </>
+            </tbody>
+          </table>
         )}
       </div>
 
       {/* Summary Footer */}
-      {items.length > 0 && (
-        <div className="bg-white border-t border-gray-200 px-4 py-3">
+      {visibleItems.length > 0 && (
+        <div className="bg-white border-t border-gray-200 px-6 py-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">
-              {items.length} charge{items.length !== 1 ? 's' : ''}
+              {visibleItems.length} charge{visibleItems.length !== 1 ? 's' : ''}
             </span>
             <span className="text-gray-700 font-medium">
-              {items.reduce((sum, item) => sum + (item.charge.rvu || getRVU(item.charge.cptCode)), 0).toFixed(2)} RVU
-              {' • '}
+              Total: {visibleItems.reduce((sum, item) => sum + (item.charge.rvu || getRVU(item.charge.cptCode)), 0).toFixed(2)} RVU
+              {' | '}
               <span className="text-green-600">
-                ${items.reduce((sum, item) => sum + calculateMedicarePayment(item.charge.rvu || getRVU(item.charge.cptCode)), 0).toFixed(0)}
+                ${visibleItems.reduce((sum, item) => sum + calculateMedicarePayment(item.charge.rvu || getRVU(item.charge.cptCode)), 0).toFixed(0)}
               </span>
             </span>
           </div>
@@ -415,7 +469,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
         adminId={currentUserId}
         adminName={currentUserName}
         onClose={() => setEditingCharge(null)}
-        onSaved={handleRefreshAfterAction}
+        onSaved={handleEditSaved}
       />
 
       {batchAction && (
@@ -427,7 +481,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
           adminId={currentUserId}
           adminName={currentUserName}
           onClose={() => setBatchAction(null)}
-          onCompleted={handleRefreshAfterAction}
+          onCompleted={handleBatchCompleted}
         />
       )}
     </div>

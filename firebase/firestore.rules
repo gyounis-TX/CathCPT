@@ -32,6 +32,16 @@ service cloud.firestore {
       }
     }
 
+    // ── Invite Codes (top-level for O(1) lookup) ──────────
+    match /inviteCodes/{code} {
+      // Any authenticated user can read (to validate during registration)
+      allow read: if request.auth != null;
+      // Only created via org-scoped admin path (or server-side)
+      allow create: if false;
+      // Any authenticated user can update (for redemption)
+      allow update: if request.auth != null;
+    }
+
     // ── Organizations ──────────────────────────────────────
     match /organizations/{orgId} {
       // Any authenticated user can read orgs (for practice code lookup)
@@ -107,12 +117,22 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
       }
 
-      // Audit log
+      // Invites (admin management — mirrored from top-level inviteCodes)
+      match /invites/{inviteId} {
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+        allow create, update: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      }
+
+      // Audit log — IMMUTABLE: create-only, no update or delete (HIPAA requirement)
       match /auditLog/{logId} {
         allow read: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
         allow create: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+        // update and delete intentionally omitted — audit entries must be immutable
       }
     }
   }
