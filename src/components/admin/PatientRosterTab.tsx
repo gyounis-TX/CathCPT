@@ -8,6 +8,7 @@ import { PatientDetailPanel } from './PatientDetailPanel';
 interface PatientRosterTabProps {
   orgId: string;
   hospitals: Hospital[];
+  knownPatients?: Inpatient[];
   charges: Record<string, Record<string, StoredCharge>>;
   diagnoses: Record<string, string[]>;
   currentUserId: string;
@@ -20,6 +21,7 @@ type RosterFilter = 'all' | 'active' | 'discharged';
 export const PatientRosterTab: React.FC<PatientRosterTabProps> = ({
   orgId,
   hospitals,
+  knownPatients,
   charges,
   diagnoses,
   currentUserId,
@@ -34,15 +36,29 @@ export const PatientRosterTab: React.FC<PatientRosterTabProps> = ({
 
   const loadPatients = useCallback(async () => {
     setIsLoading(true);
-    if (searchQuery.trim()) {
-      const results = await searchPatients(orgId, searchQuery);
-      setPatients(results);
+    if (knownPatients && knownPatients.length > 0) {
+      // Use in-memory patients from App.tsx (includes CathLab-created patients)
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        setPatients(knownPatients.filter(p =>
+          p.patientName.toLowerCase().includes(q) ||
+          (p.mrn && p.mrn.toLowerCase().includes(q)) ||
+          p.dob.includes(q)
+        ));
+      } else {
+        setPatients(knownPatients);
+      }
     } else {
-      const all = await getAllOrgPatients(orgId);
-      setPatients(all);
+      if (searchQuery.trim()) {
+        const results = await searchPatients(orgId, searchQuery);
+        setPatients(results);
+      } else {
+        const all = await getAllOrgPatients(orgId);
+        setPatients(all);
+      }
     }
     setIsLoading(false);
-  }, [orgId, searchQuery]);
+  }, [orgId, searchQuery, knownPatients]);
 
   useEffect(() => {
     loadPatients();

@@ -40,6 +40,9 @@ android/.idea/
 *.jks
 *.keystore
 
+# Firebase
+.firebase/
+
 # Temporary files
 *.tmp
 *.bak

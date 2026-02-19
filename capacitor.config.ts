@@ -5,12 +5,21 @@ const config: CapacitorConfig = {
   appName: 'CathCPT',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    // Allow connections to Firebase for Pro mode sync
+    allowNavigation: [
+      'https://*.firebaseapp.com',
+      'https://*.googleapis.com',
+      'https://*.firebaseio.com'
+    ]
   },
   ios: {
     contentInset: 'always',
     preferredContentMode: 'mobile',
     scheme: 'CathCPT'
+  },
+  plugins: {
+    Preferences: {}
   }
 };
 

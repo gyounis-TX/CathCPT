@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '../services/logger';
 
 /**
  * Custom hook for persisting state to localStorage using the window.storage API
@@ -19,7 +20,7 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, (newValue:
           setValue(JSON.parse(result.value));
         }
       } catch (error) {
-        console.warn(`Failed to load ${key} from storage:`, error);
+        logger.warn(`Failed to load ${key} from storage`);
       } finally {
         setIsLoaded(true);
       }
@@ -37,7 +38,7 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, (newValue:
       setValue(valueToSave);
       await window.storage.set(key, JSON.stringify(valueToSave));
     } catch (error) {
-      console.error(`Failed to save ${key} to storage:`, error);
+      logger.error(`Failed to save ${key} to storage`, error);
     }
   }, [key, value]);
 

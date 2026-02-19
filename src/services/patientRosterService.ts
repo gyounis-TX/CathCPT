@@ -5,8 +5,10 @@ import { StoredCharge } from './chargesService';
 import { getAllOrgInpatients } from './inpatientService';
 import { getPatientChargeHistory } from './adminChargeService';
 import { calculateMedicarePayment, getAllInpatientCodes } from '../data/inpatientCodes';
+import { getAllEPCodes } from '../data/epCodes';
+import { getAllEchoCodes } from '../data/echoCodes';
 
-const allCodes = getAllInpatientCodes();
+const allCodes = [...getAllInpatientCodes(), ...getAllEPCodes(), ...getAllEchoCodes()];
 
 function stripModifier(code: string): string {
   return code.replace(/-\d+$/, '').trim();

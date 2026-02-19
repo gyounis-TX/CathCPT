@@ -122,7 +122,7 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
   const [timeMinutes, setTimeMinutes] = useState<number | undefined>();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['E/M - Subsequent']));
   const [selectedDiagnoses, setSelectedDiagnoses] = useState<Set<string>>(new Set());
-  const [showDiagnoses, setShowDiagnoses] = useState(false);
+  const [showDiagnoses, setShowDiagnoses] = useState(true);
   const [diagnosisSearch, setDiagnosisSearch] = useState('');
   const [expandedDiagCategories, setExpandedDiagCategories] = useState<Set<string>>(new Set(['primary', 'comorbid']));
   const [expandedDiagSubcategories, setExpandedDiagSubcategories] = useState<Set<string>>(new Set(defaultExpandedSubcategories));
@@ -217,38 +217,26 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
     }
   }, [isOpen, isEditMode]);
 
-  // Get available codes based on encounter type
+  // Get available codes — always show all inpatient codes
   const availableCodes = useMemo(() => {
-    if (isFirstEncounter || isCallCoverage) {
-      return getFirstEncounterCodes();
-    }
-    return getSubsequentEncounterCodes(false);
-  }, [isFirstEncounter, isCallCoverage]);
+    return getAllInpatientCodes();
+  }, []);
 
   // Filter categories to show
   const visibleCategories = useMemo(() => {
     const categories: Record<string, InpatientCode[]> = {};
 
-    // Always show No Charge
+    // Always show all inpatient code categories
     categories['No Charge'] = inpatientCategories['No Charge'];
-
-    // In edit mode, show all categories so user can change to any valid code
-    // For new charges: Show Initial Hospital and Consults only for first encounter or call
-    if (isEditMode || isFirstEncounter || isCallCoverage) {
-      categories['E/M - Initial Hospital'] = inpatientCategories['E/M - Initial Hospital'];
-      categories['Consults'] = inpatientCategories['Consults'];
-    }
-
-    // Always show Subsequent
+    categories['E/M - Initial Hospital'] = inpatientCategories['E/M - Initial Hospital'];
+    categories['Consults'] = inpatientCategories['Consults'];
     categories['E/M - Subsequent'] = inpatientCategories['E/M - Subsequent'];
-
-    // Always show Discharge, Critical Care, Prolonged
     categories['E/M - Discharge'] = inpatientCategories['E/M - Discharge'];
     categories['Critical Care'] = inpatientCategories['Critical Care'];
     categories['Prolonged Services'] = inpatientCategories['Prolonged Services'];
 
     return categories;
-  }, [isFirstEncounter, isCallCoverage, isEditMode]);
+  }, []);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => {
@@ -763,7 +751,7 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
             )}
 
             {/* Diagnosis Codes */}
-            <div className="border-t border-gray-200 pt-3">
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mt-3">
               <button
                 type="button"
                 onClick={() => setShowDiagnoses(!showDiagnoses)}

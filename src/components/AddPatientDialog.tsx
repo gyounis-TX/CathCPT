@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Building2, Calendar, Hash, ChevronDown, ChevronRight, Search, Check, Users } from 'lucide-react';
+import { logger } from '../services/logger';
 import { Inpatient, Hospital, PatientMatchResult } from '../types';
 import {
   icd10Codes,
@@ -35,7 +36,8 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   orgId
 }) => {
   const [patientName, setPatientName] = useState('');
-  const [dob, setDob] = useState('');
+  const [dob, setDob] = useState(''); // stored as YYYY-MM-DD
+  const [dobDisplay, setDobDisplay] = useState(''); // displayed as MM/DD/YYYY
   const [mrn, setMrn] = useState('');
   const [hospitalId, setHospitalId] = useState('');
   const [coveringFor, setCoveringFor] = useState('');
@@ -56,6 +58,7 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
     if (isOpen) {
       setPatientName('');
       setDob('');
+      setDobDisplay('');
       setMrn('');
       setHospitalId(hospitals[0]?.id || '');
       setCoveringFor('');
@@ -101,6 +104,33 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
       }
       return next;
     });
+  };
+
+  // Auto-format DOB as MM/DD/YYYY and convert to YYYY-MM-DD for storage
+  const handleDobChange = (raw: string) => {
+    // Strip non-digits
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+
+    // Build display with slashes
+    let display = '';
+    if (digits.length <= 2) {
+      display = digits;
+    } else if (digits.length <= 4) {
+      display = digits.slice(0, 2) + '/' + digits.slice(2);
+    } else {
+      display = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+    }
+    setDobDisplay(display);
+
+    // Convert to YYYY-MM-DD when complete
+    if (digits.length === 8) {
+      const mm = digits.slice(0, 2);
+      const dd = digits.slice(2, 4);
+      const yyyy = digits.slice(4, 8);
+      setDob(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setDob('');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,7 +185,7 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
         }
       } catch (err) {
         // If matching fails, proceed with normal save
-        console.error('Patient matching error:', err);
+        logger.error('Patient matching error', err);
       }
     }
 
@@ -219,9 +249,11 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    type="date"
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
+                    type="tel"
+                    inputMode="numeric"
+                    value={dobDisplay}
+                    onChange={(e) => handleDobChange(e.target.value)}
+                    placeholder="MM/DD/YYYY"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />

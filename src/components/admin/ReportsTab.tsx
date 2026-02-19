@@ -7,6 +7,8 @@ import {
   getAllInpatientCodes,
   calculateMedicarePayment
 } from '../../data/inpatientCodes';
+import { getAllEPCodes } from '../../data/epCodes';
+import { getAllEchoCodes } from '../../data/echoCodes';
 
 interface ReportsTabProps {
   orgId: string;
@@ -67,7 +69,7 @@ function getDateRange(preset: DatePreset, customStart?: string, customEnd?: stri
 function getRVUForCode(cptCode: string): number {
   // Strip modifiers (e.g., "99232-25" -> "99232")
   const baseCode = cptCode.replace(/-\w+$/, '');
-  const allCodes = getAllInpatientCodes();
+  const allCodes = [...getAllInpatientCodes(), ...getAllEPCodes(), ...getAllEchoCodes()];
   const found = allCodes.find(c => c.code === baseCode);
   return found?.rvu || 0;
 }

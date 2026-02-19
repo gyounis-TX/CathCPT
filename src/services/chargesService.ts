@@ -11,6 +11,15 @@ const PATIENT_DIAGNOSES_KEY = 'patient_diagnoses';
 // Charge status types
 export type ChargeStatus = 'pending' | 'entered' | 'billed';
 
+// Case snapshot — captures full form state for re-editing cath lab cases
+export interface CaseSnapshot {
+  codes: { primary: { code: string; description: string }[]; vessel2: { code: string; description: string }[]; vessel3: { code: string; description: string }[] };
+  vessels: { v1: Record<string, string>; v2: Record<string, string>; v3: Record<string, string> };
+  indicationCategory: string;
+  indication: string;
+  sedation: { included: boolean; units: number };
+}
+
 // Stored charge with codes included
 export interface StoredCharge {
   id: string;
@@ -32,6 +41,8 @@ export interface StoredCharge {
   enteredBy?: string;
   billedAt?: string;
   billedBy?: string;
+  // Full case snapshot for re-editing cath lab cases
+  caseSnapshot?: CaseSnapshot;
 }
 
 // Get all stored charges
@@ -84,7 +95,7 @@ export const getChargesForDate = async (dateStr: string): Promise<StoredCharge[]
 
 // Get today's charges grouped by patient ID
 export const getTodayChargesByPatient = async (): Promise<Record<string, StoredCharge>> => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatDateForStorage(new Date());
   const charges = await getChargesForDate(today);
 
   const byPatient: Record<string, StoredCharge> = {};
@@ -153,7 +164,9 @@ export const updateCharge = async (
     cptCode?: string;
     cptDescription?: string;
     timeMinutes?: number;
+    rvu?: number;
     diagnoses?: string[];
+    caseSnapshot?: CaseSnapshot;
   }
 ): Promise<StoredCharge | null> => {
   const charges = await getStoredCharges();
@@ -180,8 +193,14 @@ export const updateCharge = async (
   if (updates.timeMinutes !== undefined) {
     charges[index].timeMinutes = updates.timeMinutes;
   }
+  if (updates.rvu !== undefined) {
+    charges[index].rvu = updates.rvu;
+  }
   if (updates.diagnoses !== undefined) {
     charges[index].diagnoses = updates.diagnoses;
+  }
+  if (updates.caseSnapshot !== undefined) {
+    charges[index].caseSnapshot = updates.caseSnapshot;
   }
 
   charges[index].updatedAt = new Date().toISOString();
@@ -203,9 +222,16 @@ export const getChargeById = async (chargeId: string): Promise<StoredCharge | nu
 };
 
 // Mark charge as entered by admin
-export const markChargeEntered = async (chargeId: string, adminName?: string): Promise<void> => {
+// If charge not in storage (e.g. mock data), pass fullCharge to persist it first
+export const markChargeEntered = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge): Promise<void> => {
   const charges = await getStoredCharges();
-  const index = charges.findIndex(c => c.id === chargeId);
+  let index = charges.findIndex(c => c.id === chargeId);
+
+  // If not found in storage but we have the full charge object, add it
+  if (index === -1 && fullCharge) {
+    charges.push({ ...fullCharge });
+    index = charges.length - 1;
+  }
 
   if (index !== -1) {
     charges[index].status = 'entered';
@@ -217,9 +243,16 @@ export const markChargeEntered = async (chargeId: string, adminName?: string): P
 };
 
 // Mark charge as billed by admin (locks the charge)
-export const markChargeBilled = async (chargeId: string, adminName?: string): Promise<void> => {
+// If charge not in storage (e.g. mock data), pass fullCharge to persist it first
+export const markChargeBilled = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge): Promise<void> => {
   const charges = await getStoredCharges();
-  const index = charges.findIndex(c => c.id === chargeId);
+  let index = charges.findIndex(c => c.id === chargeId);
+
+  // If not found in storage but we have the full charge object, add it
+  if (index === -1 && fullCharge) {
+    charges.push({ ...fullCharge });
+    index = charges.length - 1;
+  }
 
   if (index !== -1) {
     charges[index].status = 'billed';
@@ -271,9 +304,12 @@ export const getDiagnosesForPatient = async (inpatientId: string): Promise<strin
   return allDiagnoses[inpatientId] || [];
 };
 
-// Helper to format date for storage
+// Helper to format date for storage (uses local date, not UTC)
 export const formatDateForStorage = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Get charges filtered by status

@@ -16,24 +16,60 @@ import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { getDevModeSettings } from './devMode';
 import { AuditAction, AuditLogEntry } from '../types';
 import { mockAuditEntries } from './devMode';
+import { logger } from './logger';
 
 // ── In-memory mock store for dev mode ───────────────────────────
 
 const mockAuditLog: AuditLogEntry[] = [];
 
+// ── PHI minimization helpers ─────────────────────────────────────
+
+/** Convert a full name to initials: "John Smith" → "J.S.", "Smith, John" → "S.J." */
+function toInitials(name: string): string {
+  return name
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .map(p => p[0].toUpperCase() + '.')
+    .join('');
+}
+
+/** Minimize PHI in audit event before storage */
+function minimizePHI(event: Omit<AuditLogEntry, 'id' | 'timestamp'>): Omit<AuditLogEntry, 'id' | 'timestamp'> {
+  const minimized = { ...event };
+
+  // Convert patient name to initials
+  if (minimized.targetPatientName) {
+    minimized.targetPatientName = toInitials(minimized.targetPatientName);
+  }
+
+  // Scrub full names from details text — replace known patient name patterns with initials
+  if (minimized.details && minimized.targetPatientName) {
+    // The details field often contains the original name; replace with initials
+    minimized.details = minimized.details
+      .replace(/for\s+[\w,.\s]+(?=\s*$)/i, `for patient ${minimized.targetPatientName}`)
+      .replace(/patient\s+[\w,.\s]+(?=\s+to\s)/i, `patient ${minimized.targetPatientName}`)
+      .replace(/Added\s+patient\s+[\w,.\s]+$/i, `Added patient ${minimized.targetPatientName}`)
+      .replace(/Discharged\s+patient\s+[\w,.\s]+$/i, `Discharged patient ${minimized.targetPatientName}`)
+      .replace(/Removed\s+patient\s+[\w,.\s]+/i, `Removed patient ${minimized.targetPatientName}`);
+  }
+
+  return minimized;
+}
+
 // ── Service functions ───────────────────────────────────────────
 
-/** Log an audit event */
+/** Log an audit event (PHI is automatically minimized) */
 export async function logAuditEvent(
   orgId: string,
   event: Omit<AuditLogEntry, 'id' | 'timestamp'>
 ): Promise<void> {
-  const entry = { ...event, timestamp: new Date().toISOString() };
+  const minimized = minimizePHI(event);
+  const entry = { ...minimized, timestamp: new Date().toISOString() };
 
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
     mockAuditLog.push({ id: `audit-${Date.now()}`, ...entry });
-    console.log('[Audit]', entry.action, entry.details);
+    logger.info('[Audit] event logged', { action: entry.action });
     return;
   }
 
