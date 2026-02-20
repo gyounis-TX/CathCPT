@@ -19,7 +19,7 @@ import { Inpatient } from '../types';
 const mockInpatients: Inpatient[] = [
   {
     id: '1',
-    organizationId: 'mock-org-1',
+    organizationId: 'YOCA',
     primaryPhysicianId: 'user-1',
     primaryPhysicianName: 'Dr. Rivera',
     hospitalId: 'mock-hosp-1',
@@ -32,7 +32,7 @@ const mockInpatients: Inpatient[] = [
   },
   {
     id: '2',
-    organizationId: 'mock-org-1',
+    organizationId: 'YOCA',
     primaryPhysicianId: 'user-1',
     primaryPhysicianName: 'Dr. Rivera',
     hospitalId: 'mock-hosp-1',
@@ -45,9 +45,9 @@ const mockInpatients: Inpatient[] = [
   },
   {
     id: '3',
-    organizationId: 'mock-org-1',
+    organizationId: 'YOCA',
     primaryPhysicianId: 'user-2',
-    primaryPhysicianName: 'Dr. Hibbert',
+    primaryPhysicianName: 'Dr. Khan',
     hospitalId: 'mock-hosp-2',
     hospitalName: 'City Medical Center',
     patientName: 'Burns, Montgomery',
@@ -58,9 +58,9 @@ const mockInpatients: Inpatient[] = [
   },
   {
     id: '4',
-    organizationId: 'mock-org-1',
+    organizationId: 'YOCA',
     primaryPhysicianId: 'user-3',
-    primaryPhysicianName: 'Dr. Nick',
+    primaryPhysicianName: 'Dr. Bruce',
     hospitalId: 'mock-hosp-1',
     hospitalName: 'Memorial Hospital',
     patientName: 'Flanders, Ned',
@@ -70,7 +70,7 @@ const mockInpatients: Inpatient[] = [
   },
   {
     id: '5',
-    organizationId: 'mock-org-1',
+    organizationId: 'YOCA',
     primaryPhysicianId: 'user-1',
     primaryPhysicianName: 'Dr. Rivera',
     hospitalId: 'mock-hosp-1',
@@ -83,9 +83,9 @@ const mockInpatients: Inpatient[] = [
   },
   {
     id: '6',
-    organizationId: 'mock-org-1',
+    organizationId: 'YOCA',
     primaryPhysicianId: 'user-2',
-    primaryPhysicianName: 'Dr. Hibbert',
+    primaryPhysicianName: 'Dr. Khan',
     hospitalId: 'mock-hosp-2',
     hospitalName: 'City Medical Center',
     patientName: 'Van Houten, Kirk',
@@ -97,7 +97,7 @@ const mockInpatients: Inpatient[] = [
   },
   {
     id: '7',
-    organizationId: 'mock-org-1',
+    organizationId: 'YOCA',
     primaryPhysicianId: 'user-1',
     primaryPhysicianName: 'Dr. Rivera',
     hospitalId: 'mock-hosp-1',
@@ -191,7 +191,7 @@ export async function removeFromPractice(orgId: string, inpatientId: string): Pr
 export async function getAllOrgInpatients(orgId: string): Promise<Inpatient[]> {
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
-    return mockInpatients.filter(p => p.organizationId === orgId || orgId === 'mock-org-1');
+    return mockInpatients.filter(p => p.organizationId === orgId || orgId === 'YOCA');
   }
 
   if (!isFirebaseConfigured()) return [];

@@ -42,6 +42,7 @@ android/.idea/
 
 # Firebase
 .firebase/
+scripts/serviceAccountKey.json
 
 # Temporary files
 *.tmp

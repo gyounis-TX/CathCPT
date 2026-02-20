@@ -7,7 +7,9 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   doc,
+  addDoc,
   updateDoc,
   orderBy
 } from 'firebase/firestore';
@@ -433,7 +435,7 @@ export async function getPracticeDetails(orgId: string): Promise<{
       name: devSettings.mockOrganizationName || 'Memorial Cardiology Associates',
       practiceCode: 'CATH2024',
       memberCount: mockPracticeMembers.length,
-      hospitalCount: mockHospitals.filter(h => h.organizationId === orgId || orgId === 'mock-org-1').length,
+      hospitalCount: mockHospitals.filter(h => h.organizationId === orgId || orgId === 'YOCA').length,
       cathLabCount: mockCathLabs.length
     };
   }
@@ -442,9 +444,13 @@ export async function getPracticeDetails(orgId: string): Promise<{
   const hospitals = await getHospitals();
   const cathLabs = await getCathLabs();
 
+  const db = getFirebaseDb();
+  const orgDoc = await getDoc(doc(db, 'organizations', orgId));
+  const orgData = orgDoc.exists() ? orgDoc.data() : {};
+
   return {
-    name: 'Practice',
-    practiceCode: '',
+    name: orgData?.name || 'Practice',
+    practiceCode: orgData?.practiceCode || '',
     memberCount: members.length,
     hospitalCount: hospitals.length,
     cathLabCount: cathLabs.length
@@ -470,8 +476,13 @@ export async function addHospital(orgId: string, name: string): Promise<Hospital
   if (!isFirebaseConfigured()) return newHospital;
 
   const db = getFirebaseDb();
-  const ref = await getDocs(collection(db, `organizations/${orgId}/hospitals`));
-  return newHospital;
+  const hospitalsRef = collection(db, `organizations/${orgId}/hospitals`);
+  const docRef = await addDoc(hospitalsRef, {
+    name,
+    isActive: true,
+    createdAt: new Date().toISOString()
+  });
+  return { ...newHospital, id: docRef.id };
 }
 
 // Deactivate a hospital
@@ -505,7 +516,17 @@ export async function addCathLab(orgId: string, name: string, hospitalId?: strin
     return newLab;
   }
 
-  return newLab;
+  if (!isFirebaseConfigured()) return newLab;
+
+  const db = getFirebaseDb();
+  const cathLabsRef = collection(db, `organizations/${orgId}/cathLabs`);
+  const docRef = await addDoc(cathLabsRef, {
+    name,
+    hospitalId: hospitalId || null,
+    isActive: true,
+    createdAt: new Date().toISOString()
+  });
+  return { ...newLab, id: docRef.id };
 }
 
 // Deactivate a cath lab

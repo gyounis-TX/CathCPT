@@ -987,7 +987,7 @@ const App: React.FC = () => {
             hospitals={hospitals}
             cathLabs={cathLabs}
             patientDiagnoses={patientDiagnoses}
-            orgId={userMode.organizationId || 'mock-org-1'}
+            orgId={userMode.organizationId || 'YOCA'}
             userName={authUser?.displayName || ''}
             onPatientCreated={handleCreatePatientFromCharge}
             onChargeUpdated={loadChargesAndDiagnoses}

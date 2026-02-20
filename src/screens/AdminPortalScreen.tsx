@@ -56,7 +56,7 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
   });
   const [reportsDue, setReportsDue] = useState(false);
 
-  const orgId = userMode.organizationId || 'mock-org-1';
+  const orgId = userMode.organizationId || 'YOCA';
 
   const loadStats = useCallback(async () => {
     const s = await getChargeStats(orgId);

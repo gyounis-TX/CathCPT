@@ -36,59 +36,50 @@ const defaultDevModeSettings: DevModeSettings = {
 
 // Mock data for testing
 export const mockOrganizations = [
-  { id: 'mock-org-1', name: 'Memorial Cardiology Associates' },
+  { id: 'YOCA', name: 'Younis Cardiology' },
   { id: 'mock-org-2', name: 'City Heart Center' },
   { id: 'mock-org-3', name: 'University Cardiology Group' }
 ];
 
 export const mockHospitals = [
-  { id: 'mock-hosp-1', name: 'Memorial Hospital', organizationId: 'mock-org-1' },
-  { id: 'mock-hosp-2', name: 'City Medical Center', organizationId: 'mock-org-1' },
-  { id: 'mock-hosp-3', name: "St. Luke's Hospital", organizationId: 'mock-org-2' }
+  { id: 'mock-hosp-1', name: 'DHC', organizationId: 'YOCA' },
+  { id: 'mock-hosp-2', name: 'HMH', organizationId: 'YOCA' },
+  { id: 'mock-hosp-3', name: 'BSLMC', organizationId: 'YOCA' }
 ];
 
 export const mockCathLabs = [
-  { id: 'mock-lab-1', name: 'Memorial Cath Lab 1', hospitalId: 'mock-hosp-1' },
-  { id: 'mock-lab-2', name: 'Memorial Cath Lab 2', hospitalId: 'mock-hosp-1' },
-  { id: 'mock-lab-3', name: 'City Heart Lab', hospitalId: 'mock-hosp-2' }
+  { id: 'mock-lab-1', name: 'DHC Cath Lab', hospitalId: 'mock-hosp-1' },
+  { id: 'mock-lab-2', name: 'HMH Cath Lab', hospitalId: 'mock-hosp-2' },
+  { id: 'mock-lab-3', name: 'BSLMC Cath Lab', hospitalId: 'mock-hosp-3' }
 ];
 
 export const mockPracticeMembers = [
   {
     id: 'user-1',
-    email: 'dr.rivera@memorial.org',
-    displayName: 'Dr. Rivera',
-    role: 'physician' as const,
-    joinedAt: '2024-01-15T10:00:00Z',
+    email: 'gyounis@youniscardiology.com',
+    displayName: 'Dr. George Younis',
+    role: 'admin' as const,
+    joinedAt: '2025-01-01T10:00:00Z',
     isActive: true,
-    chargeCount: 24
+    chargeCount: 42
   },
   {
     id: 'user-2',
-    email: 'dr.hibbert@memorial.org',
-    displayName: 'Dr. Hibbert',
+    email: 'dr.khan@youniscardiology.com',
+    displayName: 'Dr. Khan',
     role: 'physician' as const,
-    joinedAt: '2024-01-20T10:00:00Z',
+    joinedAt: '2025-01-20T10:00:00Z',
     isActive: true,
     chargeCount: 18
   },
   {
     id: 'user-3',
-    email: 'dr.nick@memorial.org',
-    displayName: 'Dr. Nick',
+    email: 'dr.bruce@youniscardiology.com',
+    displayName: 'Dr. Bruce',
     role: 'physician' as const,
-    joinedAt: '2024-02-01T10:00:00Z',
+    joinedAt: '2025-02-01T10:00:00Z',
     isActive: true,
     chargeCount: 7
-  },
-  {
-    id: 'admin-1',
-    email: 'admin@memorial.org',
-    displayName: 'Sarah Johnson',
-    role: 'admin' as const,
-    joinedAt: '2024-01-10T10:00:00Z',
-    isActive: true,
-    chargeCount: 0
   }
 ];
 
@@ -104,7 +95,7 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
     status: 'pending' as const,
     submittedByUserId: 'user-1',
-    submittedByUserName: 'Dr. Rivera'
+    submittedByUserName: 'Dr. George Younis'
   },
   {
     id: 'mock-charge-2',
@@ -117,9 +108,9 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 86400000).toISOString(),
     status: 'entered' as const,
     submittedByUserId: 'user-1',
-    submittedByUserName: 'Dr. Rivera',
+    submittedByUserName: 'Dr. George Younis',
     enteredAt: new Date(Date.now() - 43200000).toISOString(),
-    enteredBy: 'Sarah Johnson'
+    enteredBy: 'Dr. George Younis'
   },
   {
     id: 'mock-charge-3',
@@ -132,7 +123,7 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 3600000).toISOString(),
     status: 'pending' as const,
     submittedByUserId: 'user-1',
-    submittedByUserName: 'Dr. Rivera'
+    submittedByUserName: 'Dr. George Younis'
   },
   {
     id: 'mock-charge-4',
@@ -145,11 +136,11 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
     status: 'billed' as const,
     submittedByUserId: 'user-2',
-    submittedByUserName: 'Dr. Hibbert',
+    submittedByUserName: 'Dr. Khan',
     enteredAt: new Date(Date.now() - 1.5 * 86400000).toISOString(),
-    enteredBy: 'Sarah Johnson',
+    enteredBy: 'Dr. George Younis',
     billedAt: new Date(Date.now() - 86400000).toISOString(),
-    billedBy: 'Sarah Johnson'
+    billedBy: 'Dr. George Younis'
   },
   {
     id: 'mock-charge-5',
@@ -162,7 +153,7 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 86400000).toISOString(),
     status: 'pending' as const,
     submittedByUserId: 'user-2',
-    submittedByUserName: 'Dr. Hibbert'
+    submittedByUserName: 'Dr. Khan'
   },
   {
     id: 'mock-charge-6',
@@ -175,9 +166,9 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 7200000).toISOString(),
     status: 'entered' as const,
     submittedByUserId: 'user-3',
-    submittedByUserName: 'Dr. Nick',
+    submittedByUserName: 'Dr. Bruce',
     enteredAt: new Date(Date.now() - 3600000).toISOString(),
-    enteredBy: 'Sarah Johnson'
+    enteredBy: 'Dr. George Younis'
   },
   {
     id: 'mock-charge-7',
@@ -190,9 +181,9 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
     status: 'billed' as const,
     submittedByUserId: 'user-1',
-    submittedByUserName: 'Dr. Rivera',
+    submittedByUserName: 'Dr. George Younis',
     billedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    billedBy: 'Sarah Johnson'
+    billedBy: 'Dr. George Younis'
   },
   {
     id: 'mock-charge-8',
@@ -205,7 +196,7 @@ export const mockCharges = [
     createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
     status: 'pending' as const,
     submittedByUserId: 'user-1',
-    submittedByUserName: 'Dr. Rivera'
+    submittedByUserName: 'Dr. George Younis'
   }
 ];
 
@@ -214,7 +205,7 @@ export const mockAuditEntries = [
     id: 'audit-mock-1',
     action: 'charge_submitted' as const,
     userId: 'user-1',
-    userName: 'Dr. Rivera',
+    userName: 'Dr. George Younis',
     targetPatientId: '1',
     targetPatientName: 'Simpson, Homer',
     details: 'Submitted charge 99223 for Simpson, Homer',
@@ -226,7 +217,7 @@ export const mockAuditEntries = [
     id: 'audit-mock-2',
     action: 'charge_marked_entered' as const,
     userId: 'admin-1',
-    userName: 'Sarah Johnson',
+    userName: 'Dr. George Younis',
     targetPatientId: '1',
     targetPatientName: 'Simpson, Homer',
     details: 'Marked charge 99232 as entered for Simpson, Homer',
@@ -238,7 +229,7 @@ export const mockAuditEntries = [
     id: 'audit-mock-3',
     action: 'charge_marked_billed' as const,
     userId: 'admin-1',
-    userName: 'Sarah Johnson',
+    userName: 'Dr. George Younis',
     targetPatientId: '3',
     targetPatientName: 'Burns, Montgomery',
     details: 'Marked charge 99222 as billed for Burns, Montgomery',
@@ -250,7 +241,7 @@ export const mockAuditEntries = [
     id: 'audit-mock-4',
     action: 'patient_added' as const,
     userId: 'user-1',
-    userName: 'Dr. Rivera',
+    userName: 'Dr. George Younis',
     targetPatientId: '1',
     targetPatientName: 'Simpson, Homer',
     details: 'Added patient Simpson, Homer',
@@ -261,7 +252,7 @@ export const mockAuditEntries = [
     id: 'audit-mock-5',
     action: 'charge_submitted' as const,
     userId: 'user-2',
-    userName: 'Dr. Hibbert',
+    userName: 'Dr. Khan',
     targetPatientId: '3',
     targetPatientName: 'Burns, Montgomery',
     details: 'Submitted charge 99222 for Burns, Montgomery',
@@ -273,7 +264,7 @@ export const mockAuditEntries = [
     id: 'audit-mock-6',
     action: 'practice_code_regenerated' as const,
     userId: 'admin-1',
-    userName: 'Sarah Johnson',
+    userName: 'Dr. George Younis',
     targetPatientId: null,
     targetPatientName: null,
     details: 'Regenerated practice invite code',
@@ -458,14 +449,14 @@ export async function clearDevModeData(): Promise<void> {
 // Get mock user for dev mode
 export function getMockUser(tier: UserTier, role: UserRole): AuthUser {
   return {
-    id: 'mock-user-id',
-    email: role === 'admin' ? 'admin@example.com' : 'physician@example.com',
+    id: 'user-1',
+    email: 'gyounis@youniscardiology.com',
     tier,
     role,
     organizationId: tier === 'pro' ? mockOrganizations[0].id : null,
     organizationName: tier === 'pro' ? mockOrganizations[0].name : null,
-    displayName: role === 'admin' ? 'Test Admin' : 'Test Physician',
-    createdAt: new Date().toISOString()
+    displayName: 'Dr. George Younis',
+    createdAt: '2025-01-01T10:00:00Z'
   };
 }
 
