@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Lock, Fingerprint } from 'lucide-react';
+import { Heart, Lock, Fingerprint, LogOut } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirebaseAuth, isFirebaseConfigured } from '../services/firebaseConfig';
 import { logAuditEvent } from '../services/auditService';
+import { AuthProvider } from '../services/authService';
 import {
   isBiometricAvailable,
   getBiometryType,
@@ -14,15 +15,19 @@ interface LockScreenProps {
   userEmail: string;
   userId?: string;
   orgId?: string;
+  authProvider?: AuthProvider;
   onUnlock: () => void;
+  onLogout: () => void;
 }
 
-export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, userId, orgId, onUnlock }) => {
+export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, userId, orgId, authProvider, onUnlock, onLogout }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [biometricType, setBiometricType] = useState<'faceId' | 'touchId' | 'none'>('none');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+  const isSocialAuth = authProvider === 'apple.com' || authProvider === 'google.com';
 
   // Check biometric availability on mount
   useEffect(() => {
@@ -109,7 +114,9 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, userId, orgId
           <h2 className="text-xl font-semibold text-gray-800">Session Locked</h2>
         </div>
         <p className="text-sm text-gray-500 mb-6">
-          Locked due to inactivity. Enter your password to continue.
+          {isSocialAuth && !biometricAvailable
+            ? 'Locked due to inactivity. Sign out and back in to continue.'
+            : 'Locked due to inactivity. Enter your password to continue.'}
         </p>
 
         {/* Biometric button */}
@@ -123,32 +130,51 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, userId, orgId
           </button>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">{userEmail}</p>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoFocus
-              autoComplete="current-password"
-            />
+        {/* Password form — only for password-auth users */}
+        {!isSocialAuth && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">{userEmail}</p>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autoFocus
+                autoComplete="current-password"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={!password || isVerifying}
+              className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isVerifying ? 'Verifying...' : 'Unlock'}
+            </button>
+          </form>
+        )}
+
+        {/* Social auth users without biometric — show sign out button */}
+        {isSocialAuth && !biometricAvailable && (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">{userEmail}</p>
           </div>
+        )}
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={!password || isVerifying}
-            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isVerifying ? 'Verifying...' : 'Unlock'}
-          </button>
-        </form>
+        {/* Sign Out button — always available as fallback */}
+        <button
+          onClick={onLogout}
+          className="mt-4 w-full py-3 flex items-center justify-center gap-2 border border-gray-300 text-gray-600 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
       </div>
     </div>
   );

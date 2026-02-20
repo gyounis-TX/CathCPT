@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Users, Shield, Settings, LogIn, LogOut, RefreshCw, History, Lightbulb, HelpCircle } from 'lucide-react';
+import { Heart, Users, Shield, Settings, LogOut, RefreshCw, History, Lightbulb, HelpCircle } from 'lucide-react';
 import CardiologyCPTApp, { CardiologyCPTAppHandle } from './CardiologyCPTApp';
 import { LoginScreen } from './screens/LoginScreen';
 import { RoundsScreen } from './screens/RoundsScreen';
@@ -103,9 +103,6 @@ const App: React.FC = () => {
   // Inline HIPAA banner state (non-blocking)
   const [showHipaaBanner, setShowHipaaBanner] = useState(false);
 
-  // Login modal state (overlay, not a gate)
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
   // Help panel state
   const [showHelp, setShowHelp] = useState(false);
 
@@ -193,39 +190,40 @@ const App: React.FC = () => {
         setShowHipaaBanner(true);
       }
 
-      // Fast path: check for stored pro session before touching Firebase
-      setInitStep('checking credentials...');
-      let storedSession: AuthUser | null = null;
-      try {
-        const result = await window.storage.get('auth_user');
-        if (result?.value) {
-          storedSession = JSON.parse(result.value) as AuthUser;
+      // Always initialize Firebase — all users must authenticate
+      setInitStep('connecting to server...');
+      if (isFirebaseConfigured()) {
+        try {
+          await initializeFirebase();
+        } catch (fbErr) {
+          logger.warn('Firebase init failed', fbErr);
         }
-      } catch {
-        // No stored session — individual user fast path
       }
 
+      // Check for stored session
+      setInitStep('checking credentials...');
       let currentUser: AuthUser | null = null;
 
-      if (storedSession && isFirebaseConfigured()) {
-        // Slow path: pro user with stored session — init Firebase to validate/refresh
+      if (isFirebaseConfigured()) {
         try {
-          setInitStep('connecting to server...');
-          await initializeFirebase();
           const { user } = await getCurrentSession();
           if (user) {
             currentUser = user;
             setAuthUser(user);
           }
-        } catch (fbErr) {
-          logger.warn('Firebase init failed, using stored session', fbErr);
-          // Fall back to stored session
-          currentUser = storedSession;
-          setAuthUser(storedSession);
+        } catch {
+          // No session — user will see login screen
         }
       }
-      // If no stored session, skip Firebase entirely (individual user fast path)
 
+      // No session found — stop here, render will show login gate
+      if (!currentUser) {
+        setIsInitializing(false);
+        clearTimeout(masterTimeout);
+        return;
+      }
+
+      // User is authenticated — continue loading app data
       setInitStep('loading settings...');
       try {
         const devSettings = await getDevModeSettings();
@@ -327,7 +325,6 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = async (user: AuthUser) => {
     setAuthUser(user);
-    setShowLoginModal(false);
     setSentryUser(user.id);
 
     // Update user mode
@@ -356,12 +353,6 @@ const App: React.FC = () => {
       organizationName: null
     });
     setActiveTab('cathlab');
-  };
-
-  const handleSkipLogin = async () => {
-    setShowLoginModal(false);
-    const mode = await getUserMode(null);
-    setUserMode(mode);
   };
 
   const handleSync = async () => {
@@ -836,14 +827,25 @@ const App: React.FC = () => {
     );
   }
 
-  // Show lock screen when session is locked (pro users, HIPAA)
-  if (isLocked && authUser) {
+  // Auth gate — no anonymous usage, all users must sign in
+  if (!authUser) {
+    return (
+      <LoginScreen
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+  }
+
+  // Show lock screen when session is locked (all authenticated users, HIPAA)
+  if (isLocked) {
     return (
       <LockScreen
         userEmail={authUser.email}
         userId={authUser.id}
         orgId={userMode.organizationId || undefined}
+        authProvider={authUser.authProvider}
         onUnlock={unlockSession}
+        onLogout={handleLogout}
       />
     );
   }
@@ -893,15 +895,14 @@ const App: React.FC = () => {
             <h1 className="text-xl font-bold text-amber-700">CathCPT</h1>
           </div>
           <div className="flex items-center gap-1.5">
-            {/* Sign In button (individual mode only) */}
+            {/* Sign Out button (individual mode only — pro users have logout in blue bar) */}
             {!isProMode && (
               <button
-                onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                title="Sign In"
+                onClick={handleLogout}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                title="Sign Out"
               >
-                <LogIn size={16} />
-                Sign In
+                <LogOut size={18} className="text-gray-600" />
               </button>
             )}
             {/* History */}
@@ -1069,16 +1070,6 @@ const App: React.FC = () => {
           />
         )}
       </div>
-
-      {/* Login Modal Overlay */}
-      {showLoginModal && (
-        <div className="fixed inset-0 z-50 bg-white">
-          <LoginScreen
-            onLoginSuccess={handleLoginSuccess}
-            onSkip={() => setShowLoginModal(false)}
-          />
-        </div>
-      )}
 
       {/* Dialogs */}
       <AddPatientDialog

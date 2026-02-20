@@ -19,7 +19,11 @@ const config: CapacitorConfig = {
     scheme: 'CathCPT'
   },
   plugins: {
-    Preferences: {}
+    Preferences: {},
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ['apple.com', 'google.com']
+    }
   }
 };
 

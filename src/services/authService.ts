@@ -1,19 +1,24 @@
-// Authentication Service for CathCPT Pro
-// Handles Firebase Auth with email/password, secure session management
+// Authentication Service for CathCPT
+// Handles Firebase Auth with email/password, Apple Sign-In, Google Sign-In, and secure session management
 
 import {
   signInWithEmailAndPassword,
+  signInWithCredential,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
   updatePassword as firebaseUpdatePassword,
   updateEmail,
   onAuthStateChanged,
+  OAuthProvider,
+  GoogleAuthProvider,
   User
 } from 'firebase/auth';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { logAuditEvent } from './auditService';
+import { getPlatformName } from './platformService';
 
 // Storage keys
 const AUTH_USER_KEY = 'auth_user';
@@ -21,6 +26,8 @@ const AUTH_USER_KEY = 'auth_user';
 // User tier and role types
 export type UserTier = 'individual' | 'pro';
 export type UserRole = 'physician' | 'admin' | null;
+
+export type AuthProvider = 'password' | 'apple.com' | 'google.com';
 
 export interface AuthUser {
   id: string;
@@ -31,6 +38,7 @@ export interface AuthUser {
   organizationName: string | null;
   displayName: string | null;
   createdAt: string;
+  authProvider?: AuthProvider;
 }
 
 export interface AuthState {
@@ -54,12 +62,13 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
 
     // Fetch user profile from Firestore
     authUser = await fetchUserProfile(user.uid, user.email);
+    authUser.authProvider = 'password';
 
     // Store locally for offline access
     await storeUser(authUser);
 
     // Log successful login
-    const platform = typeof (window as any).Capacitor !== 'undefined' ? 'native' : 'web';
+    const platform = getPlatformName();
     if (authUser.organizationId) {
       logAuditEvent(authUser.organizationId, {
         action: 'user_login',
@@ -82,9 +91,104 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
       targetPatientName: null,
       details: 'Login attempt failed',
       listContext: null,
-      metadata: { platform: typeof (window as any).Capacitor !== 'undefined' ? 'native' : 'web' }
+      metadata: { platform: getPlatformName() }
     });
     throw error;
+  }
+
+  return authUser;
+}
+
+// Sign in with Apple (native Capacitor plugin → Firebase credential)
+export async function signInWithApple(): Promise<AuthUser> {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase not configured');
+  }
+
+  const auth = getFirebaseAuth();
+
+  // Native Apple Sign-In via Capacitor plugin
+  const result = await FirebaseAuthentication.signInWithApple();
+
+  // Create Firebase credential from the native result
+  const credential = new OAuthProvider('apple.com').credential({
+    idToken: result.credential?.idToken,
+    rawNonce: result.credential?.nonce
+  });
+
+  // Sign in to Firebase JS Auth
+  const { user } = await signInWithCredential(auth, credential);
+
+  // Fetch or create Firestore profile
+  let authUser = await fetchOrCreateSocialProfile(
+    user.uid,
+    user.email,
+    result.user?.displayName || user.displayName
+  );
+  authUser.authProvider = 'apple.com';
+
+  await storeUser(authUser);
+
+  // Log successful login
+  const platform = getPlatformName();
+  if (authUser.organizationId) {
+    logAuditEvent(authUser.organizationId, {
+      action: 'user_login',
+      userId: authUser.id,
+      userName: authUser.displayName || authUser.email,
+      targetPatientId: null,
+      targetPatientName: null,
+      details: `User logged in via Apple Sign-In (${platform})`,
+      listContext: null,
+      metadata: { platform, authProvider: 'apple.com' }
+    });
+  }
+
+  return authUser;
+}
+
+// Sign in with Google (native Capacitor plugin → Firebase credential)
+export async function signInWithGoogle(): Promise<AuthUser> {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase not configured');
+  }
+
+  const auth = getFirebaseAuth();
+
+  // Native Google Sign-In via Capacitor plugin
+  const result = await FirebaseAuthentication.signInWithGoogle();
+
+  // Create Firebase credential from the native result
+  const credential = GoogleAuthProvider.credential(
+    result.credential?.idToken
+  );
+
+  // Sign in to Firebase JS Auth
+  const { user } = await signInWithCredential(auth, credential);
+
+  // Fetch or create Firestore profile
+  let authUser = await fetchOrCreateSocialProfile(
+    user.uid,
+    user.email,
+    result.user?.displayName || user.displayName
+  );
+  authUser.authProvider = 'google.com';
+
+  await storeUser(authUser);
+
+  // Log successful login
+  const platform = getPlatformName();
+  if (authUser.organizationId) {
+    logAuditEvent(authUser.organizationId, {
+      action: 'user_login',
+      userId: authUser.id,
+      userName: authUser.displayName || authUser.email,
+      targetPatientId: null,
+      targetPatientName: null,
+      details: `User logged in via Google Sign-In (${platform})`,
+      listContext: null,
+      metadata: { platform, authProvider: 'google.com' }
+    });
   }
 
   return authUser;
@@ -154,6 +258,13 @@ export async function signOut(): Promise<void> {
     await firebaseSignOut(auth);
   }
 
+  // Clear native provider session (Apple/Google) — noop on web
+  try {
+    await FirebaseAuthentication.signOut();
+  } catch {
+    // Plugin not available on web — ignore
+  }
+
   await window.storage.clearAll();
 }
 
@@ -166,8 +277,18 @@ export async function getCurrentSession(): Promise<{ user: AuthUser | null }> {
 
   const auth = getFirebaseAuth();
 
+  const AUTH_TIMEOUT_MS = 10000;
+
   return new Promise((resolve) => {
+    const timeout = setTimeout(async () => {
+      unsubscribe();
+      logger.warn('Auth state check timed out, falling back to stored user');
+      const storedUser = await getStoredUser();
+      resolve({ user: storedUser });
+    }, AUTH_TIMEOUT_MS);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(timeout);
       unsubscribe();
 
       if (firebaseUser) {
@@ -217,6 +338,54 @@ async function fetchUserProfile(userId: string, email?: string | null): Promise<
     displayName: null,
     createdAt: new Date().toISOString()
   };
+}
+
+// Fetch existing profile or create one for social sign-in users
+async function fetchOrCreateSocialProfile(
+  userId: string,
+  email?: string | null,
+  displayName?: string | null
+): Promise<AuthUser> {
+  const db = getFirebaseDb();
+  const userDoc = await getDoc(doc(db, 'users', userId));
+
+  if (userDoc.exists()) {
+    const data = userDoc.data();
+    return {
+      id: userId,
+      email: data.email || email || '',
+      tier: data.tier || 'individual',
+      role: data.role || null,
+      organizationId: data.organizationId || null,
+      organizationName: data.organizationName || null,
+      displayName: data.displayName || displayName || null,
+      createdAt: data.createdAt || new Date().toISOString()
+    };
+  }
+
+  // First sign-in — create profile as individual user
+  const newUser: AuthUser = {
+    id: userId,
+    email: email || '',
+    tier: 'individual',
+    role: null,
+    organizationId: null,
+    organizationName: null,
+    displayName: displayName || null,
+    createdAt: new Date().toISOString()
+  };
+
+  await setDoc(doc(db, 'users', userId), {
+    email: newUser.email,
+    tier: newUser.tier,
+    role: newUser.role,
+    organizationId: newUser.organizationId,
+    organizationName: newUser.organizationName,
+    displayName: newUser.displayName,
+    createdAt: newUser.createdAt
+  });
+
+  return newUser;
 }
 
 // Store user locally for offline access
