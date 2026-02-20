@@ -856,21 +856,20 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      {/* Offline Banner */}
-      <OfflineBanner isOffline={!syncStatus.isOnline} />
-
-      {/* Inline HIPAA Banner (non-blocking, first launch only) */}
-      {showHipaaBanner && (
-        <HIPAAInlineBanner
-          onAcknowledge={async () => {
-            await window.storage.set('hipaa_ack_timestamp', new Date().toISOString());
-            setShowHipaaBanner(false);
-          }}
-        />
-      )}
-
       {/* === FIXED HEADER === */}
       <div className="flex-shrink-0">
+        {/* Offline Banner */}
+        <OfflineBanner isOffline={!syncStatus.isOnline} />
+
+        {/* Inline HIPAA Banner (non-blocking, first launch only) */}
+        {showHipaaBanner && (
+          <HIPAAInlineBanner
+            onAcknowledge={async () => {
+              await window.storage.set('hipaa_ack_timestamp', new Date().toISOString());
+              setShowHipaaBanner(false);
+            }}
+          />
+        )}
         {/* Row 1: CathCPT branding + action buttons */}
         <div className="bg-white px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
           <div className="flex items-center gap-2.5">
@@ -1019,7 +1018,7 @@ const App: React.FC = () => {
       </div>
 
       {/* === SCROLLABLE CONTENT === */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {activeTab === 'cathlab' && (
           <CardiologyCPTApp
             ref={cathCPTRef}
