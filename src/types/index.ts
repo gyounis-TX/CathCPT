@@ -161,7 +161,13 @@ export type AuditAction =
   | 'hospital_deactivated'
   | 'cathlab_added'
   | 'cathlab_deactivated'
-  | 'patient_merged';
+  | 'patient_merged'
+  | 'user_login'
+  | 'user_logout'
+  | 'user_login_failed'
+  | 'session_locked'
+  | 'session_unlocked'
+  | 'data_exported';
 
 export interface AuditLogEntry {
   id: string;
@@ -182,6 +188,10 @@ export interface AuditLogEntry {
     newCptCode?: string;
     targetUserId?: string;
     batchSize?: number;
+    platform?: string;
+    loginMethod?: 'password' | 'biometric';
+    exportType?: string;
+    exportRowCount?: number;
   };
 }
 

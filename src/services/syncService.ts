@@ -22,6 +22,20 @@ const defaultSyncStatus: SyncStatus = {
 
 let currentStatus: SyncStatus = { ...defaultSyncStatus };
 
+// Listener pattern for UI components
+type SyncStatusListener = (status: SyncStatus) => void;
+const listeners: Set<SyncStatusListener> = new Set();
+
+function notifyListeners() {
+  const status = { ...currentStatus, isOnline: navigator.onLine };
+  listeners.forEach(fn => fn(status));
+}
+
+export function addSyncStatusListener(fn: SyncStatusListener): () => void {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
 // Get sync status
 export async function getSyncStatus(): Promise<SyncStatus> {
   return { ...currentStatus, isOnline: navigator.onLine };
@@ -30,6 +44,7 @@ export async function getSyncStatus(): Promise<SyncStatus> {
 // Set online status (called by App.tsx on online/offline events)
 export async function setOnlineStatus(isOnline: boolean): Promise<void> {
   currentStatus.isOnline = isOnline;
+  notifyListeners();
 }
 
 // Process sync queue — no-op with Firestore (auto-syncs)

@@ -45,5 +45,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>CathCPT uses Face ID to quickly unlock your session.</string>
 </dict>
 </plist>

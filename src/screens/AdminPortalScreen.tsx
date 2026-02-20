@@ -12,6 +12,7 @@ import {
 import { AdminTab, UserMode, Hospital, Inpatient } from '../types';
 import { StoredCharge } from '../services/chargesService';
 import { getChargeStats } from '../services/adminChargeService';
+import { getReportSchedule, isReportDue } from '../services/reportScheduleService';
 import { ChargeQueueTab } from '../components/admin/ChargeQueueTab';
 import { PatientRosterTab } from '../components/admin/PatientRosterTab';
 import { PhysicianManagementTab } from '../components/admin/PhysicianManagementTab';
@@ -53,6 +54,7 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
     totalRVUPending: 0,
     totalPaymentPending: 0
   });
+  const [reportsDue, setReportsDue] = useState(false);
 
   const orgId = userMode.organizationId || 'mock-org-1';
 
@@ -61,9 +63,15 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
     setStats(s);
   }, [orgId]);
 
+  const checkReportSchedule = useCallback(async () => {
+    const schedule = await getReportSchedule(orgId);
+    setReportsDue(isReportDue(schedule));
+  }, [orgId]);
+
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+    checkReportSchedule();
+  }, [loadStats, checkReportSchedule]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -114,6 +122,9 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
             >
               {tab.icon}
               {tab.label}
+              {tab.key === 'reports' && reportsDue && (
+                <span className="w-2 h-2 bg-amber-400 rounded-full flex-shrink-0" />
+              )}
             </button>
           ))}
         </nav>

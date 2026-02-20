@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Calendar, Filter } from 'lucide-react';
+import { Calendar, Filter, Download, Clock as ClockIcon } from 'lucide-react';
 import { Hospital, Inpatient } from '../../types';
 import { getChargeQueue } from '../../services/adminChargeService';
 import { StoredCharge } from '../../services/chargesService';
+import { logAuditEvent } from '../../services/auditService';
+import { showToast } from '../../hooks/useToast';
+import {
+  getReportSchedule,
+  isReportDue,
+  markReportGenerated,
+  ReportSchedule
+} from '../../services/reportScheduleService';
+import { ReportScheduleDialog } from './ReportScheduleDialog';
 import {
   getAllInpatientCodes,
   calculateMedicarePayment
@@ -97,6 +106,58 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [charges, setCharges] = useState<{ charge: StoredCharge; physicianName: string; hospitalName: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [reportDue, setReportDue] = useState(false);
+
+  // Check report schedule
+  const checkSchedule = useCallback(async () => {
+    const schedule = await getReportSchedule(orgId);
+    setReportDue(isReportDue(schedule));
+  }, [orgId]);
+
+  useEffect(() => {
+    checkSchedule();
+  }, [checkSchedule]);
+
+  const handleExportCSV = async () => {
+    if (reportRows.length === 0) return;
+
+    const headers = [columnLabel, 'Charges', 'Total RVU', 'Total $', 'Avg RVU'];
+    const rows = reportRows.map(row => [
+      row.label,
+      row.chargeCount,
+      row.totalRVU.toFixed(2),
+      row.totalPayment.toFixed(2),
+      row.avgRVU.toFixed(2)
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cathcpt-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Log export audit event
+    logAuditEvent(orgId, {
+      action: 'data_exported',
+      userId: currentUserId,
+      userName: currentUserName,
+      targetPatientId: null,
+      targetPatientName: null,
+      details: `Exported ${columnLabel.toLowerCase()} report as CSV`,
+      listContext: null,
+      metadata: { exportType: 'csv', exportRowCount: reportRows.length }
+    });
+
+    // Mark report as generated for schedule tracking
+    await markReportGenerated(orgId);
+    setReportDue(false);
+
+    showToast('Report exported successfully', 'success');
+  };
 
   const patientMap = useMemo(() => new Map(patients.map(p => [p.id, p])), [patients]);
 
@@ -173,7 +234,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
         }
       }
 
-      if (groupBy !== 'cptCode') {
+      if (groupBy as GroupBy !== 'cptCode') {
         const rvu = parseChargeRVU(item.charge);
         const existing = groups.get(key) || { chargeCount: 0, totalRVU: 0 };
         existing.chargeCount += 1;
@@ -238,6 +299,36 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-4 space-y-4">
+        {/* Report Due Banner */}
+        {reportDue && (
+          <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <ClockIcon className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800">Scheduled report is due</p>
+              <p className="text-xs text-amber-600">Export a report to mark it as generated</p>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportCSV}
+            disabled={reportRows.length === 0}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={() => setShowScheduleDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <ClockIcon className="w-4 h-4" />
+            Schedule
+          </button>
+        </div>
+
         {/* Date Range */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1.5">
@@ -370,6 +461,14 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Report Schedule Dialog */}
+      <ReportScheduleDialog
+        isOpen={showScheduleDialog}
+        orgId={orgId}
+        onClose={() => setShowScheduleDialog(false)}
+        onScheduleChanged={() => checkSchedule()}
+      />
     </div>
   );
 };

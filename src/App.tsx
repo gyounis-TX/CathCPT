@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Users, Shield, Settings, LogIn, LogOut, RefreshCw, AlertCircle, Wifi, WifiOff, History, Lightbulb } from 'lucide-react';
+import { Heart, Users, Shield, Settings, LogIn, LogOut, RefreshCw, AlertCircle, Wifi, WifiOff, History, Lightbulb, HelpCircle } from 'lucide-react';
 import CardiologyCPTApp, { CardiologyCPTAppHandle } from './CardiologyCPTApp';
 import { LoginScreen } from './screens/LoginScreen';
 import { RoundsScreen } from './screens/RoundsScreen';
@@ -11,7 +11,13 @@ import { CodeGroupSettings } from './components/CodeGroupSettings';
 import { PracticeCodeSetup } from './components/PracticeCodeSetup';
 import { LockScreen } from './components/LockScreen';
 import { HIPAABanner } from './components/HIPAABanner';
+import { OnboardingFlow } from './components/OnboardingFlow';
+import { HelpPanel } from './components/HelpPanel';
+import { OfflineBanner } from './components/OfflineBanner';
+import { SyncStatusIndicator } from './components/SyncStatusIndicator';
+import { ToastContainer } from './components/Toast';
 import { useInactivityTimer } from './hooks/useInactivityTimer';
+import { useToast, showToast } from './hooks/useToast';
 import { UserMode, Inpatient, Hospital, CathLab, CallListEntry } from './types';
 import { getUserMode, checkUnlockDevMode, DevModeSettings, getDevModeSettings, setDevModeUserType, disableDevMode, mockCharges } from './services/devMode';
 import { getCurrentSession, signOut, AuthUser } from './services/authService';
@@ -22,6 +28,8 @@ import { getOrgInpatients } from './services/inpatientService';
 import { getCallListEntries, addToCallList, removeFromCallList, clearCallList } from './services/callListService';
 import { logAuditEvent } from './services/auditService';
 import { logger } from './services/logger';
+import { setSentryUser, clearSentryUser } from './services/sentryConfig';
+import { checkConcurrentVisit } from './services/concurrentVisitService';
 import {
   StoredCharge,
   getChargesByPatientAndDate,
@@ -97,6 +105,18 @@ const App: React.FC = () => {
   // HIPAA acknowledgment state
   const [hipaaAcknowledged, setHipaaAcknowledged] = useState<boolean | null>(null);
 
+  // Onboarding state
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+
+  // Help panel state
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Toast notifications
+  const { toasts, removeToast } = useToast();
+
+  // Track previous lock state for session_locked audit
+  const prevIsLockedRef = useRef(false);
+
   // Session timeout — locks after 5 minutes of inactivity (HIPAA)
   const { isLocked, unlock: unlockSession } = useInactivityTimer(authUser !== null);
 
@@ -105,11 +125,31 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
+  // Session locked audit log
+  useEffect(() => {
+    if (isLocked && !prevIsLockedRef.current && authUser) {
+      const orgId = userMode.organizationId;
+      if (orgId) {
+        logAuditEvent(orgId, {
+          action: 'session_locked',
+          userId: authUser.id,
+          userName: authUser.displayName || authUser.email,
+          targetPatientId: null,
+          targetPatientName: null,
+          details: 'Session locked due to inactivity',
+          listContext: null
+        });
+      }
+    }
+    prevIsLockedRef.current = isLocked;
+  }, [isLocked, authUser, userMode.organizationId]);
+
   // Online/offline detection
   useEffect(() => {
     const handleOnline = () => {
       setOnlineStatus(true);
       loadSyncStatus();
+      showToast('Back online — changes will sync automatically', 'success');
     };
     const handleOffline = () => {
       setOnlineStatus(false);
@@ -155,6 +195,10 @@ const App: React.FC = () => {
       // Check HIPAA acknowledgment
       const hipaaResult = await window.storage.get('hipaa_ack_timestamp');
       setHipaaAcknowledged(!!hipaaResult?.value);
+
+      // Check onboarding completion
+      const onboardingResult = await window.storage.get('onboarding_completed');
+      setOnboardingCompleted(!!onboardingResult?.value);
 
       setInitStep('loading settings...');
       const devSettings = await getDevModeSettings();
@@ -247,6 +291,7 @@ const App: React.FC = () => {
   const handleLoginSuccess = async (user: AuthUser) => {
     setAuthUser(user);
     setShowLogin(false);
+    setSentryUser(user.id);
 
     // Update user mode
     const mode = await getUserMode(user);
@@ -263,6 +308,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    clearSentryUser();
     await signOut();
     setAuthUser(null);
     setUserMode({
@@ -544,6 +590,18 @@ const App: React.FC = () => {
 
     const patientId = selectedPatientForCharge.id;
     const dateStr = formatDateForStorage(charge.chargeDate);
+    const currentUserId = authUser?.id || 'user-1';
+
+    // Check for concurrent visits
+    const concurrentWarning = await checkConcurrentVisit(patientId, dateStr, currentUserId);
+    if (concurrentWarning) {
+      const proceed = window.confirm(
+        `${concurrentWarning.physicianName} already has a charge for this patient on this date. Concurrent care is common — continue?`
+      );
+      if (!proceed) {
+        return;
+      }
+    }
 
     // Combine multiple codes into a single display string (e.g., "99232-25 + 99291")
     // Codes already have modifiers applied when passed from AddChargeDialog
@@ -649,7 +707,7 @@ const App: React.FC = () => {
       }
     } catch (error) {
       logger.error('Error updating charge', error);
-      alert(error instanceof Error ? error.message : 'Failed to update charge');
+      showToast(error instanceof Error ? error.message : 'Failed to update charge', 'error');
     }
 
     // Close dialog and reset state
@@ -667,7 +725,7 @@ const App: React.FC = () => {
       logger.info('Charge marked as billed');
     } catch (error) {
       logger.error('Error marking charge as billed', error);
-      alert('Failed to mark charge as billed');
+      showToast('Failed to mark charge as billed', 'error');
     }
   };
 
@@ -736,6 +794,18 @@ const App: React.FC = () => {
     );
   }
 
+  // Show onboarding after HIPAA ack if not completed
+  if (hipaaAcknowledged && onboardingCompleted === false) {
+    return (
+      <OnboardingFlow
+        onComplete={async () => {
+          await window.storage.set('onboarding_completed', 'true');
+          setOnboardingCompleted(true);
+        }}
+      />
+    );
+  }
+
   // Show login screen
   if (showLogin) {
     return (
@@ -751,6 +821,8 @@ const App: React.FC = () => {
     return (
       <LockScreen
         userEmail={authUser.email}
+        userId={authUser.id}
+        orgId={userMode.organizationId || undefined}
         onUnlock={unlockSession}
       />
     );
@@ -764,6 +836,9 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
+      {/* Offline Banner */}
+      <OfflineBanner isOffline={!syncStatus.isOnline} />
+
       {/* === FIXED HEADER === */}
       <div className="flex-shrink-0">
         {/* Row 1: CathCPT branding + action buttons */}
@@ -813,6 +888,14 @@ const App: React.FC = () => {
             >
               <Settings size={18} className="text-indigo-600" />
             </button>
+            {/* Help */}
+            <button
+              onClick={() => setShowHelp(true)}
+              className="p-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Help"
+            >
+              <HelpCircle size={18} className="text-gray-500" />
+            </button>
           </div>
         </div>
 
@@ -830,21 +913,12 @@ const App: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center gap-3">
+              <SyncStatusIndicator syncStatus={syncStatus} />
               <button
                 onClick={handleSync}
                 disabled={syncStatus.isSyncing}
                 className="flex items-center gap-1.5 text-sm opacity-90 hover:opacity-100"
               >
-                {syncStatus.isOnline ? (
-                  <Wifi className="w-4 h-4" />
-                ) : (
-                  <WifiOff className="w-4 h-4 text-yellow-300" />
-                )}
-                {syncStatus.pendingCount > 0 && (
-                  <span className="px-1.5 py-0.5 bg-white/20 rounded text-xs">
-                    {syncStatus.pendingCount}
-                  </span>
-                )}
                 <RefreshCw className={`w-4 h-4 ${syncStatus.isSyncing ? 'animate-spin' : ''}`} />
               </button>
               <button
@@ -1078,6 +1152,12 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Help Panel */}
+      <HelpPanel isOpen={showHelp} onClose={() => setShowHelp(false)} />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Privacy overlay — covers PHI content in iOS/Android task switcher */}
       <div

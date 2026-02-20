@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
+import { logAuditEvent } from './auditService';
 
 // Storage keys
 const AUTH_USER_KEY = 'auth_user';
@@ -46,13 +47,45 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   }
 
   const auth = getFirebaseAuth();
-  const { user } = await signInWithEmailAndPassword(auth, email, password);
+  let authUser: AuthUser;
 
-  // Fetch user profile from Firestore
-  const authUser = await fetchUserProfile(user.uid, user.email);
+  try {
+    const { user } = await signInWithEmailAndPassword(auth, email, password);
 
-  // Store locally for offline access
-  await storeUser(authUser);
+    // Fetch user profile from Firestore
+    authUser = await fetchUserProfile(user.uid, user.email);
+
+    // Store locally for offline access
+    await storeUser(authUser);
+
+    // Log successful login
+    const platform = typeof (window as any).Capacitor !== 'undefined' ? 'native' : 'web';
+    if (authUser.organizationId) {
+      logAuditEvent(authUser.organizationId, {
+        action: 'user_login',
+        userId: authUser.id,
+        userName: authUser.displayName || authUser.email,
+        targetPatientId: null,
+        targetPatientName: null,
+        details: `User logged in (${platform})`,
+        listContext: null,
+        metadata: { platform }
+      });
+    }
+  } catch (error) {
+    // Log failed login attempt
+    logAuditEvent('system', {
+      action: 'user_login_failed',
+      userId: email,
+      userName: email,
+      targetPatientId: null,
+      targetPatientName: null,
+      details: 'Login attempt failed',
+      listContext: null,
+      metadata: { platform: typeof (window as any).Capacitor !== 'undefined' ? 'native' : 'web' }
+    });
+    throw error;
+  }
 
   return authUser;
 }
@@ -101,6 +134,21 @@ export async function signUp(
 
 // Sign out — wipes all PHI from device
 export async function signOut(): Promise<void> {
+  // Read stored user BEFORE clearing to log the event
+  const storedUser = await getStoredUser();
+
+  if (storedUser?.organizationId) {
+    logAuditEvent(storedUser.organizationId, {
+      action: 'user_logout',
+      userId: storedUser.id,
+      userName: storedUser.displayName || storedUser.email,
+      targetPatientId: null,
+      targetPatientName: null,
+      details: 'User logged out',
+      listContext: null
+    });
+  }
+
   if (isFirebaseConfigured()) {
     const auth = getFirebaseAuth();
     await firebaseSignOut(auth);

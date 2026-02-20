@@ -15,6 +15,7 @@ import { logAuditEvent } from '../../services/auditService';
 import { calculateMedicarePayment, getAllInpatientCodes } from '../../data/inpatientCodes';
 import { getAllEPCodes } from '../../data/epCodes';
 import { getAllEchoCodes } from '../../data/echoCodes';
+import { icd10Codes } from '../../data/icd10Codes';
 import { ChargeEditDialog } from './ChargeEditDialog';
 import { BatchBillConfirmDialog } from './BatchBillConfirmDialog';
 
@@ -53,6 +54,12 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
   });
 
   const allCodes = useMemo(() => [...getAllInpatientCodes(), ...getAllEPCodes(), ...getAllEchoCodes()], []);
+
+  const icd10Map = useMemo(() => {
+    const map = new Map<string, string>();
+    icd10Codes.forEach(c => map.set(c.code, c.shortLabel));
+    return map;
+  }, []);
 
   const getRVU = useCallback((cptCode: string): number => {
     if (cptCode.includes(' + ')) {
@@ -379,12 +386,29 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
                       <p className="text-sm text-gray-600 truncate">{item.physicianName}</p>
                     </td>
 
-                    {/* CPT Code */}
+                    {/* CPT Code + ICD-10 */}
                     <td className="px-4 py-3">
-                      <p className="text-sm font-mono text-gray-900">{item.charge.cptCode}</p>
-                      {item.charge.cptDescription && (
-                        <p className="text-xs text-gray-500 truncate max-w-xs">{item.charge.cptDescription}</p>
-                      )}
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-mono text-gray-900">{item.charge.cptCode}</p>
+                          {item.charge.cptDescription && (
+                            <p className="text-xs text-gray-500 truncate max-w-[200px]">{item.charge.cptDescription}</p>
+                          )}
+                        </div>
+                        {item.charge.diagnoses && item.charge.diagnoses.length > 0 && (
+                          <div className="flex flex-wrap gap-1 flex-shrink-0">
+                            {item.charge.diagnoses.map(dx => (
+                              <span
+                                key={dx}
+                                className="inline-flex items-center px-1.5 py-0.5 bg-violet-50 text-violet-700 text-[10px] font-medium rounded border border-violet-200"
+                                title={icd10Map.get(dx) || dx}
+                              >
+                                {dx}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     {/* Status */}

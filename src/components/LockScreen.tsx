@@ -1,17 +1,73 @@
-import React, { useState } from 'react';
-import { Heart, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Heart, Lock, Fingerprint } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirebaseAuth, isFirebaseConfigured } from '../services/firebaseConfig';
+import { logAuditEvent } from '../services/auditService';
+import {
+  isBiometricAvailable,
+  getBiometryType,
+  authenticateWithBiometric,
+  getBiometricPreference
+} from '../services/biometricService';
 
 interface LockScreenProps {
   userEmail: string;
+  userId?: string;
+  orgId?: string;
   onUnlock: () => void;
 }
 
-export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, onUnlock }) => {
+export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, userId, orgId, onUnlock }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [biometricType, setBiometricType] = useState<'faceId' | 'touchId' | 'none'>('none');
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+  // Check biometric availability on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      const available = await isBiometricAvailable();
+      const pref = await getBiometricPreference();
+
+      if (available && pref) {
+        setBiometricAvailable(true);
+        const type = await getBiometryType();
+        setBiometricType(type);
+
+        // Auto-trigger biometric on mount
+        const success = await authenticateWithBiometric();
+        if (success) {
+          logUnlock('biometric');
+          onUnlock();
+        }
+      }
+    };
+    checkBiometric();
+  }, []);
+
+  const logUnlock = (method: 'password' | 'biometric') => {
+    if (orgId && userId) {
+      logAuditEvent(orgId, {
+        action: 'session_unlocked',
+        userId: userId,
+        userName: userEmail,
+        targetPatientId: null,
+        targetPatientName: null,
+        details: `Session unlocked via ${method}`,
+        listContext: null,
+        metadata: { loginMethod: method }
+      });
+    }
+  };
+
+  const handleBiometricUnlock = async () => {
+    const success = await authenticateWithBiometric();
+    if (success) {
+      logUnlock('biometric');
+      onUnlock();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +77,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, onUnlock }) =
     try {
       if (!isFirebaseConfigured()) {
         // In non-Firebase mode, just unlock (dev/demo)
+        logUnlock('password');
         onUnlock();
         return;
       }
@@ -28,6 +85,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, onUnlock }) =
       const auth = getFirebaseAuth();
       await signInWithEmailAndPassword(auth, userEmail, password);
       setPassword('');
+      logUnlock('password');
       onUnlock();
     } catch {
       setError('Incorrect password. Please try again.');
@@ -36,6 +94,8 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, onUnlock }) =
       setIsVerifying(false);
     }
   };
+
+  const biometricLabel = biometricType === 'faceId' ? 'Use Face ID' : biometricType === 'touchId' ? 'Use Touch ID' : '';
 
   return (
     <div className="fixed inset-0 bg-white z-[9999] flex items-center justify-center">
@@ -51,6 +111,17 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, onUnlock }) =
         <p className="text-sm text-gray-500 mb-6">
           Locked due to inactivity. Enter your password to continue.
         </p>
+
+        {/* Biometric button */}
+        {biometricAvailable && biometricType !== 'none' && (
+          <button
+            onClick={handleBiometricUnlock}
+            className="w-full mb-4 py-3 flex items-center justify-center gap-2 border-2 border-blue-200 text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            <Fingerprint className="w-5 h-5" />
+            {biometricLabel}
+          </button>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

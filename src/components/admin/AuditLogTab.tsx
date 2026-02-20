@@ -45,6 +45,12 @@ const actionConfig: Record<string, { icon: React.ReactNode; color: string; label
   hospital_deactivated: { icon: <Building2 className="w-4 h-4" />, color: 'text-purple-600 bg-purple-50', label: 'Hospital Deactivated' },
   cathlab_added: { icon: <Building2 className="w-4 h-4" />, color: 'text-purple-600 bg-purple-50', label: 'Cath Lab Added' },
   cathlab_deactivated: { icon: <Building2 className="w-4 h-4" />, color: 'text-purple-600 bg-purple-50', label: 'Cath Lab Deactivated' },
+  user_login: { icon: <Key className="w-4 h-4" />, color: 'text-indigo-600 bg-indigo-50', label: 'User Login' },
+  user_logout: { icon: <Key className="w-4 h-4" />, color: 'text-indigo-600 bg-indigo-50', label: 'User Logout' },
+  user_login_failed: { icon: <Shield className="w-4 h-4" />, color: 'text-red-600 bg-red-50', label: 'Login Failed' },
+  session_locked: { icon: <Shield className="w-4 h-4" />, color: 'text-indigo-600 bg-indigo-50', label: 'Session Locked' },
+  session_unlocked: { icon: <Key className="w-4 h-4" />, color: 'text-indigo-600 bg-indigo-50', label: 'Session Unlocked' },
+  data_exported: { icon: <FileText className="w-4 h-4" />, color: 'text-purple-600 bg-purple-50', label: 'Data Exported' },
 };
 
 const actionFilterOptions: { value: string; label: string }[] = [
@@ -66,7 +72,7 @@ export const AuditLogTab: React.FC<AuditLogTabProps> = ({ orgId }) => {
     if (!filter) return undefined;
     if (filter === 'charge') return ['charge_submitted', 'charge_modified', 'charge_marked_entered', 'charge_marked_billed', 'charge_batch_billed'];
     if (filter === 'patient') return ['patient_added', 'patient_discharged', 'patient_removed', 'patient_merged', 'call_list_add', 'call_list_remove', 'call_list_clear'];
-    if (filter === 'practice') return ['physician_invited', 'physician_removed', 'physician_role_changed', 'practice_code_regenerated', 'hospital_added', 'hospital_deactivated', 'cathlab_added', 'cathlab_deactivated'];
+    if (filter === 'practice') return ['physician_invited', 'physician_removed', 'physician_role_changed', 'practice_code_regenerated', 'hospital_added', 'hospital_deactivated', 'cathlab_added', 'cathlab_deactivated', 'user_login', 'user_logout', 'user_login_failed', 'session_locked', 'session_unlocked', 'data_exported'];
     return undefined;
   };
 

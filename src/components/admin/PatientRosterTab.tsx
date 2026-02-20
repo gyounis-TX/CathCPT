@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Users, Calendar, Building2, FileText } from 'lucide-react';
+import { Search, Users, Calendar, Building2, FileText, GitMerge } from 'lucide-react';
 import { Inpatient, Hospital } from '../../types';
 import { StoredCharge } from '../../services/chargesService';
 import { getAllOrgPatients, searchPatients } from '../../services/patientRosterService';
 import { PatientDetailPanel } from './PatientDetailPanel';
+import { PatientMergeDialog } from './PatientMergeDialog';
 
 interface PatientRosterTabProps {
   orgId: string;
@@ -33,6 +34,8 @@ export const PatientRosterTab: React.FC<PatientRosterTabProps> = ({
   const [statusFilter, setStatusFilter] = useState<RosterFilter>('all');
   const [selectedPatient, setSelectedPatient] = useState<Inpatient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mergeSelection, setMergeSelection] = useState<Inpatient[]>([]);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
 
   const loadPatients = useCallback(async () => {
     setIsLoading(true);
@@ -113,21 +116,48 @@ export const PatientRosterTab: React.FC<PatientRosterTabProps> = ({
           />
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex gap-2">
-          {filterPills.map(pill => (
+        {/* Filter Pills & Merge Button */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-2 flex-1">
+            {filterPills.map(pill => (
+              <button
+                key={pill.key}
+                onClick={() => setStatusFilter(pill.key)}
+                className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                  statusFilter === pill.key
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+          {mergeSelection.length === 2 ? (
             <button
-              key={pill.key}
-              onClick={() => setStatusFilter(pill.key)}
-              className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-                statusFilter === pill.key
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              onClick={() => setShowMergeDialog(true)}
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-purple-600 rounded-full hover:bg-purple-700"
             >
-              {pill.label}
+              <GitMerge className="w-3.5 h-3.5" />
+              Merge ({mergeSelection.length})
             </button>
-          ))}
+          ) : mergeSelection.length > 0 ? (
+            <span className="text-xs text-purple-600 font-medium">
+              Select {2 - mergeSelection.length} more to merge
+            </span>
+          ) : null}
+          <button
+            onClick={() => setMergeSelection(mergeSelection.length > 0 ? [] : [])}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+              mergeSelection.length > 0
+                ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title="Select patients to merge"
+          >
+            <GitMerge className="w-3.5 h-3.5" />
+            Merge
+          </button>
         </div>
       </div>
 
@@ -152,8 +182,22 @@ export const PatientRosterTab: React.FC<PatientRosterTabProps> = ({
               return (
                 <button
                   key={patient.id}
-                  onClick={() => setSelectedPatient(patient)}
-                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 text-left flex items-center gap-3"
+                  onClick={() => {
+                    if (mergeSelection.length > 0 || mergeSelection.some(p => p.id === patient.id)) {
+                      // In merge selection mode
+                      setMergeSelection(prev => {
+                        const exists = prev.find(p => p.id === patient.id);
+                        if (exists) return prev.filter(p => p.id !== patient.id);
+                        if (prev.length >= 2) return prev;
+                        return [...prev, patient];
+                      });
+                    } else {
+                      setSelectedPatient(patient);
+                    }
+                  }}
+                  className={`w-full px-4 py-3 hover:bg-gray-50 text-left flex items-center gap-3 ${
+                    mergeSelection.some(p => p.id === patient.id) ? 'bg-purple-50' : 'bg-white'
+                  }`}
                 >
                   {/* Avatar */}
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -227,6 +271,29 @@ export const PatientRosterTab: React.FC<PatientRosterTabProps> = ({
         onClose={() => setSelectedPatient(null)}
         onChargesUpdated={onChargesUpdated}
       />
+
+      {/* Patient Merge Dialog */}
+      {showMergeDialog && mergeSelection.length === 2 && (
+        <PatientMergeDialog
+          isOpen={showMergeDialog}
+          patient1={mergeSelection[0]}
+          patient2={mergeSelection[1]}
+          orgId={orgId}
+          adminId={currentUserId}
+          adminName={currentUserName}
+          charges={charges}
+          onClose={() => {
+            setShowMergeDialog(false);
+            setMergeSelection([]);
+          }}
+          onMergeComplete={() => {
+            setShowMergeDialog(false);
+            setMergeSelection([]);
+            loadPatients();
+            onChargesUpdated();
+          }}
+        />
+      )}
     </div>
   );
 };

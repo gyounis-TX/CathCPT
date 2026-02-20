@@ -1,6 +1,11 @@
 // Code Group Settings Service
 // Allows users to show/hide CPT code categories based on their specialty
+// Settings are persisted to Firestore for cross-device sync
 
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
+import { getFirebaseAuth } from './firebaseConfig';
+import { getDevModeSettings } from './devMode';
 import { logger } from './logger';
 
 
@@ -166,8 +171,32 @@ export const settingToCategoriesMap: Record<keyof Omit<CodeGroupSettings, 'other
   miscellaneous: ['Retrieval']
 };
 
-// Get current settings
+// Get current settings — tries Firestore first, falls back to local
 export async function getCodeGroupSettings(): Promise<CodeGroupSettings> {
+  const devSettings = await getDevModeSettings();
+
+  // Try Firestore first (non-dev mode)
+  if (!devSettings?.enabled && isFirebaseConfigured()) {
+    try {
+      const auth = getFirebaseAuth();
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        const db = getFirebaseDb();
+        const docRef = doc(db, `users/${uid}/settings/codeGroups`);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data() as Partial<CodeGroupSettings & { updatedAt?: string }>;
+          // Also update local cache
+          const settings = { ...defaultCodeGroupSettings, ...data, other: true as const };
+          await window.storage.set(CODE_GROUP_SETTINGS_KEY, JSON.stringify(settings));
+          return settings;
+        }
+      }
+    } catch {
+      // Fall through to local
+    }
+  }
+
   try {
     const { value } = await window.storage.get(CODE_GROUP_SETTINGS_KEY);
     if (value) {
@@ -182,12 +211,29 @@ export async function getCodeGroupSettings(): Promise<CodeGroupSettings> {
   }
 }
 
-// Save settings
+// Save settings — writes both local AND Firestore
 export async function saveCodeGroupSettings(settings: CodeGroupSettings): Promise<void> {
   try {
     // Ensure 'other' is always true
-    const settingsToSave = { ...settings, other: true as const };
+    const settingsToSave = { ...settings, other: true as const, updatedAt: new Date().toISOString() };
     await window.storage.set(CODE_GROUP_SETTINGS_KEY, JSON.stringify(settingsToSave));
+
+    // Also persist to Firestore for cross-device sync
+    const devSettings = await getDevModeSettings();
+    if (!devSettings?.enabled && isFirebaseConfigured()) {
+      try {
+        const auth = getFirebaseAuth();
+        const uid = auth.currentUser?.uid;
+        if (uid) {
+          const db = getFirebaseDb();
+          const docRef = doc(db, `users/${uid}/settings/codeGroups`);
+          await setDoc(docRef, settingsToSave);
+        }
+      } catch (firestoreError) {
+        logger.error('Error saving code group settings to Firestore', firestoreError);
+        // Non-critical — local save already succeeded
+      }
+    }
   } catch (error) {
     logger.error('Error saving code group settings', error);
     throw error;

@@ -22,6 +22,11 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
+      // User settings (code groups, preferences)
+      match /settings/{settingId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
       // Cath cases (user's own)
       match /cathCases/{caseId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -122,6 +127,15 @@ service cloud.firestore {
         allow read: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
         allow create, update: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      }
+
+      // Organization settings (report schedule, etc.)
+      match /settings/{settingId} {
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+        allow write: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       }

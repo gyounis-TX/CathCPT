@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Clock, DollarSign, ChevronDown, ChevronRight, Check, AlertCircle, Info, Calendar, Search, Plus } from 'lucide-react';
+import { X, Clock, DollarSign, ChevronDown, ChevronRight, Check, AlertCircle, Info, Calendar, Search, Plus, AlertTriangle } from 'lucide-react';
+import { showToast } from '../hooks/useToast';
+import { validateCCIEdits, CCIViolation } from '../data/cciEdits';
 import { Inpatient, InpatientCharge } from '../types';
 
 // Date options for charge entry
@@ -303,6 +305,11 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
     return getRequiredModifiers(Array.from(selectedCodes));
   }, [selectedCodes]);
 
+  // CCI edit validation
+  const cciViolations = useMemo(() => {
+    return validateCCIEdits(Array.from(selectedCodes));
+  }, [selectedCodes]);
+
   // Check if a code needs a modifier
   const getModifierForCode = (code: string): ModifierCode | undefined => {
     return requiredModifiers.get(code);
@@ -420,12 +427,12 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
     e.preventDefault();
 
     if (selectedCodes.size === 0) {
-      alert('Please select a charge code');
+      showToast('Please select a charge code', 'warning');
       return;
     }
 
     if (requiresTimeEntry && !timeMinutes) {
-      alert('Please enter time for critical care');
+      showToast('Please enter time for critical care', 'warning');
       return;
     }
 
@@ -1036,6 +1043,27 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
                     </div>
                   );
                 })()}
+
+                {/* CCI Edit Warnings */}
+                {cciViolations.length > 0 && (
+                  <div className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-amber-800">
+                        <p className="font-semibold mb-1">CCI Edit Warning</p>
+                        {cciViolations.map((v, i) => (
+                          <p key={i} className="mb-0.5">
+                            <span className="font-medium">{v.column1Code} + {v.column2Code}:</span>{' '}
+                            {v.description}
+                            {v.modifierException && (
+                              <span className="text-amber-600"> (modifier exception may apply)</span>
+                            )}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">

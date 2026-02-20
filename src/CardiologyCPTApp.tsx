@@ -15,6 +15,9 @@ import { logAuditEvent } from './services/auditService';
 import { scanFieldsForPHI, scrubPHI } from './services/phiScanner';
 import { searchICD10Codes } from './data/icd10Codes';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
+import { validateCCIEdits, CCIViolation } from './data/cciEdits';
+import { checkConcurrentVisit } from './services/concurrentVisitService';
+import { showToast } from './hooks/useToast';
 
 // Category color mapping for visual distinction
 const categoryColors: Record<string, { dot: string; bg: string; text: string; border: string; hoverBg: string }> = {
@@ -842,6 +845,13 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   const hasBlockingErrors = useMemo(() => {
     return activeViolations.some(v => v.severity === 'error');
   }, [activeViolations]);
+
+  // CCI Edit Validation
+  const cciViolations = useMemo(() => {
+    const allCodes = [...selectedCodes, ...selectedCodesVessel2, ...selectedCodesVessel3];
+    if (allCodes.length < 2) return [];
+    return validateCCIEdits(allCodes.map(c => c.code));
+  }, [selectedCodes, selectedCodesVessel2, selectedCodesVessel3]);
 
   // 2026 Medicare Fee Schedule (National Average - Facility Setting)
   const medicareFeeSchedule2026 = {
@@ -2359,6 +2369,28 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
           setPendingReportGeneration(true);
           return;
         }
+      }
+    }
+
+    // Concurrent visit detection (only for new charges in Pro mode)
+    if (!editingChargeId && matchedPatient && orgId) {
+      let chargeDate: string;
+      if (procedureDateOption === 'today') {
+        chargeDate = formatDateForStorage(new Date());
+      } else if (procedureDateOption === 'yesterday') {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        chargeDate = formatDateForStorage(d);
+      } else {
+        chargeDate = procedureDateText;
+      }
+      const concurrent = await checkConcurrentVisit(matchedPatient.id, chargeDate, 'user-1');
+      if (concurrent) {
+        const proceed = window.confirm(
+          `${concurrent.otherPhysicianName} already has a charge for this patient on ${chargeDate}. ` +
+          `Concurrent care is common — continue?`
+        );
+        if (!proceed) return;
       }
     }
 
@@ -5854,6 +5886,34 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* CCI Edit Warnings */}
+        {cciViolations.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-amber-800 mb-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <span>CCI Edit Warnings ({cciViolations.length})</span>
+            </h2>
+            <div className="space-y-3">
+              {cciViolations.map((v, i) => (
+                <div key={i} className="p-3 bg-amber-50 border-l-4 border-amber-400 rounded">
+                  <div className="flex items-center gap-2 text-sm font-medium text-amber-900">
+                    <span className="px-2 py-0.5 bg-amber-200 rounded text-xs font-bold">{v.column1Code}</span>
+                    <span className="text-amber-600">bundles</span>
+                    <span className="px-2 py-0.5 bg-amber-200 rounded text-xs font-bold">{v.column2Code}</span>
+                  </div>
+                  <p className="text-sm text-amber-700 mt-1">{v.description}</p>
+                  {v.modifierException && (
+                    <p className="text-xs text-amber-600 mt-1">Modifier exception: May be billed separately with appropriate modifier</p>
+                  )}
+                </div>
+              ))}
+              <p className="text-xs text-amber-600 mt-2">
+                CCI warnings do not block submission. Review and apply modifiers if appropriate.
+              </p>
+            </div>
           </div>
         )}
 
