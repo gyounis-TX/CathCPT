@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Users, Shield, Settings, LogIn, LogOut, RefreshCw, AlertCircle, Wifi, WifiOff, History, Lightbulb, HelpCircle } from 'lucide-react';
+import { Heart, Users, Shield, Settings, LogIn, LogOut, RefreshCw, History, Lightbulb, HelpCircle } from 'lucide-react';
 import CardiologyCPTApp, { CardiologyCPTAppHandle } from './CardiologyCPTApp';
 import { LoginScreen } from './screens/LoginScreen';
 import { RoundsScreen } from './screens/RoundsScreen';
@@ -10,8 +10,7 @@ import { CallListPickerDialog } from './components/CallListPickerDialog';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
 import { PracticeCodeSetup } from './components/PracticeCodeSetup';
 import { LockScreen } from './components/LockScreen';
-import { HIPAABanner } from './components/HIPAABanner';
-import { OnboardingFlow } from './components/OnboardingFlow';
+import { HIPAAInlineBanner } from './components/HIPAAInlineBanner';
 import { HelpPanel } from './components/HelpPanel';
 import { OfflineBanner } from './components/OfflineBanner';
 import { SyncStatusIndicator } from './components/SyncStatusIndicator';
@@ -48,7 +47,6 @@ const App: React.FC = () => {
   // Auth state
   const [isInitializing, setIsInitializing] = useState(true);
   const [initStep, setInitStep] = useState('starting...');
-  const [showLogin, setShowLogin] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [userMode, setUserMode] = useState<UserMode>({
     tier: 'individual',
@@ -102,11 +100,11 @@ const App: React.FC = () => {
   // Dev mode state
   const [devModeSettings, setDevModeSettings] = useState<DevModeSettings | null>(null);
 
-  // HIPAA acknowledgment state
-  const [hipaaAcknowledged, setHipaaAcknowledged] = useState<boolean | null>(null);
+  // Inline HIPAA banner state (non-blocking)
+  const [showHipaaBanner, setShowHipaaBanner] = useState(false);
 
-  // Onboarding state
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  // Login modal state (overlay, not a gate)
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Help panel state
   const [showHelp, setShowHelp] = useState(false);
@@ -178,31 +176,63 @@ const App: React.FC = () => {
   }, []);
 
   const initializeApp = async () => {
-    try {
-      setInitStep('checking credentials...');
-      let currentUser: AuthUser | null = null;
+    // Hard deadline — never stay on loading screen longer than 8 seconds
+    const masterTimeout = setTimeout(() => {
+      logger.warn('App init hit master timeout — forcing load');
+      setIsInitializing(false);
+    }, 8000);
 
-      if (isFirebaseConfigured()) {
-        setInitStep('connecting to server...');
-        await initializeFirebase();
-        const { user } = await getCurrentSession();
-        if (user) {
-          currentUser = user;
-          setAuthUser(user);
+    try {
+      // Check HIPAA acknowledgment (non-blocking — just sets banner visibility)
+      try {
+        const hipaaResult = await window.storage.get('hipaa_ack_timestamp');
+        if (!hipaaResult?.value) {
+          setShowHipaaBanner(true);
         }
+      } catch {
+        setShowHipaaBanner(true);
       }
 
-      // Check HIPAA acknowledgment
-      const hipaaResult = await window.storage.get('hipaa_ack_timestamp');
-      setHipaaAcknowledged(!!hipaaResult?.value);
+      // Fast path: check for stored pro session before touching Firebase
+      setInitStep('checking credentials...');
+      let storedSession: AuthUser | null = null;
+      try {
+        const result = await window.storage.get('auth_user');
+        if (result?.value) {
+          storedSession = JSON.parse(result.value) as AuthUser;
+        }
+      } catch {
+        // No stored session — individual user fast path
+      }
 
-      // Check onboarding completion
-      const onboardingResult = await window.storage.get('onboarding_completed');
-      setOnboardingCompleted(!!onboardingResult?.value);
+      let currentUser: AuthUser | null = null;
+
+      if (storedSession && isFirebaseConfigured()) {
+        // Slow path: pro user with stored session — init Firebase to validate/refresh
+        try {
+          setInitStep('connecting to server...');
+          await initializeFirebase();
+          const { user } = await getCurrentSession();
+          if (user) {
+            currentUser = user;
+            setAuthUser(user);
+          }
+        } catch (fbErr) {
+          logger.warn('Firebase init failed, using stored session', fbErr);
+          // Fall back to stored session
+          currentUser = storedSession;
+          setAuthUser(storedSession);
+        }
+      }
+      // If no stored session, skip Firebase entirely (individual user fast path)
 
       setInitStep('loading settings...');
-      const devSettings = await getDevModeSettings();
-      setDevModeSettings(devSettings);
+      try {
+        const devSettings = await getDevModeSettings();
+        setDevModeSettings(devSettings);
+      } catch {
+        // Dev mode not critical
+      }
 
       setInitStep('checking user mode...');
       const mode = await getUserMode(currentUser);
@@ -213,13 +243,19 @@ const App: React.FC = () => {
         setActiveTab('admin');
       }
 
-      if (mode.tier === 'pro') {
+      if (mode.tier === 'pro' && mode.organizationId) {
         setInitStep('loading pro data...');
-        await loadSyncStatus();
-        await loadHospitals();
-        await loadPatients(mode.organizationId);
-        await loadCallList(mode.organizationId, currentUser?.id || 'user-1');
-        await loadChargesAndDiagnoses();
+        try {
+          await Promise.all([
+            loadSyncStatus(),
+            loadHospitals(),
+            loadPatients(mode.organizationId),
+            loadCallList(mode.organizationId, currentUser?.id || 'user-1'),
+            loadChargesAndDiagnoses()
+          ]);
+        } catch (proErr) {
+          logger.warn('Pro data load partially failed', proErr);
+        }
       }
 
       setInitStep('done');
@@ -227,6 +263,7 @@ const App: React.FC = () => {
       setInitStep('error: ' + (error instanceof Error ? error.message : String(error)));
       logger.error('App initialization error', error);
     } finally {
+      clearTimeout(masterTimeout);
       setIsInitializing(false);
     }
   };
@@ -290,7 +327,7 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = async (user: AuthUser) => {
     setAuthUser(user);
-    setShowLogin(false);
+    setShowLoginModal(false);
     setSentryUser(user.id);
 
     // Update user mode
@@ -322,7 +359,7 @@ const App: React.FC = () => {
   };
 
   const handleSkipLogin = async () => {
-    setShowLogin(false);
+    setShowLoginModal(false);
     const mode = await getUserMode(null);
     setUserMode(mode);
   };
@@ -738,25 +775,28 @@ const App: React.FC = () => {
 
   const handleDevModeChange = async (tier: 'individual' | 'pro', role: 'physician' | 'admin' | null) => {
     await setDevModeUserType(tier, role);
-    const mode = await getUserMode(authUser);
+    const [mode, devSettings] = await Promise.all([
+      getUserMode(authUser),
+      getDevModeSettings()
+    ]);
     setUserMode(mode);
-    setDevModeSettings(await getDevModeSettings());
+    setDevModeSettings(devSettings);
 
     // Default to admin tab when switching to admin role
     if (mode.role === 'admin') {
       setActiveTab('admin');
-    } else if (mode.role === 'physician') {
-      setActiveTab('cathlab');
     } else {
       setActiveTab('cathlab');
     }
 
     // Load data if switching to Pro mode
-    if (mode.tier === 'pro') {
-      await loadHospitals();
-      await loadPatients(mode.organizationId);
-      await loadCallList(mode.organizationId, authUser?.id || 'user-1');
-      await loadChargesAndDiagnoses();
+    if (mode.tier === 'pro' && mode.organizationId) {
+      await Promise.all([
+        loadHospitals(),
+        loadPatients(mode.organizationId),
+        loadCallList(mode.organizationId, authUser?.id || 'user-1'),
+        loadChargesAndDiagnoses()
+      ]);
     }
   };
 
@@ -768,55 +808,35 @@ const App: React.FC = () => {
     setUserMode(mode);
   };
 
-  // Show loading screen during initialization
+  // Show loading screen during initialization (branded)
   if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto mb-4 flex items-center justify-center animate-pulse">
-            <Heart className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 rounded-2xl mx-auto mb-4 overflow-hidden animate-pulse">
+            <svg viewBox="0 0 100 100" className="w-full h-full">
+              <defs>
+                <linearGradient id="loadingBgGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#D4A84B"/>
+                  <stop offset="50%" stopColor="#C49A3D"/>
+                  <stop offset="100%" stopColor="#9A7830"/>
+                </linearGradient>
+              </defs>
+              <rect width="100" height="100" rx="18" fill="url(#loadingBgGold)"/>
+              <g transform="translate(28, 5) scale(0.52)">
+                <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
+              </g>
+              <text x="50" y="72" fontSize="36" fontWeight="900" fill="#F5E6B0" textAnchor="middle" fontFamily="Arial Black, sans-serif">CPT</text>
+            </svg>
           </div>
-          <p className="text-gray-500">Loading...</p>
+          <p className="text-lg font-semibold text-gray-700 mb-1">CathCPT</p>
+          <p className="text-gray-400 text-sm">{initStep || 'Loading...'}</p>
         </div>
       </div>
     );
   }
 
-  // Show HIPAA acknowledgment if not yet accepted
-  if (hipaaAcknowledged === false) {
-    return (
-      <HIPAABanner
-        onAcknowledge={async () => {
-          await window.storage.set('hipaa_ack_timestamp', new Date().toISOString());
-          setHipaaAcknowledged(true);
-        }}
-      />
-    );
-  }
-
-  // Show onboarding after HIPAA ack if not completed
-  if (hipaaAcknowledged && onboardingCompleted === false) {
-    return (
-      <OnboardingFlow
-        onComplete={async () => {
-          await window.storage.set('onboarding_completed', 'true');
-          setOnboardingCompleted(true);
-        }}
-      />
-    );
-  }
-
-  // Show login screen
-  if (showLogin) {
-    return (
-      <LoginScreen
-        onLoginSuccess={handleLoginSuccess}
-        onSkip={handleSkipLogin}
-      />
-    );
-  }
-
-  // Show lock screen when session is locked
+  // Show lock screen when session is locked (pro users, HIPAA)
   if (isLocked && authUser) {
     return (
       <LockScreen
@@ -838,6 +858,16 @@ const App: React.FC = () => {
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Offline Banner */}
       <OfflineBanner isOffline={!syncStatus.isOnline} />
+
+      {/* Inline HIPAA Banner (non-blocking, first launch only) */}
+      {showHipaaBanner && (
+        <HIPAAInlineBanner
+          onAcknowledge={async () => {
+            await window.storage.set('hipaa_ack_timestamp', new Date().toISOString());
+            setShowHipaaBanner(false);
+          }}
+        />
+      )}
 
       {/* === FIXED HEADER === */}
       <div className="flex-shrink-0">
@@ -864,51 +894,62 @@ const App: React.FC = () => {
             <h1 className="text-xl font-bold text-amber-700">CathCPT</h1>
           </div>
           <div className="flex items-center gap-1.5">
+            {/* Sign In button (individual mode only) */}
+            {!isProMode && (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                title="Sign In"
+              >
+                <LogIn size={16} />
+                Sign In
+              </button>
+            )}
             {/* History */}
             <button
               onClick={() => cathCPTRef.current?.openHistory()}
-              className="p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="Case History"
             >
-              <History size={18} className="text-blue-600" />
+              <History size={18} className="text-gray-600" />
             </button>
             {/* 2026 Updates */}
             <button
               onClick={() => cathCPTRef.current?.openUpdates()}
-              className="p-2 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors"
+              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="What's New in 2026"
             >
-              <Lightbulb size={18} className="text-yellow-600" />
+              <Lightbulb size={18} className="text-gray-600" />
             </button>
             {/* Settings */}
             <button
               onClick={() => cathCPTRef.current?.openSettings()}
-              className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="Settings"
             >
-              <Settings size={18} className="text-indigo-600" />
+              <Settings size={18} className="text-gray-600" />
             </button>
             {/* Help */}
             <button
               onClick={() => setShowHelp(true)}
-              className="p-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="Help"
             >
-              <HelpCircle size={18} className="text-gray-500" />
+              <HelpCircle size={18} className="text-gray-600" />
             </button>
           </div>
         </div>
 
         {/* Row 2: Blue practice bar */}
         {isProMode && (
-          <div className="bg-blue-600 text-white px-4 py-1.5 flex items-center justify-between">
+          <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {userMode.isDevMode && (
                 <span className="px-2 py-0.5 bg-yellow-500 text-yellow-900 text-xs font-medium rounded">
                   DEV
                 </span>
               )}
-              <span className="text-sm font-medium">
+              <span className="font-medium">
                 {userMode.organizationName || 'Pro Mode'}
               </span>
             </div>
@@ -937,38 +978,38 @@ const App: React.FC = () => {
             <div className="flex gap-4">
               <button
                 onClick={() => setActiveTab('cathlab')}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-3 px-3 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'cathlab'
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Heart className="w-4 h-4 inline mr-1.5" />
+                <Heart size={18} className="inline mr-1.5" />
                 Cath Lab
               </button>
               {showRoundsTab && (
                 <button
                   onClick={() => setActiveTab('rounds')}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`py-3 px-3 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'rounds'
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <Users className="w-4 h-4 inline mr-1.5" />
+                  <Users size={18} className="inline mr-1.5" />
                   Rounds
                 </button>
               )}
               {showAdminTab && (
                 <button
                   onClick={() => setActiveTab('admin')}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`py-3 px-3 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'admin'
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <Shield className="w-4 h-4 inline mr-1.5" />
+                  <Shield size={18} className="inline mr-1.5" />
                   Admin Portal
                 </button>
               )}
@@ -1030,27 +1071,15 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* Footer with Dev Mode Toggle */}
-      <div className="bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-between">
-        {!isProMode ? (
-          <button
-            onClick={() => setShowLogin(true)}
-            className="flex items-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700"
-          >
-            <LogIn className="w-4 h-4" />
-            Sign in for Pro features
-          </button>
-        ) : (
-          <div />
-        )}
-        <button
-          onClick={() => setShowDevOptions(true)}
-          className="flex items-center gap-1.5 py-1.5 px-3 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg"
-        >
-          <Settings className="w-3.5 h-3.5" />
-          Dev
-        </button>
-      </div>
+      {/* Login Modal Overlay */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 bg-white">
+          <LoginScreen
+            onLoginSuccess={handleLoginSuccess}
+            onSkip={() => setShowLoginModal(false)}
+          />
+        </div>
+      )}
 
       {/* Dialogs */}
       <AddPatientDialog

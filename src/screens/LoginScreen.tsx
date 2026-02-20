@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, LogIn, UserPlus, ArrowLeft, Mail, Lock, AlertCircle, Ticket } from 'lucide-react';
+import { Eye, EyeOff, LogIn, UserPlus, ArrowLeft, Mail, Lock, AlertCircle, Ticket, X } from 'lucide-react';
 import { signIn, signUp, resetPassword, AuthUser } from '../services/authService';
 import { lookupInviteCode, redeemInvite, InviteCode } from '../services/inviteService';
 import { createConnectionFromInvite } from '../services/practiceConnection';
@@ -10,9 +10,6 @@ interface LoginScreenProps {
 }
 
 type AuthMode = 'login' | 'invite' | 'forgot';
-
-// Detect if running inside Capacitor (mobile) vs browser (web)
-const isNativeApp = !!(window as any).Capacitor;
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onSkip }) => {
   const [mode, setMode] = useState<AuthMode>('login');
@@ -409,13 +406,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onSkip
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+      {/* Close button */}
+      <button
+        onClick={onSkip}
+        className="absolute top-4 right-4 z-10 p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+        title="Close"
+      >
+        <X className="w-5 h-5 text-gray-600" />
+      </button>
+
       {/* Header */}
       <div className="flex-shrink-0 pt-12 pb-8 px-6 text-center">
-        <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-          <span className="text-3xl font-bold text-white">C</span>
+        <div className="w-20 h-20 rounded-2xl mx-auto mb-4 overflow-hidden">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <defs>
+              <linearGradient id="loginBgGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#D4A84B"/>
+                <stop offset="50%" stopColor="#C49A3D"/>
+                <stop offset="100%" stopColor="#9A7830"/>
+              </linearGradient>
+            </defs>
+            <rect width="100" height="100" rx="18" fill="url(#loginBgGold)"/>
+            <g transform="translate(28, 5) scale(0.52)">
+              <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
+            </g>
+            <text x="50" y="72" fontSize="36" fontWeight="900" fill="#F5E6B0" textAnchor="middle" fontFamily="Arial Black, sans-serif">CPT</text>
+          </svg>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">CathCPT Pro</h1>
-        <p className="text-gray-600 mt-1">Professional Billing Platform</p>
+        <p className="text-gray-600 mt-1">Cardiology Billing & Coding</p>
       </div>
 
       {/* Form */}
@@ -442,18 +461,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onSkip
 
           {renderForm()}
         </div>
-
-        {/* Skip option — only on mobile (native app) */}
-        {isNativeApp && (
-          <div className="mt-6 text-center">
-            <button
-              onClick={onSkip}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Continue without account (Individual Mode)
-            </button>
-          </div>
-        )}
 
         {/* Features comparison */}
         <div className="mt-8 bg-gray-50 rounded-xl p-4">
