@@ -2,7 +2,7 @@
 // Initializes Firebase App, Auth, and Firestore with offline persistence
 
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
+import { initializeAuth, getAuth, Auth, connectAuthEmulator, indexedDBLocalPersistence, browserLocalPersistence } from 'firebase/auth';
 import { logger } from './logger';
 import {
   getFirestore,
@@ -30,7 +30,11 @@ export async function initializeFirebase(): Promise<{ app: FirebaseApp; auth: Au
   }
 
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
+  // Use browserLocalPersistence instead of indexedDB to avoid WKWebView deadlock
+  // Firebase Auth's default indexedDB persistence can hang in Capacitor's WKWebView
+  auth = initializeAuth(app, {
+    persistence: [browserLocalPersistence, indexedDBLocalPersistence]
+  });
   db = getFirestore(app);
 
   // Connect to emulators in dev
@@ -39,15 +43,20 @@ export async function initializeFirebase(): Promise<{ app: FirebaseApp; auth: Au
     connectFirestoreEmulator(db, 'localhost', 8080);
   }
 
-  // Enable offline persistence for Firestore
+  // Enable offline persistence for Firestore (with timeout to prevent hangs)
   try {
-    await enableIndexedDbPersistence(db);
+    await Promise.race([
+      enableIndexedDbPersistence(db),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Persistence timeout')), 5000))
+    ]);
   } catch (err: unknown) {
-    const error = err as { code?: string };
+    const error = err as { code?: string; message?: string };
     if (error.code === 'failed-precondition') {
       logger.warn('Firestore persistence failed: multiple tabs open');
     } else if (error.code === 'unimplemented') {
       logger.warn('Firestore persistence not available in this browser');
+    } else {
+      logger.warn('Firestore persistence setup skipped:', error.message || 'timeout');
     }
   }
 

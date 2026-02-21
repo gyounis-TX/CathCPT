@@ -273,16 +273,30 @@ export const mockAuditEntries = [
   }
 ];
 
+// In-memory cache to avoid repeated storage reads + decryption
+let _devSettingsCache: DevModeSettings | null | undefined = undefined;
+let _devSettingsCacheTime = 0;
+const DEV_CACHE_TTL = 2000; // 2 seconds
+
 // Get dev mode settings
 export async function getDevModeSettings(): Promise<DevModeSettings | null> {
+  // Return cached value if fresh
+  if (_devSettingsCache !== undefined && Date.now() - _devSettingsCacheTime < DEV_CACHE_TTL) {
+    return _devSettingsCache;
+  }
+
   try {
     const result = await window.storage.get(DEV_MODE_KEY);
     if (result?.value) {
       const settings = JSON.parse(result.value) as DevModeSettings;
       if (settings.enabled) {
+        _devSettingsCache = settings;
+        _devSettingsCacheTime = Date.now();
         return settings;
       }
     }
+    _devSettingsCache = null;
+    _devSettingsCacheTime = Date.now();
     return null;
   } catch {
     return null;
@@ -291,6 +305,9 @@ export async function getDevModeSettings(): Promise<DevModeSettings | null> {
 
 // Save dev mode settings
 export async function saveDevModeSettings(settings: DevModeSettings): Promise<void> {
+  // Invalidate cache on write
+  _devSettingsCache = settings.enabled ? settings : null;
+  _devSettingsCacheTime = Date.now();
   try {
     await window.storage.set(DEV_MODE_KEY, JSON.stringify(settings));
   } catch (error) {

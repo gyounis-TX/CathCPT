@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appName: 'CathCPT',
   webDir: 'dist',
   server: {
+    iosScheme: 'https',
     androidScheme: 'https',
     // Allow connections to Firebase for Pro mode sync
     allowNavigation: [
@@ -15,8 +16,7 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'always',
-    preferredContentMode: 'mobile',
-    scheme: 'CathCPT'
+    preferredContentMode: 'mobile'
   },
   plugins: {
     Preferences: {},
