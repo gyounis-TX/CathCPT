@@ -4,7 +4,6 @@ import {
   Users,
   UserCog,
   ClipboardList,
-  Settings,
   RefreshCw,
   BarChart3,
   Activity
@@ -17,7 +16,6 @@ import { ChargeQueueTab } from '../components/admin/ChargeQueueTab';
 import { PatientRosterTab } from '../components/admin/PatientRosterTab';
 import { PhysicianManagementTab } from '../components/admin/PhysicianManagementTab';
 import { AuditLogTab } from '../components/admin/AuditLogTab';
-import { PracticeSettingsTab } from '../components/admin/PracticeSettingsTab';
 import { ReportsTab } from '../components/admin/ReportsTab';
 
 interface AdminPortalScreenProps {
@@ -30,6 +28,7 @@ interface AdminPortalScreenProps {
   diagnoses: Record<string, string[]>;
   onRefresh: () => Promise<void>;
   onChargesUpdated: () => Promise<void>;
+  onPracticeNameChanged?: (name: string) => void;
 }
 
 export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
@@ -41,7 +40,8 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
   charges,
   diagnoses,
   onRefresh,
-  onChargesUpdated
+  onChargesUpdated,
+  onPracticeNameChanged
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('chargeQueue');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -89,10 +89,9 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
   const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
     { key: 'chargeQueue', label: 'Charges', icon: <LayoutList className="w-4 h-4" /> },
     { key: 'patientRoster', label: 'Patients', icon: <Users className="w-4 h-4" /> },
-    { key: 'physicians', label: 'Physicians', icon: <UserCog className="w-4 h-4" /> },
+    { key: 'physicians', label: 'Practice', icon: <UserCog className="w-4 h-4" /> },
     { key: 'auditLog', label: 'Audit Log', icon: <ClipboardList className="w-4 h-4" /> },
     { key: 'reports', label: 'Reports', icon: <BarChart3 className="w-4 h-4" /> },
-    { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
   return (
@@ -201,6 +200,7 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
             orgName={userMode.organizationName || 'Practice'}
             currentUserId={currentUserId}
             currentUserName={currentUserName}
+            onPracticeNameChanged={onPracticeNameChanged}
           />
         )}
         {activeTab === 'auditLog' && (
@@ -211,13 +211,6 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
             orgId={orgId}
             hospitals={hospitals}
             patients={patients}
-            currentUserId={currentUserId}
-            currentUserName={currentUserName}
-          />
-        )}
-        {activeTab === 'settings' && (
-          <PracticeSettingsTab
-            orgId={orgId}
             currentUserId={currentUserId}
             currentUserName={currentUserName}
           />

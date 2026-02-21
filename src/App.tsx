@@ -12,7 +12,6 @@ import { AddPatientDialog } from './components/AddPatientDialog';
 import { AddChargeDialog } from './components/AddChargeDialog';
 import { CallListPickerDialog } from './components/CallListPickerDialog';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
-import { PracticeCodeSetup } from './components/PracticeCodeSetup';
 import { LockScreen } from './components/LockScreen';
 import { BiometricLoginPrompt } from './components/BiometricLoginPrompt';
 import { isBiometricAvailable, getBiometricPreference } from './services/biometricService';
@@ -87,7 +86,6 @@ const App: React.FC = () => {
   const [showAddCharge, setShowAddCharge] = useState(false);
   const [selectedPatientForCharge, setSelectedPatientForCharge] = useState<Inpatient | null>(null);
   const [showCodeGroupSettings, setShowCodeGroupSettings] = useState(false);
-  const [showPracticeSetup, setShowPracticeSetup] = useState(false);
   const [showDevOptions, setShowDevOptions] = useState(false);
   const [showCallListPicker, setShowCallListPicker] = useState(false);
   const [isCrossCoverageAdd, setIsCrossCoverageAdd] = useState(false);
@@ -441,6 +439,10 @@ const App: React.FC = () => {
   const handleAddCharge = (patient: Inpatient) => {
     setSelectedPatientForCharge(patient);
     setShowAddCharge(true);
+  };
+
+  const handlePracticeNameChanged = (name: string) => {
+    setUserMode(prev => ({ ...prev, organizationName: name }));
   };
 
   const handleRoundsRefresh = async () => {
@@ -1208,6 +1210,7 @@ const App: React.FC = () => {
             diagnoses={patientDiagnoses}
             onRefresh={handleRoundsRefresh}
             onChargesUpdated={loadChargesAndDiagnoses}
+            onPracticeNameChanged={handlePracticeNameChanged}
           />
         )}
       </div>
@@ -1287,12 +1290,6 @@ const App: React.FC = () => {
         isOpen={showCodeGroupSettings}
         onClose={() => setShowCodeGroupSettings(false)}
         onSettingsChanged={() => {}}
-      />
-
-      <PracticeCodeSetup
-        isOpen={showPracticeSetup}
-        onClose={() => setShowPracticeSetup(false)}
-        onConnectionChanged={initializeApp}
       />
 
       <CallListPickerDialog

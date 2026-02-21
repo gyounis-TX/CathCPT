@@ -138,7 +138,7 @@ export interface CallListEntry {
 }
 
 // Admin sub-tab navigation
-export type AdminTab = 'chargeQueue' | 'patientRoster' | 'physicians' | 'auditLog' | 'reports' | 'settings';
+export type AdminTab = 'chargeQueue' | 'patientRoster' | 'physicians' | 'auditLog' | 'reports';
 
 // Audit log entry
 export type AuditAction =
@@ -157,6 +157,7 @@ export type AuditAction =
   | 'physician_removed'
   | 'physician_role_changed'
   | 'practice_code_regenerated'
+  | 'practice_name_changed'
   | 'hospital_added'
   | 'hospital_deactivated'
   | 'cathlab_added'

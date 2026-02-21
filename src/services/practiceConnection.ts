@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { getFirebaseAuth } from './firebaseConfig';
-import { getDevModeSettings, mockHospitals, mockCathLabs, mockPracticeMembers } from './devMode';
+import { getDevModeSettings, saveDevModeSettings, mockHospitals, mockCathLabs, mockPracticeMembers } from './devMode';
 import { logger } from './logger';
 
 const PRACTICE_CONNECTION_KEY = 'practice_connection';
@@ -455,6 +455,21 @@ export async function getPracticeDetails(orgId: string): Promise<{
     hospitalCount: hospitals.length,
     cathLabCount: cathLabs.length
   };
+}
+
+// Update practice name
+export async function updatePracticeName(orgId: string, newName: string): Promise<void> {
+  const devSettings = await getDevModeSettings();
+  if (devSettings?.enabled) {
+    devSettings.mockOrganizationName = newName;
+    await saveDevModeSettings(devSettings);
+    return;
+  }
+
+  if (!isFirebaseConfigured()) return;
+
+  const db = getFirebaseDb();
+  await updateDoc(doc(db, 'organizations', orgId), { name: newName });
 }
 
 // Add a hospital
