@@ -14,6 +14,53 @@ import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { getDevModeSettings } from './devMode';
 import { Inpatient } from '../types';
 
+const LOCAL_INPATIENTS_KEY = 'local_inpatients';
+
+// ── Local storage layer (persists across reloads / offline) ─────
+
+export async function getLocalPatients(): Promise<Inpatient[]> {
+  try {
+    const result = await window.storage.get(LOCAL_INPATIENTS_KEY);
+    if (result?.value) {
+      return JSON.parse(result.value);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveLocalPatient(patient: Inpatient): Promise<void> {
+  try {
+    const patients = await getLocalPatients();
+    const idx = patients.findIndex(p => p.id === patient.id);
+    if (idx >= 0) {
+      patients[idx] = patient;
+    } else {
+      patients.push(patient);
+    }
+    await window.storage.set(LOCAL_INPATIENTS_KEY, JSON.stringify(patients));
+  } catch {
+    // Non-critical — backend is source of truth
+  }
+}
+
+export async function updateLocalPatient(
+  id: string,
+  updates: Partial<Inpatient>
+): Promise<void> {
+  try {
+    const patients = await getLocalPatients();
+    const idx = patients.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      patients[idx] = { ...patients[idx], ...updates };
+      await window.storage.set(LOCAL_INPATIENTS_KEY, JSON.stringify(patients));
+    }
+  } catch {
+    // Non-critical
+  }
+}
+
 // ── Mock data for dev mode ──────────────────────────────────────
 
 const mockInpatients: Inpatient[] = [

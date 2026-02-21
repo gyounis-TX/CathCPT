@@ -128,7 +128,7 @@ interface CardiologyCPTAppProps {
   orgId?: string;
   userName?: string;
   bottomTab?: CathLabBottomTab;
-  onPatientCreated?: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => Inpatient;
+  onPatientCreated?: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => Promise<Inpatient>;
   onChargeUpdated?: () => void;
 }
 
@@ -2471,7 +2471,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     let resolvedPatient = matchedPatient;
     if (!resolvedPatient && patientDob && onPatientCreated) {
       const hospitalMatch = hospitals.find(h => h.name === selectedLocation);
-      resolvedPatient = onPatientCreated({
+      resolvedPatient = await onPatientCreated({
         patientName: patientName.trim(),
         dob: patientDob,
         hospitalId: hospitalMatch?.id || '',

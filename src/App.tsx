@@ -29,7 +29,7 @@ import { getCurrentSession, signOut, AuthUser } from './services/authService';
 import { initializeFirebase, isFirebaseConfigured } from './services/firebaseConfig';
 import { getSyncStatus, SyncStatus, processSyncQueue, setOnlineStatus } from './services/syncService';
 import { getPracticeConnection, getHospitals, getCathLabs } from './services/practiceConnection';
-import { getOrgInpatients } from './services/inpatientService';
+import { getOrgInpatients, createInpatient, dischargeInpatient, getLocalPatients, saveLocalPatient, updateLocalPatient } from './services/inpatientService';
 import { getCallListEntries, addToCallList, removeFromCallList, clearCallList } from './services/callListService';
 import { logAuditEvent } from './services/auditService';
 import { logger } from './services/logger';
@@ -335,8 +335,11 @@ const App: React.FC = () => {
 
   const loadPatients = async (orgId: string | null) => {
     if (!orgId) return;
-    const orgPatients = await getOrgInpatients(orgId);
-    setPatients(orgPatients);
+    const backendPatients = await getOrgInpatients(orgId);
+    const localPatients = await getLocalPatients();
+    const backendIds = new Set(backendPatients.map(p => p.id));
+    const merged = [...backendPatients, ...localPatients.filter(p => !backendIds.has(p.id))];
+    setPatients(merged);
   };
 
   const loadCallList = async (orgId: string | null, userId: string) => {
@@ -451,14 +454,15 @@ const App: React.FC = () => {
     const userId = authUser?.id || 'user-1';
     const userName = authUser?.displayName || 'Unknown';
 
-    // Create new patient with generated ID
-    const newPatient: Inpatient = {
+    // Create patient via backend (Firestore or mock) + local backup
+    const newPatient = await createInpatient(orgId, {
       ...patient,
-      id: `patient-${Date.now()}`,
       organizationId: orgId,
       primaryPhysicianId: userId,
-      createdAt: new Date().toISOString()
-    };
+      primaryPhysicianName: userName,
+      isActive: true
+    });
+    await saveLocalPatient(newPatient);
 
     // Add patient to state
     setPatients(prev => [...prev, newPatient]);
@@ -517,18 +521,19 @@ const App: React.FC = () => {
     setShowAddPatient(false);
   };
 
-  const handleCreatePatientFromCharge = (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]): Inpatient => {
+  const handleCreatePatientFromCharge = async (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]): Promise<Inpatient> => {
     const orgId = userMode.organizationId || 'org-1';
     const userId = authUser?.id || 'user-1';
     const userName = authUser?.displayName || 'Unknown';
 
-    const newPatient: Inpatient = {
+    const newPatient = await createInpatient(orgId, {
       ...patient,
-      id: `patient-${Date.now()}`,
       organizationId: orgId,
       primaryPhysicianId: userId,
-      createdAt: new Date().toISOString()
-    };
+      primaryPhysicianName: userName,
+      isActive: true
+    });
+    await saveLocalPatient(newPatient);
 
     setPatients(prev => [...prev, newPatient]);
 
@@ -553,13 +558,17 @@ const App: React.FC = () => {
     return newPatient;
   };
 
-  const handleDischargePatient = (patient: Inpatient) => {
+  const handleDischargePatient = async (patient: Inpatient) => {
     const orgId = userMode.organizationId || 'org-1';
     const userId = authUser?.id || 'user-1';
     const userName = authUser?.displayName || 'Unknown';
 
+    const dischargedAt = new Date().toISOString();
+    await dischargeInpatient(orgId, patient.id);
+    await updateLocalPatient(patient.id, { isActive: false, dischargedAt });
+
     setPatients(prev => prev.map(p =>
-      p.id === patient.id ? { ...p, isActive: false, dischargedAt: new Date().toISOString() } : p
+      p.id === patient.id ? { ...p, isActive: false, dischargedAt } : p
     ));
 
     logAuditEvent(orgId, {
@@ -573,10 +582,13 @@ const App: React.FC = () => {
     });
   };
 
-  const handleRemovePatient = (patient: Inpatient) => {
+  const handleRemovePatient = async (patient: Inpatient) => {
     const orgId = userMode.organizationId || 'org-1';
     const userId = authUser?.id || 'user-1';
     const userName = authUser?.displayName || 'Unknown';
+
+    await dischargeInpatient(orgId, patient.id);
+    await updateLocalPatient(patient.id, { isActive: false });
 
     setPatients(prev => prev.map(p =>
       p.id === patient.id ? { ...p, isActive: false } : p
@@ -593,10 +605,12 @@ const App: React.FC = () => {
     });
   };
 
-  const handleRemoveFromMyList = (patient: Inpatient) => {
+  const handleRemoveFromMyList = async (patient: Inpatient) => {
     const orgId = userMode.organizationId || 'org-1';
     const userId = authUser?.id || 'user-1';
     const userName = authUser?.displayName || 'Unknown';
+
+    await updateLocalPatient(patient.id, { primaryPhysicianId: '' });
 
     setPatients(prev => prev.map(p =>
       p.id === patient.id ? { ...p, primaryPhysicianId: '' } : p
