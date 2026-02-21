@@ -87,155 +87,141 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
   };
 
   const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
-    { key: 'chargeQueue', label: 'Charge Queue', icon: <LayoutList className="w-5 h-5" /> },
-    { key: 'patientRoster', label: 'Patients', icon: <Users className="w-5 h-5" /> },
-    { key: 'physicians', label: 'Physicians', icon: <UserCog className="w-5 h-5" /> },
-    { key: 'auditLog', label: 'Audit Log', icon: <ClipboardList className="w-5 h-5" /> },
-    { key: 'reports', label: 'Reports', icon: <BarChart3 className="w-5 h-5" /> },
-    { key: 'settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
+    { key: 'chargeQueue', label: 'Charges', icon: <LayoutList className="w-4 h-4" /> },
+    { key: 'patientRoster', label: 'Patients', icon: <Users className="w-4 h-4" /> },
+    { key: 'physicians', label: 'Physicians', icon: <UserCog className="w-4 h-4" /> },
+    { key: 'auditLog', label: 'Audit Log', icon: <ClipboardList className="w-4 h-4" /> },
+    { key: 'reports', label: 'Reports', icon: <BarChart3 className="w-4 h-4" /> },
+    { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
   return (
-    <div className="flex h-full bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-56 bg-[#0D47A1] flex flex-col flex-shrink-0">
-        <div className="px-5 py-5 border-b border-blue-800">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* Header */}
+      <div className="bg-[#0D47A1] px-4 pt-2 pb-0 flex-shrink-0">
+        {/* Title row */}
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Activity className="w-6 h-6 text-blue-300" />
+            <Activity className="w-5 h-5 text-blue-300" />
             <div>
-              <h1 className="text-base font-semibold text-white">CathCPT</h1>
-              <p className="text-[11px] text-blue-300">Admin Portal</p>
+              <h1 className="text-sm font-semibold text-white leading-tight">Admin Portal</h1>
+              <p className="text-[10px] text-blue-300">{currentUserName}</p>
             </div>
           </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-200 bg-blue-800/50 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
-        <nav className="flex-1 py-2">
+        {/* Horizontal scrollable tab bar */}
+        <div className="flex gap-1 overflow-x-auto pb-0 -mx-1 px-1 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap rounded-t-lg transition-colors flex-shrink-0 ${
                 activeTab === tab.key
-                  ? 'bg-[#1976D2] text-white border-l-[3px] border-[#42A5F5]'
-                  : 'text-blue-200 hover:bg-[#1565C0] hover:text-white border-l-[3px] border-transparent'
+                  ? 'bg-gray-50 text-[#0D47A1]'
+                  : 'text-blue-200 hover:text-white hover:bg-blue-800/50'
               }`}
             >
               {tab.icon}
               {tab.label}
               {tab.key === 'reports' && reportsDue && (
-                <span className="w-2 h-2 bg-amber-400 rounded-full flex-shrink-0" />
+                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full flex-shrink-0" />
               )}
             </button>
           ))}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="px-5 py-3 border-t border-blue-800">
-          <p className="text-[11px] text-blue-300">{currentUserName}</p>
-          <p className="text-[10px] text-blue-400">Organization Admin</p>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Stats Header Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                {tabs.find(t => t.key === activeTab)?.label}
-              </h2>
+      {/* Stats Cards — only show on charge-related tabs */}
+      {(activeTab === 'chargeQueue' || activeTab === 'reports') && (
+        <div className="bg-white border-b border-gray-200 px-3 py-3 flex-shrink-0">
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <p className="text-lg font-bold text-amber-700 leading-tight">{stats.totalPending}</p>
+              <p className="text-[10px] text-amber-600 font-medium">Pending</p>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              <p className="text-lg font-bold text-blue-700 leading-tight">{stats.totalEntered}</p>
+              <p className="text-[10px] text-blue-600 font-medium">Entered</p>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <p className="text-lg font-bold text-green-700 leading-tight">{stats.billedToday}</p>
+              <p className="text-[10px] text-green-600 font-medium">Billed Today</p>
+            </div>
           </div>
-
-          {/* Stats Cards — only show on charge-related tabs */}
-          {(activeTab === 'chargeQueue' || activeTab === 'reports') && (
-            <div className="grid grid-cols-5 gap-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                <p className="text-2xl font-bold text-amber-700">{stats.totalPending}</p>
-                <p className="text-xs text-amber-600 font-medium">Pending</p>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <p className="text-2xl font-bold text-blue-700">{stats.totalEntered}</p>
-                <p className="text-xs text-blue-600 font-medium">Entered</p>
-              </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                <p className="text-2xl font-bold text-green-700">{stats.billedToday}</p>
-                <p className="text-xs text-green-600 font-medium">Billed Today</p>
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3">
-                <p className="text-2xl font-bold text-purple-700">{stats.totalRVUPending.toFixed(1)}</p>
-                <p className="text-xs text-purple-600 font-medium">RVU Pending</p>
-              </div>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
-                <p className="text-2xl font-bold text-emerald-700">${stats.totalPaymentPending.toFixed(0)}</p>
-                <p className="text-xs text-emerald-600 font-medium">$ Pending</p>
-              </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+              <p className="text-lg font-bold text-purple-700 leading-tight">{stats.totalRVUPending.toFixed(1)}</p>
+              <p className="text-[10px] text-purple-600 font-medium">RVU Pending</p>
             </div>
-          )}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+              <p className="text-lg font-bold text-emerald-700 leading-tight">${stats.totalPaymentPending.toFixed(0)}</p>
+              <p className="text-[10px] text-emerald-600 font-medium">$ Pending</p>
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* Tab Content */}
-        <div className="flex-1 overflow-hidden">
-          {activeTab === 'chargeQueue' && (
-            <ChargeQueueTab
-              orgId={orgId}
-              hospitals={hospitals}
-              patients={patients}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-              onChargesUpdated={handleChargesUpdated}
-              refreshKey={refreshKey}
-            />
-          )}
-          {activeTab === 'patientRoster' && (
-            <PatientRosterTab
-              orgId={orgId}
-              hospitals={hospitals}
-              knownPatients={patients}
-              charges={charges}
-              diagnoses={diagnoses}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-              onChargesUpdated={handleChargesUpdated}
-            />
-          )}
-          {activeTab === 'physicians' && (
-            <PhysicianManagementTab
-              orgId={orgId}
-              orgName={userMode.organizationName || 'Practice'}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-            />
-          )}
-          {activeTab === 'auditLog' && (
-            <AuditLogTab orgId={orgId} />
-          )}
-          {activeTab === 'reports' && (
-            <ReportsTab
-              orgId={orgId}
-              hospitals={hospitals}
-              patients={patients}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-            />
-          )}
-          {activeTab === 'settings' && (
-            <PracticeSettingsTab
-              orgId={orgId}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-            />
-          )}
-        </div>
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'chargeQueue' && (
+          <ChargeQueueTab
+            orgId={orgId}
+            hospitals={hospitals}
+            patients={patients}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+            onChargesUpdated={handleChargesUpdated}
+            refreshKey={refreshKey}
+          />
+        )}
+        {activeTab === 'patientRoster' && (
+          <PatientRosterTab
+            orgId={orgId}
+            hospitals={hospitals}
+            knownPatients={patients}
+            charges={charges}
+            diagnoses={diagnoses}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+            onChargesUpdated={handleChargesUpdated}
+          />
+        )}
+        {activeTab === 'physicians' && (
+          <PhysicianManagementTab
+            orgId={orgId}
+            orgName={userMode.organizationName || 'Practice'}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
+        )}
+        {activeTab === 'auditLog' && (
+          <AuditLogTab orgId={orgId} />
+        )}
+        {activeTab === 'reports' && (
+          <ReportsTab
+            orgId={orgId}
+            hospitals={hospitals}
+            patients={patients}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
+        )}
+        {activeTab === 'settings' && (
+          <PracticeSettingsTab
+            orgId={orgId}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
+        )}
       </div>
     </div>
   );

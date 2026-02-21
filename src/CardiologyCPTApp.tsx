@@ -116,6 +116,9 @@ const structuralIndicationCodes = new Set([
   'I36.0','I36.1','I38','I50.9','I48.91','Q22.0','Q22.1','T82.0','I34.8','I42.2'
 ]);
 
+// Bottom tab type for cath lab sectioning
+export type CathLabBottomTab = 'addcase' | 'icd10' | 'cpt' | 'review';
+
 interface CardiologyCPTAppProps {
   isProMode?: boolean;
   patients?: Inpatient[];
@@ -124,6 +127,7 @@ interface CardiologyCPTAppProps {
   patientDiagnoses?: Record<string, string[]>;
   orgId?: string;
   userName?: string;
+  bottomTab?: CathLabBottomTab;
   onPatientCreated?: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => Inpatient;
   onChargeUpdated?: () => void;
 }
@@ -133,9 +137,16 @@ export interface CardiologyCPTAppHandle {
   openUpdates: () => void;
   openSettings: () => void;
   loadChargeForEdit: (charge: StoredCharge, patient: Inpatient) => void;
+  getIcd10Count: () => number;
+  getCptCount: () => number;
+  getViolationCount: () => number;
+  getCaseHistory: () => SavedCase[];
+  loadFromHistory: (savedCase: SavedCase) => void;
+  deleteFromHistory: (id: string) => void;
+  exportHistory: () => void;
 }
 
-const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userName = '', onPatientCreated, onChargeUpdated }, ref) => {
+const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userName = '', bottomTab = 'addcase', onPatientCreated, onChargeUpdated }, ref) => {
   // Patient matching state (replaces caseId)
   const [patientName, setPatientName] = useState('');
   const [patientDob, setPatientDob] = useState(''); // stored as YYYY-MM-DD
@@ -143,8 +154,8 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   const [matchedPatient, setMatchedPatient] = useState<Inpatient | null>(null);
   const [patientSuggestions, setPatientSuggestions] = useState<Inpatient[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [procedureDateOption, setProcedureDateOption] = useState('');
-  const [procedureDateText, setProcedureDateText] = useState('');
+  const [procedureDateOption, setProcedureDateOption] = useState('today');
+  const [procedureDateText, setProcedureDateText] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedCodes, setSelectedCodes] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -238,11 +249,24 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
   const [editingChargeDate, setEditingChargeDate] = useState<string | null>(null);
 
-  // Expose methods for App.tsx header buttons
+  // Expose methods for App.tsx header buttons + badge counts + history data
   useImperativeHandle(ref, () => ({
     openHistory: () => setShowHistoryModal(true),
     openUpdates: () => setShow2026Updates(true),
     openSettings: () => setShowSettings(true),
+    getIcd10Count: () => {
+      let count = 0;
+      if (selectedCardiacIndication) count++;
+      if (selectedPeripheralIndication) count++;
+      if (selectedStructuralIndication) count++;
+      return count;
+    },
+    getCptCount: () => selectedCodes.length + selectedCodesVessel2.length + selectedCodesVessel3.length,
+    getViolationCount: () => ruleViolations.filter(v => v.severity === 'error').length,
+    getCaseHistory: () => caseHistory,
+    loadFromHistory: (savedCase: SavedCase) => loadFromHistory(savedCase),
+    deleteFromHistory: (id: string) => deleteFromHistory(id),
+    exportHistory: () => exportHistory(),
     loadChargeForEdit: (charge: StoredCharge, patient: Inpatient) => {
       // Set editing state
       setEditingChargeId(charge.id);
@@ -2217,16 +2241,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     const diagnosticCathCodes = ['93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461'];
     const hasPCI = allCodes.some(c => pciCodeList.includes(c.code));
 
-    let chargeDate = '';
-    if (procedureDateOption === 'today') {
-      chargeDate = formatDateForStorage(new Date());
-    } else if (procedureDateOption === 'yesterday') {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      chargeDate = formatDateForStorage(d);
-    } else {
-      chargeDate = procedureDateText;
-    }
+    const chargeDate = procedureDateText;
 
     const currentIndication = selectedCardiacIndication || selectedPeripheralIndication || selectedStructuralIndication || '';
 
@@ -2308,13 +2323,8 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       return;
     }
 
-    if (!procedureDateOption) {
+    if (!procedureDateText) {
       alert('Please select a procedure date');
-      return;
-    }
-
-    if ((procedureDateOption === 'this_week' || procedureDateOption === 'other') && !procedureDateText) {
-      alert('Please select a date from the date picker');
       return;
     }
 
@@ -2332,6 +2342,14 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     if (hasBlockingErrors) {
       alert('Please resolve all billing rule errors before submitting charges.');
       return;
+    }
+
+    // Warn if no moderate sedation is included
+    if (!includeSedation) {
+      const proceed = window.confirm(
+        'No moderate sedation codes are included.\n\nMost cath lab procedures require sedation billing (99152/99153). Are you sure you want to submit without sedation?'
+      );
+      if (!proceed) return;
     }
 
     // Check that all PCI codes have vessel modifiers (all three sections)
@@ -2374,16 +2392,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
 
     // Concurrent visit detection (only for new charges in Pro mode)
     if (!editingChargeId && matchedPatient && orgId) {
-      let chargeDate: string;
-      if (procedureDateOption === 'today') {
-        chargeDate = formatDateForStorage(new Date());
-      } else if (procedureDateOption === 'yesterday') {
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        chargeDate = formatDateForStorage(d);
-      } else {
-        chargeDate = procedureDateText;
-      }
+      const chargeDate = procedureDateText;
       const concurrent = await checkConcurrentVisit(matchedPatient.id, chargeDate, 'user-1');
       if (concurrent) {
         const proceed = window.confirm(
@@ -2455,18 +2464,8 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       diagnoses.push(selectedStructuralIndication);
     }
 
-    // Get charge date based on selected timeframe (uses local date, not UTC)
-    let chargeDate: string;
-    if (procedureDateOption === 'today') {
-      chargeDate = formatDateForStorage(new Date());
-    } else if (procedureDateOption === 'yesterday') {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      chargeDate = formatDateForStorage(d);
-    } else {
-      // this_week or other — use the date picker value
-      chargeDate = procedureDateText;
-    }
+    // Get charge date directly from the date picker text
+    const chargeDate: string = procedureDateText || formatDateForStorage(new Date());
 
     // Auto-create inpatient record if no match and DOB is provided
     let resolvedPatient = matchedPatient;
@@ -3189,6 +3188,8 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
           </div>
         )}
 
+        {/* === ADD CASE TAB === */}
+        {bottomTab === 'addcase' && (<>
         {/* Case Information - HIPAA Compliant */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -3242,8 +3243,8 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                   setMatchedPatient(null);
                   setShowSuggestions(false);
                   setPatientSuggestions([]);
-                  setProcedureDateOption('');
-                  setProcedureDateText('');
+                  setProcedureDateOption('today');
+                  setProcedureDateText(new Date().toISOString().split('T')[0]);
                   setSelectedLocation('');
                   setIncludeSedation(false);
                   setSedationUnits(0);
@@ -3397,81 +3398,73 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Procedure Date *
               </label>
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                {[
-                  { value: 'today', label: 'Today' },
-                  { value: 'yesterday', label: 'Yesterday' },
-                  { value: 'this_week', label: 'Last Week' },
-                  { value: 'other', label: 'Other' }
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className={`flex items-center justify-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                      procedureDateOption === option.value
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="procedureDate"
-                      value={option.value}
-                      checked={procedureDateOption === option.value}
-                      onChange={(e) => {
-                        setProcedureDateOption(e.target.value);
-                        setProcedureDateText('');
-                      }}
-                      className="sr-only"
-                    />
-                    <span className="font-medium">{option.label}</span>
-                  </label>
-                ))}
-              </div>
-              {/* Last Week: show Mon-Sun day buttons */}
-              {procedureDateOption === 'this_week' && (() => {
+              {/* Horizontal 1-week calendar: today → 6 days ago + Other */}
+              {(() => {
                 const today = new Date();
-                const dayOfWeek = today.getDay(); // 0=Sun
-                // Last Monday = go back to this Monday, then subtract 7
-                const lastMonday = new Date(today);
-                lastMonday.setDate(today.getDate() - dayOfWeek - 6); // Mon of last week
-                const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                const days = dayLabels.map((label, i) => {
-                  const d = new Date(lastMonday);
-                  d.setDate(lastMonday.getDate() + i);
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const last7Days = Array.from({ length: 7 }, (_, i) => {
+                  const d = new Date(today);
+                  d.setDate(today.getDate() - i);
                   return {
-                    label,
-                    date: d.toISOString().split('T')[0],
-                    dayNum: d.getDate()
+                    dateStr: d.toISOString().split('T')[0],
+                    dayName: dayNames[d.getDay()],
+                    dayNum: d.getDate(),
+                    month: monthNames[d.getMonth()],
+                    isToday: i === 0,
                   };
                 });
                 return (
-                  <div className="grid grid-cols-7 gap-1">
-                    {days.map((day) => (
-                      <button
-                        key={day.date}
-                        type="button"
-                        onClick={() => setProcedureDateText(day.date)}
-                        className={`flex flex-col items-center py-2 px-1 rounded-lg border-2 text-xs font-medium transition-all ${
-                          procedureDateText === day.date
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                            : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50 text-gray-600'
-                        }`}
-                      >
-                        <span className="text-[10px] text-gray-400">{day.label}</span>
-                        <span className="text-sm font-semibold">{day.dayNum}</span>
-                      </button>
-                    ))}
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {last7Days.map((day) => {
+                      const isSelected = procedureDateOption !== 'other' && procedureDateText === day.dateStr;
+                      return (
+                        <button
+                          key={day.dateStr}
+                          type="button"
+                          onClick={() => {
+                            setProcedureDateOption(day.isToday ? 'today' : 'date');
+                            setProcedureDateText(day.dateStr);
+                          }}
+                          className={`flex flex-col items-center min-w-[52px] py-2 px-1.5 rounded-xl border-2 text-xs font-medium transition-all flex-shrink-0 ${
+                            isSelected
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50 text-gray-600'
+                          }`}
+                        >
+                          <span className="text-[10px] text-gray-400 uppercase">{day.dayName}</span>
+                          <span className="text-lg font-bold leading-tight">{day.dayNum}</span>
+                          <span className="text-[10px] text-gray-400">{day.month}</span>
+                        </button>
+                      );
+                    })}
+                    {/* Other button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProcedureDateOption('other');
+                        setProcedureDateText('');
+                      }}
+                      className={`flex flex-col items-center justify-center min-w-[52px] py-2 px-1.5 rounded-xl border-2 text-xs font-medium transition-all flex-shrink-0 ${
+                        procedureDateOption === 'other'
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                          : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      <span className="text-[10px] text-gray-400">Other</span>
+                      <span className="text-base font-bold leading-tight">...</span>
+                    </button>
                   </div>
                 );
               })()}
-              {/* Other: show date picker */}
+              {/* Other: show date input */}
               {procedureDateOption === 'other' && (
                 <input
                   type="date"
                   value={procedureDateText}
                   max={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setProcedureDateText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full mt-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               )}
             </div>
@@ -3542,6 +3535,10 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
           </div>
         </div>
 
+        </>)}
+
+        {/* === ICD-10 TAB === */}
+        {bottomTab === 'icd10' && (<>
         {/* Procedure Indication Section */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -3862,6 +3859,10 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
           </div>
         </div>
 
+        </>)}
+
+        {/* === CPT TAB (Sedation at top) === */}
+        {bottomTab === 'cpt' && (<>
         {/* Moderate Sedation Section */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <button
@@ -5531,6 +5532,10 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
         )}
 
 
+        </>)}
+
+        {/* === REVIEW TAB === */}
+        {bottomTab === 'review' && (<>
         {/* Billing Rules Engine - Real-time Validation */}
         {ruleViolations.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -6131,8 +6136,8 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                     setMatchedPatient(null);
                     setShowSuggestions(false);
                     setPatientSuggestions([]);
-                    setProcedureDateOption('');
-                    setProcedureDateText('');
+                    setProcedureDateOption('today');
+                    setProcedureDateText(new Date().toISOString().split('T')[0]);
                     setSelectedLocation('');
                     setIncludeSedation(false);
                     setSedationUnits(0);
@@ -6174,6 +6179,8 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             </div>
           )}
         </div>
+
+        </>)}
 
         {/* Footer with HIPAA notice */}
         <div className="text-center text-sm text-gray-500 pb-4">

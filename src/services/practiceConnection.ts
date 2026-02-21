@@ -470,6 +470,7 @@ export async function addHospital(orgId: string, name: string): Promise<Hospital
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
     logger.info('[Dev] Added hospital');
+    mockHospitals.push({ id: newHospital.id, name: newHospital.name, organizationId: orgId });
     return newHospital;
   }
 
@@ -490,6 +491,8 @@ export async function deactivateHospital(orgId: string, hospitalId: string): Pro
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
     logger.info('[Dev] Deactivated hospital');
+    const idx = mockHospitals.findIndex(h => h.id === hospitalId);
+    if (idx !== -1) mockHospitals.splice(idx, 1);
     return;
   }
 
@@ -513,6 +516,7 @@ export async function addCathLab(orgId: string, name: string, hospitalId?: strin
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
     logger.info('[Dev] Added cath lab');
+    mockCathLabs.push({ id: newLab.id, name: newLab.name, hospitalId: hospitalId });
     return newLab;
   }
 
@@ -534,6 +538,8 @@ export async function deactivateCathLab(orgId: string, cathLabId: string): Promi
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled) {
     logger.info('[Dev] Deactivated cath lab');
+    const idx = mockCathLabs.findIndex(l => l.id === cathLabId);
+    if (idx !== -1) mockCathLabs.splice(idx, 1);
     return;
   }
 

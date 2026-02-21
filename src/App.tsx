@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Users, Shield, Settings, LogOut, RefreshCw, History, Lightbulb, HelpCircle } from 'lucide-react';
-import CardiologyCPTApp, { CardiologyCPTAppHandle } from './CardiologyCPTApp';
+import { Heart, Users, Shield, Settings, LogOut, RefreshCw, History, Lightbulb, HelpCircle, FileText, Stethoscope, List, ClipboardCheck } from 'lucide-react';
+import CardiologyCPTApp, { CardiologyCPTAppHandle, CathLabBottomTab } from './CardiologyCPTApp';
 import { LoginScreen } from './screens/LoginScreen';
 import { RoundsScreen } from './screens/RoundsScreen';
 import { AdminPortalScreen } from './screens/AdminPortalScreen';
+import { HistoryScreen } from './screens/HistoryScreen';
+import { UpdatesScreen } from './screens/UpdatesScreen';
+import { HelpScreen } from './screens/HelpScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { AddPatientDialog } from './components/AddPatientDialog';
 import { AddChargeDialog } from './components/AddChargeDialog';
 import { CallListPickerDialog } from './components/CallListPickerDialog';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
 import { PracticeCodeSetup } from './components/PracticeCodeSetup';
 import { LockScreen } from './components/LockScreen';
+import { BiometricLoginPrompt } from './components/BiometricLoginPrompt';
+import { isBiometricAvailable, getBiometricPreference } from './services/biometricService';
 import { HIPAAInlineBanner } from './components/HIPAAInlineBanner';
-import { HelpPanel } from './components/HelpPanel';
+// HelpPanel replaced by full-screen HelpScreen
 import { OfflineBanner } from './components/OfflineBanner';
 import { SyncStatusIndicator } from './components/SyncStatusIndicator';
 import { ToastContainer } from './components/Toast';
@@ -58,6 +64,12 @@ const App: React.FC = () => {
 
   // Navigation state
   const [activeTab, setActiveTab] = useState<AppTab>('cathlab');
+  const [cathLabBottomTab, setCathLabBottomTab] = useState<CathLabBottomTab>('addcase');
+
+  // Collapsing header state
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Sync state
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
@@ -103,8 +115,14 @@ const App: React.FC = () => {
   // Inline HIPAA banner state (non-blocking)
   const [showHipaaBanner, setShowHipaaBanner] = useState(false);
 
-  // Help panel state
-  const [showHelp, setShowHelp] = useState(false);
+  // Full-screen view state
+  type FullScreenView = null | 'history' | 'updates' | 'settings' | 'help';
+  const [fullScreenView, setFullScreenView] = useState<FullScreenView>(null);
+
+  // Biometric enrollment prompt after first login
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+
+  // Help is now a full-screen view via fullScreenView state
 
   // Toast notifications
   const { toasts, removeToast } = useToast();
@@ -171,6 +189,29 @@ const App: React.FC = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+
+  // Collapsing header — hide Row 1 on scroll down, show on scroll up
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const y = el.scrollTop;
+      if (y > lastScrollYRef.current && y > 60) {
+        setHeaderVisible(false);
+      } else if (y < lastScrollYRef.current) {
+        setHeaderVisible(true);
+      }
+      lastScrollYRef.current = y;
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Reset header visibility on bottom tab change
+  useEffect(() => {
+    setHeaderVisible(true);
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [cathLabBottomTab]);
 
   const initializeApp = async () => {
     // Hard deadline — never stay on loading screen longer than 8 seconds
@@ -272,10 +313,23 @@ const App: React.FC = () => {
   };
 
   const loadHospitals = async () => {
-    const hospitalList = await getHospitals();
-    setHospitals(hospitalList);
-    const labList = await getCathLabs();
-    setCathLabs(labList);
+    // Check storage first (admin-managed hospitals/cath labs persist here)
+    const [storedHosp, storedLabs] = await Promise.all([
+      window.storage.get('admin_hospitals'),
+      window.storage.get('admin_cathLabs'),
+    ]);
+    if (storedHosp?.value) {
+      setHospitals(JSON.parse(storedHosp.value));
+    } else {
+      const hospitalList = await getHospitals();
+      setHospitals(hospitalList);
+    }
+    if (storedLabs?.value) {
+      setCathLabs(JSON.parse(storedLabs.value));
+    } else {
+      const labList = await getCathLabs();
+      setCathLabs(labList);
+    }
   };
 
   const loadPatients = async (orgId: string | null) => {
@@ -338,6 +392,19 @@ const App: React.FC = () => {
       await loadPatients(mode.organizationId);
       await loadCallList(mode.organizationId, user.id);
       await loadChargesAndDiagnoses();
+    }
+
+    // Check if biometric enrollment should be offered after email/password login
+    try {
+      const available = await isBiometricAvailable();
+      if (available) {
+        const alreadyEnrolled = await getBiometricPreference();
+        if (!alreadyEnrolled) {
+          setShowBiometricPrompt(true);
+        }
+      }
+    } catch {
+      // Non-critical — skip biometric prompt
     }
   };
 
@@ -872,8 +939,10 @@ const App: React.FC = () => {
             }}
           />
         )}
-        {/* Row 1: CathCPT branding + action buttons */}
-        <div className="bg-white px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
+        {/* Row 1: CathCPT branding + action buttons (collapses on scroll down) */}
+        <div className={`bg-white px-4 flex items-center justify-between border-b border-gray-100 transition-all duration-200 overflow-hidden ${
+          headerVisible ? 'max-h-20 py-2.5 opacity-100' : 'max-h-0 py-0 opacity-0'
+        }`}>
           <div className="flex items-center gap-2.5">
             {/* Small CathCPT icon */}
             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
@@ -893,6 +962,15 @@ const App: React.FC = () => {
               </svg>
             </div>
             <h1 className="text-xl font-bold text-amber-700">CathCPT</h1>
+            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full uppercase tracking-wide ${
+              userMode.role === 'admin'
+                ? 'bg-purple-100 text-purple-700'
+                : isProMode
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {userMode.role === 'admin' ? 'Admin' : isProMode ? 'Pro MD' : 'Individual'}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             {/* Sign Out button (individual mode only — pro users have logout in blue bar) */}
@@ -907,7 +985,7 @@ const App: React.FC = () => {
             )}
             {/* History */}
             <button
-              onClick={() => cathCPTRef.current?.openHistory()}
+              onClick={() => setFullScreenView('history')}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="Case History"
             >
@@ -915,7 +993,7 @@ const App: React.FC = () => {
             </button>
             {/* 2026 Updates */}
             <button
-              onClick={() => cathCPTRef.current?.openUpdates()}
+              onClick={() => setFullScreenView('updates')}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="What's New in 2026"
             >
@@ -923,7 +1001,7 @@ const App: React.FC = () => {
             </button>
             {/* Settings */}
             <button
-              onClick={() => cathCPTRef.current?.openSettings()}
+              onClick={() => setFullScreenView('settings')}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="Settings"
             >
@@ -931,7 +1009,7 @@ const App: React.FC = () => {
             </button>
             {/* Help */}
             <button
-              onClick={() => setShowHelp(true)}
+              onClick={() => setFullScreenView('help')}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="Help"
             >
@@ -977,7 +1055,7 @@ const App: React.FC = () => {
           <div className="bg-white border-b border-gray-200 px-4">
             <div className="flex gap-4">
               <button
-                onClick={() => setActiveTab('cathlab')}
+                onClick={() => { setActiveTab('cathlab'); setFullScreenView(null); }}
                 className={`py-3 px-3 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'cathlab'
                     ? 'border-blue-600 text-blue-600 bg-blue-50/50'
@@ -989,7 +1067,7 @@ const App: React.FC = () => {
               </button>
               {showRoundsTab && (
                 <button
-                  onClick={() => setActiveTab('rounds')}
+                  onClick={() => { setActiveTab('rounds'); setFullScreenView(null); }}
                   className={`py-3 px-3 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'rounds'
                       ? 'border-blue-600 text-blue-600 bg-blue-50/50'
@@ -1002,7 +1080,7 @@ const App: React.FC = () => {
               )}
               {showAdminTab && (
                 <button
-                  onClick={() => setActiveTab('admin')}
+                  onClick={() => { setActiveTab('admin'); setFullScreenView(null); }}
                   className={`py-3 px-3 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'admin'
                       ? 'border-blue-600 text-blue-600 bg-blue-50/50'
@@ -1019,8 +1097,44 @@ const App: React.FC = () => {
       </div>
 
       {/* === SCROLLABLE CONTENT === */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {activeTab === 'cathlab' && (
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
+        {/* Full-screen views override tab content */}
+        {fullScreenView === 'history' && (
+          <HistoryScreen
+            onClose={() => setFullScreenView(null)}
+            caseHistory={cathCPTRef.current?.getCaseHistory() || []}
+            onLoadCase={(savedCase) => {
+              cathCPTRef.current?.loadFromHistory(savedCase);
+              setFullScreenView(null);
+              setCathLabBottomTab('addcase');
+            }}
+            onDeleteCase={(id) => cathCPTRef.current?.deleteFromHistory(id)}
+            onExportHistory={() => cathCPTRef.current?.exportHistory()}
+          />
+        )}
+        {fullScreenView === 'updates' && (
+          <UpdatesScreen onClose={() => setFullScreenView(null)} />
+        )}
+        {fullScreenView === 'help' && (
+          <HelpScreen onClose={() => setFullScreenView(null)} />
+        )}
+        {fullScreenView === 'settings' && (
+          <SettingsScreen
+            onClose={() => setFullScreenView(null)}
+            isProMode={isProMode}
+            userRole={userMode.role}
+            userName={authUser?.displayName || ''}
+            orgId={userMode.organizationId || 'YOCA'}
+            hospitals={hospitals}
+            cathLabs={cathLabs}
+            patients={patients}
+            charges={charges}
+            onHospitalsChanged={loadHospitals}
+            onOpenCodeGroupSettings={() => setShowCodeGroupSettings(true)}
+          />
+        )}
+
+        {!fullScreenView && activeTab === 'cathlab' && (
           <CardiologyCPTApp
             ref={cathCPTRef}
             isProMode={isProMode}
@@ -1030,11 +1144,12 @@ const App: React.FC = () => {
             patientDiagnoses={patientDiagnoses}
             orgId={userMode.organizationId || 'YOCA'}
             userName={authUser?.displayName || ''}
+            bottomTab={cathLabBottomTab}
             onPatientCreated={handleCreatePatientFromCharge}
             onChargeUpdated={loadChargesAndDiagnoses}
           />
         )}
-        {activeTab === 'rounds' && (
+        {!fullScreenView && activeTab === 'rounds' && (
           <RoundsScreen
               userMode={userMode}
               hospitals={hospitals}
@@ -1056,7 +1171,7 @@ const App: React.FC = () => {
               onRemoveFromMyList={handleRemoveFromMyList}
             />
         )}
-        {activeTab === 'admin' && (
+        {!fullScreenView && activeTab === 'admin' && (
           <AdminPortalScreen
             userMode={userMode}
             hospitals={hospitals}
@@ -1070,6 +1185,52 @@ const App: React.FC = () => {
           />
         )}
       </div>
+
+      {/* Bottom Navigation Bar — Cath Lab only, hidden during full-screen views */}
+      {activeTab === 'cathlab' && !fullScreenView && (
+        <div className="flex-shrink-0 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <nav className="flex justify-around items-center h-14" role="tablist" aria-label="Cath Lab sections">
+            {([
+              { id: 'addcase' as CathLabBottomTab, label: 'Add Case', Icon: FileText },
+              { id: 'icd10' as CathLabBottomTab, label: 'ICD-10', Icon: Stethoscope },
+              { id: 'cpt' as CathLabBottomTab, label: 'CPT', Icon: List },
+              { id: 'review' as CathLabBottomTab, label: 'Review', Icon: ClipboardCheck },
+            ]).map(({ id, label, Icon }) => {
+              const isActive = cathLabBottomTab === id;
+              // Badge counts
+              let badge: number | null = null;
+              if (id === 'icd10') badge = cathCPTRef.current?.getIcd10Count() || null;
+              if (id === 'cpt') badge = cathCPTRef.current?.getCptCount() || null;
+              if (id === 'review') badge = cathCPTRef.current?.getViolationCount() || null;
+
+              return (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={label}
+                  onClick={() => { setFullScreenView(null); setCathLabBottomTab(id); }}
+                  className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                    isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                  <span className={`text-[10px] mt-0.5 font-medium ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {label}
+                  </span>
+                  {badge !== null && badge > 0 && (
+                    <span className={`absolute top-1 right-1/4 min-w-[16px] h-4 flex items-center justify-center text-[10px] font-bold rounded-full px-1 ${
+                      id === 'review' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
+                    }`}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
       {/* Dialogs */}
       <AddPatientDialog
@@ -1172,8 +1333,12 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Help Panel */}
-      <HelpPanel isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      {/* Help is now a full-screen view, rendered in the scrollable content area */}
+
+      {/* Biometric Enrollment Prompt */}
+      {showBiometricPrompt && (
+        <BiometricLoginPrompt onComplete={() => setShowBiometricPrompt(false)} />
+      )}
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
