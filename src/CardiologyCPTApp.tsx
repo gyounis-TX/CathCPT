@@ -2548,7 +2548,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+    <div className="min-h-full bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
       <div className="max-w-4xl mx-auto">
 
         {/* Settings Modal */}

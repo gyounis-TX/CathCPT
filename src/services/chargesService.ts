@@ -341,3 +341,59 @@ export const getMostRecentCharge = async (inpatientId: string): Promise<StoredCh
     return new Date(current.createdAt) > new Date(most.createdAt) ? current : most;
   });
 };
+
+// ==================== Reverse Patient Linkage ====================
+
+// Unlinked cath patient — represents a cath-submitted patient not yet on Rounds
+export interface UnlinkedCathPatient {
+  patientName: string;
+  dob: string;
+  inpatientKey: string;        // the cath-Name-DOB key
+  charges: StoredCharge[];     // all charges under this key
+  mostRecentDate: string;      // most recent charge date
+}
+
+// Find recent unlinked cath patients (those with inpatientId starting with "cath-")
+export const findRecentUnlinkedCathPatients = async (withinDays: number = 7): Promise<UnlinkedCathPatient[]> => {
+  const charges = await getStoredCharges();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - withinDays);
+  const cutoffStr = formatDateForStorage(cutoff);
+
+  // Group charges by unlinked cath- keys
+  const grouped: Record<string, StoredCharge[]> = {};
+  for (const c of charges) {
+    if (c.inpatientId.startsWith('cath-') && c.chargeDate >= cutoffStr) {
+      if (!grouped[c.inpatientId]) grouped[c.inpatientId] = [];
+      grouped[c.inpatientId].push(c);
+    }
+  }
+
+  return Object.entries(grouped).map(([key, chargeList]) => {
+    // Parse name and DOB from key: "cath-Last, First-YYYY-MM-DD"
+    const withoutPrefix = key.slice(5); // remove "cath-"
+    const dobMatch = withoutPrefix.match(/(\d{4}-\d{2}-\d{2})$/);
+    const dob = dobMatch ? dobMatch[1] : '';
+    const name = dob ? withoutPrefix.slice(0, -(dob.length + 1)) : withoutPrefix;
+    const mostRecent = chargeList.reduce((a, b) => a.chargeDate > b.chargeDate ? a : b);
+
+    return { patientName: name, dob, inpatientKey: key, charges: chargeList, mostRecentDate: mostRecent.chargeDate };
+  });
+};
+
+// Re-key charges from an old cath- ID to a new rounds patient ID
+export const relinkChargesToPatient = async (oldInpatientId: string, newInpatientId: string): Promise<number> => {
+  const charges = await getStoredCharges();
+  let count = 0;
+  for (const c of charges) {
+    if (c.inpatientId === oldInpatientId) {
+      c.inpatientId = newInpatientId;
+      c.updatedAt = new Date().toISOString();
+      count++;
+    }
+  }
+  if (count > 0) {
+    await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+  }
+  return count;
+};

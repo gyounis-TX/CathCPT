@@ -43,7 +43,8 @@ import {
   saveDiagnoses,
   formatDateForStorage,
   updateCharge,
-  markChargeBilled
+  markChargeBilled,
+  relinkChargesToPatient
 } from './services/chargesService';
 
 // Active tab type
@@ -445,7 +446,7 @@ const App: React.FC = () => {
     await loadChargesAndDiagnoses();
   };
 
-  const handlePatientSave = async (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => {
+  const handlePatientSave = async (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[], cathMatchKey?: string) => {
     const orgId = userMode.organizationId || 'org-1';
     const userId = authUser?.id || 'user-1';
     const userName = authUser?.displayName || 'Unknown';
@@ -481,6 +482,19 @@ const App: React.FC = () => {
       details: `Added patient ${newPatient.patientName}`,
       listContext: 'my'
     });
+
+    // Relink cath charges if a cath match was selected
+    if (cathMatchKey) {
+      try {
+        const count = await relinkChargesToPatient(cathMatchKey, newPatient.id);
+        if (count > 0) {
+          await loadChargesAndDiagnoses();
+          logger.info(`Relinked ${count} cath charge(s) from ${cathMatchKey} to ${newPatient.id}`);
+        }
+      } catch (err) {
+        logger.error('Error relinking cath charges', err);
+      }
+    }
 
     // If this was a cross-coverage add, also create a call list entry
     if (isCrossCoverageAdd) {
@@ -940,9 +954,7 @@ const App: React.FC = () => {
           />
         )}
         {/* Row 1: CathCPT branding + action buttons (collapses on scroll down) */}
-        <div className={`bg-white px-4 flex items-center justify-between border-b border-gray-100 transition-all duration-200 overflow-hidden ${
-          headerVisible ? 'max-h-20 py-2.5 opacity-100' : 'max-h-0 py-0 opacity-0'
-        }`}>
+        <div className="bg-white px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
           <div className="flex items-center gap-2.5">
             {/* Small CathCPT icon */}
             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">

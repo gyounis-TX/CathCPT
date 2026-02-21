@@ -14,12 +14,13 @@ import {
   ICD10Subcategory
 } from '../data/icd10Codes';
 import { findPatientMatches } from '../services/patientMatchingService';
+import { findRecentUnlinkedCathPatients, UnlinkedCathPatient } from '../services/chargesService';
 import { PatientMatchDialog } from './admin/PatientMatchDialog';
 
 interface AddPatientDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => void;
+  onSave: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[], cathMatchKey?: string) => void;
   onUseExisting?: (patientId: string) => void;
   hospitals: Hospital[];
   isCrossCoverage?: boolean;
@@ -53,6 +54,11 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
     diagnoses: string[];
   } | null>(null);
 
+  // Reverse cath linkage state
+  const [cathMatches, setCathMatches] = useState<UnlinkedCathPatient[]>([]);
+  const [showCathMatches, setShowCathMatches] = useState(false);
+  const [selectedCathMatch, setSelectedCathMatch] = useState<UnlinkedCathPatient | null>(null);
+
   // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
@@ -67,6 +73,9 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
       setExpandedCategories(new Set(['primary']));
       setExpandedSubcategories(new Set(defaultExpandedSubcategories));
       setShowDiagnosisSection(false);
+      setCathMatches([]);
+      setShowCathMatches(false);
+      setSelectedCathMatch(null);
     }
   }, [isOpen, hospitals]);
 
@@ -104,6 +113,22 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
       }
       return next;
     });
+  };
+
+  // Search unlinked cath patients as user types name
+  const handleNameChange = (val: string) => {
+    setPatientName(val);
+    if (val.length >= 2) {
+      findRecentUnlinkedCathPatients().then(unlinked => {
+        const lower = val.toLowerCase();
+        const matches = unlinked.filter(p => p.patientName.toLowerCase().includes(lower));
+        setCathMatches(matches);
+        setShowCathMatches(matches.length > 0);
+      });
+    } else {
+      setCathMatches([]);
+      setShowCathMatches(false);
+    }
   };
 
   // Auto-format DOB as MM/DD/YYYY and convert to YYYY-MM-DD for storage
@@ -189,7 +214,7 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
       }
     }
 
-    onSave(patientData, diagnosesArr);
+    onSave(patientData, diagnosesArr, selectedCathMatch?.inpatientKey);
     onClose();
   };
 
@@ -232,11 +257,64 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
                 <input
                   type="text"
                   value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowCathMatches(false), 150)}
                   placeholder="Last, First"
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                  autoComplete="off"
                 />
+                {/* Cath patient suggestion dropdown */}
+                {showCathMatches && cathMatches.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="px-3 py-1.5 text-[10px] font-semibold text-blue-600 bg-blue-50 border-b border-gray-200">
+                      Recent Cath Lab Cases
+                    </div>
+                    {cathMatches.map(cm => (
+                      <button
+                        key={cm.inpatientKey}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-50 last:border-b-0"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setPatientName(cm.patientName);
+                          // Auto-fill DOB from cath match (convert YYYY-MM-DD to MM/DD/YYYY display)
+                          if (cm.dob) {
+                            const [yyyy, mm, dd] = cm.dob.split('-');
+                            setDobDisplay(`${mm}/${dd}/${yyyy}`);
+                            setDob(cm.dob);
+                          }
+                          setSelectedCathMatch(cm);
+                          setShowCathMatches(false);
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">{cm.patientName}</span>
+                          <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-700 rounded">CATH</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 mt-0.5">
+                          DOB: {cm.dob} &middot; {cm.charges.length} charge{cm.charges.length !== 1 ? 's' : ''} &middot; {cm.mostRecentDate}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Selected cath match indicator */}
+                {selectedCathMatch && (
+                  <div className="mt-1.5 flex items-center gap-2 px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg">
+                    <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-700 rounded">CATH</span>
+                    <span className="text-xs text-amber-800">
+                      {selectedCathMatch.charges.length} cath charge{selectedCathMatch.charges.length !== 1 ? 's' : ''} will link to this patient
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCathMatch(null)}
+                      className="ml-auto text-amber-400 hover:text-amber-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -529,7 +607,7 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
         onCreateNew={() => {
           setShowMatchDialog(false);
           if (pendingPatientData) {
-            onSave(pendingPatientData.patient, pendingPatientData.diagnoses);
+            onSave(pendingPatientData.patient, pendingPatientData.diagnoses, selectedCathMatch?.inpatientKey);
           }
           onClose();
         }}
