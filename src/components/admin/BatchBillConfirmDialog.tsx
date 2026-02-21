@@ -39,7 +39,7 @@ export const BatchBillConfirmDialog: React.FC<BatchBillConfirmDialogProps> = ({
       if (action === 'billed') {
         res = await batchMarkChargesBilled(chargeIds, adminId, adminName, orgId);
       } else {
-        res = await batchMarkChargesEntered(chargeIds, adminId, adminName);
+        res = await batchMarkChargesEntered(chargeIds, adminId, adminName, orgId);
         if (res.success > 0) {
           await logAuditEvent(orgId, {
             action: 'charge_marked_entered',

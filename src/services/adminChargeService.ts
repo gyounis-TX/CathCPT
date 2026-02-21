@@ -111,14 +111,15 @@ export async function getPatientChargeHistory(
 export async function batchMarkChargesEntered(
   chargeIds: string[],
   adminId: string,
-  adminName: string
+  adminName: string,
+  orgId?: string | null
 ): Promise<{ success: number; failed: number }> {
   let success = 0;
   let failed = 0;
 
   for (const id of chargeIds) {
     try {
-      await markChargeEntered(id, adminName);
+      await markChargeEntered(id, adminName, undefined, orgId);
       success++;
     } catch {
       failed++;
@@ -140,7 +141,7 @@ export async function batchMarkChargesBilled(
 
   for (const id of chargeIds) {
     try {
-      await markChargeBilled(id, adminName);
+      await markChargeBilled(id, adminName, undefined, orgId);
       success++;
     } catch {
       failed++;

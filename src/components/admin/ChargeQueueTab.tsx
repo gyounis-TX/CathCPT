@@ -120,7 +120,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
         : i
     ));
     // Persist (pass full charge in case it's a mock not yet in storage)
-    await markChargeEntered(item.charge.id, currentUserName, item.charge);
+    await markChargeEntered(item.charge.id, currentUserName, item.charge, orgId);
     await logAuditEvent(orgId, {
       action: 'charge_marked_entered',
       userId: currentUserId,
@@ -142,7 +142,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
         : i
     ));
     // Persist (pass full charge in case it's a mock not yet in storage)
-    await markChargeBilled(item.charge.id, currentUserName, item.charge);
+    await markChargeBilled(item.charge.id, currentUserName, item.charge, orgId);
     await logAuditEvent(orgId, {
       action: 'charge_marked_billed',
       userId: currentUserId,

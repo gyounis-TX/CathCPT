@@ -73,7 +73,7 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
   };
 
   const handleMarkEntered = async (charge: StoredCharge) => {
-    await markChargeEntered(charge.id, adminName);
+    await markChargeEntered(charge.id, adminName, undefined, orgId);
     await logAuditEvent(orgId, {
       action: 'charge_marked_entered',
       userId: adminId,
@@ -89,7 +89,7 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
   };
 
   const handleMarkBilled = async (charge: StoredCharge) => {
-    await markChargeBilled(charge.id, adminName);
+    await markChargeBilled(charge.id, adminName, undefined, orgId);
     await logAuditEvent(orgId, {
       action: 'charge_marked_billed',
       userId: adminId,

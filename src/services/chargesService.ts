@@ -3,6 +3,7 @@
 
 import { InpatientCharge, InpatientChargeCode, PatientDiagnoses } from '../types';
 import { logger } from './logger';
+import { saveChargeToFirestore, updateChargeInFirestore, deleteChargeFromFirestore } from './firestoreChargesService';
 
 const CHARGES_KEY = 'inpatient_charges';
 const CHARGE_CODES_KEY = 'inpatient_charge_codes';
@@ -60,7 +61,7 @@ export const getStoredCharges = async (): Promise<StoredCharge[]> => {
 };
 
 // Save a new charge
-export const saveCharge = async (charge: Omit<StoredCharge, 'id' | 'createdAt' | 'status'>): Promise<StoredCharge> => {
+export const saveCharge = async (charge: Omit<StoredCharge, 'id' | 'createdAt' | 'status'>, orgId?: string | null): Promise<StoredCharge> => {
   const charges = await getStoredCharges();
 
   const newCharge: StoredCharge = {
@@ -76,6 +77,11 @@ export const saveCharge = async (charge: Omit<StoredCharge, 'id' | 'createdAt' |
     await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
   } catch (error) {
     logger.error('Error saving charge', error);
+  }
+
+  // Sync to Firestore
+  if (orgId) {
+    saveChargeToFirestore(orgId, newCharge).catch(() => {});
   }
 
   return newCharge;
@@ -167,7 +173,8 @@ export const updateCharge = async (
     rvu?: number;
     diagnoses?: string[];
     caseSnapshot?: CaseSnapshot;
-  }
+  },
+  orgId?: string | null
 ): Promise<StoredCharge | null> => {
   const charges = await getStoredCharges();
   const index = charges.findIndex(c => c.id === chargeId);
@@ -212,6 +219,11 @@ export const updateCharge = async (
 
   await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
 
+  // Sync to Firestore
+  if (orgId) {
+    saveChargeToFirestore(orgId, charges[index]).catch(() => {});
+  }
+
   return charges[index];
 };
 
@@ -223,7 +235,7 @@ export const getChargeById = async (chargeId: string): Promise<StoredCharge | nu
 
 // Mark charge as entered by admin
 // If charge not in storage (e.g. mock data), pass fullCharge to persist it first
-export const markChargeEntered = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge): Promise<void> => {
+export const markChargeEntered = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge, orgId?: string | null): Promise<void> => {
   const charges = await getStoredCharges();
   let index = charges.findIndex(c => c.id === chargeId);
 
@@ -239,12 +251,17 @@ export const markChargeEntered = async (chargeId: string, adminName?: string, fu
     charges[index].enteredBy = adminName;
     charges[index].updatedAt = new Date().toISOString();
     await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+
+    // Sync to Firestore
+    if (orgId) {
+      saveChargeToFirestore(orgId, charges[index]).catch(() => {});
+    }
   }
 };
 
 // Mark charge as billed by admin (locks the charge)
 // If charge not in storage (e.g. mock data), pass fullCharge to persist it first
-export const markChargeBilled = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge): Promise<void> => {
+export const markChargeBilled = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge, orgId?: string | null): Promise<void> => {
   const charges = await getStoredCharges();
   let index = charges.findIndex(c => c.id === chargeId);
 
@@ -260,14 +277,24 @@ export const markChargeBilled = async (chargeId: string, adminName?: string, ful
     charges[index].billedBy = adminName;
     charges[index].updatedAt = new Date().toISOString();
     await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+
+    // Sync to Firestore
+    if (orgId) {
+      saveChargeToFirestore(orgId, charges[index]).catch(() => {});
+    }
   }
 };
 
 // Delete a charge
-export const deleteCharge = async (chargeId: string): Promise<void> => {
+export const deleteCharge = async (chargeId: string, orgId?: string | null): Promise<void> => {
   const charges = await getStoredCharges();
   const filtered = charges.filter(c => c.id !== chargeId);
   await window.storage.set(CHARGES_KEY, JSON.stringify(filtered));
+
+  // Sync to Firestore
+  if (orgId) {
+    deleteChargeFromFirestore(orgId, chargeId).catch(() => {});
+  }
 };
 
 // ==================== Patient Diagnoses ====================
@@ -382,18 +409,27 @@ export const findRecentUnlinkedCathPatients = async (withinDays: number = 7): Pr
 };
 
 // Re-key charges from an old cath- ID to a new rounds patient ID
-export const relinkChargesToPatient = async (oldInpatientId: string, newInpatientId: string): Promise<number> => {
+export const relinkChargesToPatient = async (oldInpatientId: string, newInpatientId: string, orgId?: string | null): Promise<number> => {
   const charges = await getStoredCharges();
   let count = 0;
+  const relinked: StoredCharge[] = [];
   for (const c of charges) {
     if (c.inpatientId === oldInpatientId) {
       c.inpatientId = newInpatientId;
       c.updatedAt = new Date().toISOString();
       count++;
+      relinked.push(c);
     }
   }
   if (count > 0) {
     await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+
+    // Sync relinked charges to Firestore
+    if (orgId) {
+      for (const c of relinked) {
+        saveChargeToFirestore(orgId, c).catch(() => {});
+      }
+    }
   }
   return count;
 };

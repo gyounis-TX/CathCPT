@@ -45,6 +45,7 @@ import {
   markChargeBilled,
   relinkChargesToPatient
 } from './services/chargesService';
+import { loadChargesFromFirestore } from './services/firestoreChargesService';
 
 // Active tab type
 type AppTab = 'cathlab' | 'rounds' | 'admin';
@@ -347,7 +348,29 @@ const App: React.FC = () => {
   };
 
   const loadChargesAndDiagnoses = async () => {
-    const loadedCharges = await getChargesByPatientAndDate();
+    let loadedCharges: Record<string, Record<string, StoredCharge>>;
+
+    // Load from Firestore when orgId is available, fall back to local storage
+    const orgId = userMode.organizationId;
+    if (orgId) {
+      const firestoreCharges = await loadChargesFromFirestore(orgId);
+      // Build the same grouped structure as getChargesByPatientAndDate
+      loadedCharges = {};
+      for (const charge of firestoreCharges) {
+        if (!loadedCharges[charge.inpatientId]) {
+          loadedCharges[charge.inpatientId] = {};
+        }
+        const existing = loadedCharges[charge.inpatientId][charge.chargeDate];
+        if (!existing || new Date(charge.createdAt) > new Date(existing.createdAt)) {
+          loadedCharges[charge.inpatientId][charge.chargeDate] = charge;
+        }
+      }
+      // Populate local storage as cache
+      const CHARGES_KEY = 'inpatient_charges';
+      await window.storage.set(CHARGES_KEY, JSON.stringify(firestoreCharges));
+    } else {
+      loadedCharges = await getChargesByPatientAndDate();
+    }
 
     // Merge mock charges when in dev mode so Rounds and admin patients see them
     const devSettings = await getDevModeSettings();
@@ -492,7 +515,7 @@ const App: React.FC = () => {
     // Relink cath charges if a cath match was selected
     if (cathMatchKey) {
       try {
-        const count = await relinkChargesToPatient(cathMatchKey, newPatient.id);
+        const count = await relinkChargesToPatient(cathMatchKey, newPatient.id, userMode.organizationId);
         if (count > 0) {
           await loadChargesAndDiagnoses();
           logger.info(`Relinked ${count} cath charge(s) from ${cathMatchKey} to ${newPatient.id}`);
@@ -735,7 +758,7 @@ const App: React.FC = () => {
       : charge.cptCodes[0];
     const descriptionsDisplay = charge.cptDescriptions?.join('; ') || '';
 
-    // Save charge to storage
+    // Save charge to storage (+ Firestore sync when orgId available)
     const savedCharge = await saveCharge({
       inpatientId: patientId,
       chargeDate: dateStr,
@@ -743,7 +766,7 @@ const App: React.FC = () => {
       cptDescription: descriptionsDisplay,
       timeMinutes: charge.timeMinutes,
       diagnoses: charge.diagnoses
-    });
+    }, userMode.organizationId);
 
     // Update local state immediately
     setCharges(prev => ({
@@ -808,7 +831,7 @@ const App: React.FC = () => {
     diagnoses: string[];
   }) => {
     try {
-      const updatedCharge = await updateCharge(chargeId, updates);
+      const updatedCharge = await updateCharge(chargeId, updates, userMode.organizationId);
       if (updatedCharge) {
         // Update local state
         setCharges(prev => ({
@@ -844,7 +867,7 @@ const App: React.FC = () => {
   // Handle marking a charge as billed (locks it)
   const handleMarkChargeBilled = async (chargeId: string) => {
     try {
-      await markChargeBilled(chargeId);
+      await markChargeBilled(chargeId, undefined, undefined, userMode.organizationId);
       // Reload charges to get updated status
       await loadChargesAndDiagnoses();
       logger.info('Charge marked as billed');
@@ -1159,6 +1182,7 @@ const App: React.FC = () => {
             charges={charges}
             onHospitalsChanged={loadHospitals}
             onOpenCodeGroupSettings={() => setShowCodeGroupSettings(true)}
+            onLogout={handleLogout}
           />
         )}
 

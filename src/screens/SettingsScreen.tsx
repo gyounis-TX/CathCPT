@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Settings, User, MapPin, Fingerprint, Bell, Shield, ChevronRight, Building2, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Settings, User, MapPin, Fingerprint, Bell, Shield, ChevronRight, Building2, Plus, Trash2, LogOut } from 'lucide-react';
 import { isBiometricAvailable, getBiometryType, authenticateWithBiometric, getBiometricPreference, setBiometricPreference } from '../services/biometricService';
 import { addHospital as addHospitalToOrg, deactivateHospital as deactivateHospitalFromOrg, addCathLab as addCathLabToOrg, deactivateCathLab as deactivateCathLabFromOrg } from '../services/practiceConnection';
 import { Hospital, CathLab, Inpatient } from '../types';
@@ -17,6 +17,7 @@ interface SettingsScreenProps {
   charges: Record<string, Record<string, StoredCharge>>;
   onHospitalsChanged: () => Promise<void>;
   onOpenCodeGroupSettings: () => void;
+  onLogout?: () => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
@@ -31,6 +32,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   charges,
   onHospitalsChanged,
   onOpenCodeGroupSettings,
+  onLogout,
 }) => {
   // Settings state
   const [cardiologistName, setCardiologistName] = useState('');
@@ -685,6 +687,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <span className="text-sm font-semibold text-gray-700">CPT Code Categories</span>
           <ChevronRight size={18} className="text-gray-400" />
         </button>
+
+        {/* Log Out */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full bg-white rounded-xl p-4 border border-gray-200 flex items-center justify-center gap-2 mt-2"
+          >
+            <LogOut size={18} className="text-red-500" />
+            <span className="text-sm font-semibold text-red-500">Log Out</span>
+          </button>
+        )}
 
         {/* Version */}
         <div className="text-center pt-4 pb-8">

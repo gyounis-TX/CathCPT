@@ -2498,7 +2498,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
         rvu: totalRVU,
         diagnoses,
         caseSnapshot
-      });
+      }, orgId);
 
       // Clear editing state
       setEditingChargeId(null);
@@ -2517,7 +2517,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
         diagnoses,
         submittedByUserName: userName || cardiologistName || undefined,
         caseSnapshot
-      });
+      }, orgId);
 
       // Log charge_submitted audit event
       if (orgId) {

@@ -39,8 +39,9 @@ service cloud.firestore {
 
     // ── Invite Codes (top-level for O(1) lookup) ──────────
     match /inviteCodes/{code} {
-      // Any authenticated user can read (to validate during registration)
-      allow read: if request.auth != null;
+      // Allow reads without auth — code lookup happens before account creation.
+      // Codes are 8-char random strings (31^8 ≈ 852B possibilities), so guessing is infeasible.
+      allow read: if true;
       // Only admins can create invite codes
       allow create: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
@@ -128,9 +129,17 @@ service cloud.firestore {
       match /invites/{inviteId} {
         allow read: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
-        allow create, update: if request.auth != null
+        allow create: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        // Admins can update, OR the invited user can redeem their own invite
+        allow update: if request.auth != null
+          && (
+            (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+            || (resource.data.email == request.auth.token.email
+                && resource.data.status == 'pending')
+          );
       }
 
       // Organization settings (report schedule, etc.)
@@ -138,6 +147,15 @@ service cloud.firestore {
         allow read: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
         allow write: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      }
+
+      // Charges (flat — not nested under inpatients; some charges use unlinked cath-* IDs)
+      match /charges/{chargeId} {
+        allow read, create, update: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+        allow delete: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       }
