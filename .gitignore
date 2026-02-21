@@ -43,6 +43,8 @@ android/.idea/
 # Firebase
 .firebase/
 scripts/serviceAccountKey.json
+**/GoogleService-Info.plist
+**/google-services.json
 
 # Temporary files
 *.tmp
