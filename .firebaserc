@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "cathcpt"
+  },
+  "targets": {},
+  "etags": {
+    "cathcpt": {
+      "extensionInstances": {
+        "firestore-send-email": "124fa20df30868b425ab1aabcafc103f2f56e3d944eae7e13c0489b635cc6e2b"
+      }
+    }
   }
 }

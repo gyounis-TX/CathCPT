@@ -158,7 +158,7 @@ export const PhysicianManagementTab: React.FC<PhysicianManagementTabProps> = ({
   const pendingInvites = invites.filter(i => i.status === 'pending');
   const redeemedInvites = invites.filter(i => i.status === 'redeemed');
 
-  if (isLoading) {
+  if (isLoading && !showInviteDialog) {
     return (
       <div className="flex items-center justify-center h-32">
         <p className="text-gray-500">Loading...</p>

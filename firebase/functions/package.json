@@ -2,7 +2,7 @@
   "name": "cathcpt-functions",
   "description": "Cloud Functions for CathCPT",
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
