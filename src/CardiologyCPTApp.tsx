@@ -17,6 +17,7 @@ import { searchICD10Codes } from './data/icd10Codes';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
 import { validateCCIEdits, CCIViolation } from './data/cciEdits';
 import { checkConcurrentVisit } from './services/concurrentVisitService';
+import { saveCaseHistoryToFirestore, loadCaseHistoryFromFirestore } from './services/firestoreChargesService';
 import { showToast } from './hooks/useToast';
 
 // Category color mapping for visual distinction
@@ -396,10 +397,24 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
           setCustomTemplates(JSON.parse(templatesResult.value));
         }
 
-        // Load case history
-        const historyResult = await window.storage.get('cathcpt_case_history');
-        if (historyResult?.value) {
-          setCaseHistory(JSON.parse(historyResult.value));
+        // Load case history — prefer Firestore for Pro users, fall back to local
+        if (orgId) {
+          const firestoreHistory = await loadCaseHistoryFromFirestore(orgId);
+          if (firestoreHistory.length > 0) {
+            setCaseHistory(firestoreHistory);
+            await window.storage.set('cathcpt_case_history', JSON.stringify(firestoreHistory));
+          } else {
+            // Firestore empty — load local (may seed Firestore on next save)
+            const historyResult = await window.storage.get('cathcpt_case_history');
+            if (historyResult?.value) {
+              setCaseHistory(JSON.parse(historyResult.value));
+            }
+          }
+        } else {
+          const historyResult = await window.storage.get('cathcpt_case_history');
+          if (historyResult?.value) {
+            setCaseHistory(JSON.parse(historyResult.value));
+          }
         }
 
         // Load custom codes
@@ -749,7 +764,10 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     const updatedHistory = [newCase, ...caseHistory].slice(0, 50); // Keep last 50
     setCaseHistory(updatedHistory);
     await window.storage.set('cathcpt_case_history', JSON.stringify(updatedHistory));
-  }, [patientName, selectedLocation, selectedCodes, selectedCodesVessel2, selectedCodesVessel3, codeVessels, codeVesselsV2, codeVesselsV3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication, caseHistory]);
+    if (orgId) {
+      saveCaseHistoryToFirestore(orgId, updatedHistory).catch(() => {});
+    }
+  }, [patientName, selectedLocation, selectedCodes, selectedCodesVessel2, selectedCodesVessel3, codeVessels, codeVesselsV2, codeVesselsV3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication, caseHistory, orgId]);
 
   // Auto-format DOB as MM/DD/YYYY and convert to YYYY-MM-DD for storage
   const handlePatientDobChange = (raw: string) => {
@@ -814,7 +832,10 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     const updatedHistory = caseHistory.filter(c => c.id !== caseId);
     setCaseHistory(updatedHistory);
     await window.storage.set('cathcpt_case_history', JSON.stringify(updatedHistory));
-  }, [caseHistory]);
+    if (orgId) {
+      saveCaseHistoryToFirestore(orgId, updatedHistory).catch(() => {});
+    }
+  }, [caseHistory, orgId]);
 
   const exportHistory = useCallback(() => {
     const data = JSON.stringify(caseHistory, null, 2);

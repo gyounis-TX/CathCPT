@@ -4,6 +4,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   updateDoc,
@@ -11,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { StoredCharge } from './chargesService';
+import { SavedCase } from '../types';
 import { logger } from './logger';
 
 /** Save (or overwrite) a charge doc using the local charge ID as the Firestore doc ID */
@@ -60,5 +62,32 @@ export async function deleteChargeFromFirestore(orgId: string, chargeId: string)
     await deleteDoc(doc(db, `organizations/${orgId}/charges`, chargeId));
   } catch (error) {
     logger.error('Failed to delete charge from Firestore', error);
+  }
+}
+
+/** Save case history to Firestore (single doc with all cases) */
+export async function saveCaseHistoryToFirestore(orgId: string, history: SavedCase[]): Promise<void> {
+  if (!isFirebaseConfigured()) return;
+  try {
+    const db = getFirebaseDb();
+    await setDoc(doc(db, `organizations/${orgId}/metadata`, 'caseHistory'), { cases: history });
+  } catch (error) {
+    logger.error('Failed to save case history to Firestore', error);
+  }
+}
+
+/** Load case history from Firestore */
+export async function loadCaseHistoryFromFirestore(orgId: string): Promise<SavedCase[]> {
+  if (!isFirebaseConfigured()) return [];
+  try {
+    const db = getFirebaseDb();
+    const snap = await getDoc(doc(db, `organizations/${orgId}/metadata`, 'caseHistory'));
+    if (snap.exists()) {
+      return (snap.data().cases || []) as SavedCase[];
+    }
+    return [];
+  } catch (error) {
+    logger.error('Failed to load case history from Firestore', error);
+    return [];
   }
 }

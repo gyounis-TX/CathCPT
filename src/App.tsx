@@ -291,7 +291,7 @@ const App: React.FC = () => {
             loadHospitals(),
             loadPatients(mode.organizationId),
             loadCallList(mode.organizationId, currentUser?.id || 'user-1'),
-            loadChargesAndDiagnoses()
+            loadChargesAndDiagnoses(mode.organizationId)
           ]);
         } catch (proErr) {
           logger.warn('Pro data load partially failed', proErr);
@@ -348,11 +348,11 @@ const App: React.FC = () => {
     setCallListEntries(entries);
   };
 
-  const loadChargesAndDiagnoses = async () => {
+  const loadChargesAndDiagnoses = async (orgIdOverride?: string | null) => {
     let loadedCharges: Record<string, Record<string, StoredCharge>>;
 
     // Load from Firestore when orgId is available, fall back to local storage
-    const orgId = userMode.organizationId;
+    const orgId = orgIdOverride ?? userMode.organizationId;
     if (orgId) {
       const firestoreCharges = await loadChargesFromFirestore(orgId);
       // Build the same grouped structure as getChargesByPatientAndDate
@@ -417,7 +417,7 @@ const App: React.FC = () => {
       await loadHospitals();
       await loadPatients(mode.organizationId);
       await loadCallList(mode.organizationId, user.id);
-      await loadChargesAndDiagnoses();
+      await loadChargesAndDiagnoses(mode.organizationId);
     }
 
     // Check if biometric enrollment should be offered after email/password login
