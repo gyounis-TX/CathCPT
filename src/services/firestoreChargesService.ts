@@ -83,7 +83,8 @@ export async function loadCaseHistoryFromFirestore(orgId: string): Promise<Saved
     const db = getFirebaseDb();
     const snap = await getDoc(doc(db, `organizations/${orgId}/metadata`, 'caseHistory'));
     if (snap.exists()) {
-      return (snap.data().cases || []) as SavedCase[];
+      const cases = snap.data()?.cases;
+      return Array.isArray(cases) ? cases as SavedCase[] : [];
     }
     return [];
   } catch (error) {

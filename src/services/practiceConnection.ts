@@ -183,7 +183,7 @@ export async function isConnectedToPractice(): Promise<boolean> {
 }
 
 // Get hospitals for connected practice
-export async function getHospitals(): Promise<Hospital[]> {
+export async function getHospitals(orgIdOverride?: string | null): Promise<Hospital[]> {
   // Check for dev mode first
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled && devSettings.useMockServer) {
@@ -198,19 +198,24 @@ export async function getHospitals(): Promise<Hospital[]> {
       }));
   }
 
-  const connection = await getPracticeConnection();
-  if (!connection || !isFirebaseConfigured()) {
+  // Use explicit orgId if provided, otherwise fall back to practice connection
+  let resolvedOrgId = orgIdOverride;
+  if (!resolvedOrgId) {
+    const connection = await getPracticeConnection();
+    resolvedOrgId = connection?.organizationId;
+  }
+  if (!resolvedOrgId || !isFirebaseConfigured()) {
     return [];
   }
 
   const db = getFirebaseDb();
-  const hospitalsRef = collection(db, 'organizations', connection.organizationId, 'hospitals');
+  const hospitalsRef = collection(db, 'organizations', resolvedOrgId, 'hospitals');
   const q = query(hospitalsRef, where('isActive', '==', true), orderBy('name'));
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map(d => ({
     id: d.id,
-    organizationId: connection.organizationId,
+    organizationId: resolvedOrgId!,
     name: d.data().name,
     isActive: true,
     createdAt: d.data().createdAt || new Date().toISOString()
@@ -218,7 +223,7 @@ export async function getHospitals(): Promise<Hospital[]> {
 }
 
 // Get cath labs for connected practice
-export async function getCathLabs(hospitalId?: string): Promise<CathLab[]> {
+export async function getCathLabs(hospitalId?: string, orgIdOverride?: string | null): Promise<CathLab[]> {
   // Check for dev mode first
   const devSettings = await getDevModeSettings();
   if (devSettings?.enabled && devSettings.useMockServer) {
@@ -238,13 +243,18 @@ export async function getCathLabs(hospitalId?: string): Promise<CathLab[]> {
     return labs;
   }
 
-  const connection = await getPracticeConnection();
-  if (!connection || !isFirebaseConfigured()) {
+  // Use explicit orgId if provided, otherwise fall back to practice connection
+  let resolvedOrgId = orgIdOverride;
+  if (!resolvedOrgId) {
+    const connection = await getPracticeConnection();
+    resolvedOrgId = connection?.organizationId;
+  }
+  if (!resolvedOrgId || !isFirebaseConfigured()) {
     return [];
   }
 
   const db = getFirebaseDb();
-  const cathLabsRef = collection(db, 'organizations', connection.organizationId, 'cathLabs');
+  const cathLabsRef = collection(db, 'organizations', resolvedOrgId, 'cathLabs');
 
   const constraints = [where('isActive', '==', true), orderBy('name')];
   if (hospitalId) {
@@ -256,7 +266,7 @@ export async function getCathLabs(hospitalId?: string): Promise<CathLab[]> {
 
   return snapshot.docs.map(d => ({
     id: d.id,
-    organizationId: connection.organizationId,
+    organizationId: resolvedOrgId!,
     hospitalId: d.data().hospitalId,
     name: d.data().name,
     isActive: true,

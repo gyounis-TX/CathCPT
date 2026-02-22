@@ -288,7 +288,7 @@ const App: React.FC = () => {
         try {
           await Promise.all([
             loadSyncStatus(),
-            loadHospitals(),
+            loadHospitals(mode.organizationId),
             loadPatients(mode.organizationId),
             loadCallList(mode.organizationId, currentUser?.id || 'user-1'),
             loadChargesAndDiagnoses(mode.organizationId)
@@ -313,7 +313,8 @@ const App: React.FC = () => {
     setSyncStatus(status);
   };
 
-  const loadHospitals = async () => {
+  const loadHospitals = async (orgIdOverride?: string | null) => {
+    const orgId = orgIdOverride ?? userMode.organizationId;
     // Check storage first (admin-managed hospitals/cath labs persist here)
     const [storedHosp, storedLabs] = await Promise.all([
       window.storage.get('admin_hospitals'),
@@ -322,13 +323,13 @@ const App: React.FC = () => {
     if (storedHosp?.value) {
       setHospitals(JSON.parse(storedHosp.value));
     } else {
-      const hospitalList = await getHospitals();
+      const hospitalList = await getHospitals(orgId);
       setHospitals(hospitalList);
     }
     if (storedLabs?.value) {
       setCathLabs(JSON.parse(storedLabs.value));
     } else {
-      const labList = await getCathLabs();
+      const labList = await getCathLabs(undefined, orgId);
       setCathLabs(labList);
     }
   };
@@ -412,9 +413,9 @@ const App: React.FC = () => {
     setUserMode(mode);
 
     // Load Pro data
-    if (mode.tier === 'pro') {
+    if (mode.tier === 'pro' && mode.organizationId) {
       await loadSyncStatus();
-      await loadHospitals();
+      await loadHospitals(mode.organizationId);
       await loadPatients(mode.organizationId);
       await loadCallList(mode.organizationId, user.id);
       await loadChargesAndDiagnoses(mode.organizationId);
@@ -904,10 +905,10 @@ const App: React.FC = () => {
     // Load data if switching to Pro mode
     if (mode.tier === 'pro' && mode.organizationId) {
       await Promise.all([
-        loadHospitals(),
+        loadHospitals(mode.organizationId),
         loadPatients(mode.organizationId),
         loadCallList(mode.organizationId, authUser?.id || 'user-1'),
-        loadChargesAndDiagnoses()
+        loadChargesAndDiagnoses(mode.organizationId)
       ]);
     }
   };

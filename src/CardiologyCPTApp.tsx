@@ -765,7 +765,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     setCaseHistory(updatedHistory);
     await window.storage.set('cathcpt_case_history', JSON.stringify(updatedHistory));
     if (orgId) {
-      saveCaseHistoryToFirestore(orgId, updatedHistory).catch(() => {});
+      saveCaseHistoryToFirestore(orgId, updatedHistory).catch(err => logger.error('Failed to sync case history', err));
     }
   }, [patientName, selectedLocation, selectedCodes, selectedCodesVessel2, selectedCodesVessel3, codeVessels, codeVesselsV2, codeVesselsV3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication, caseHistory, orgId]);
 
@@ -833,7 +833,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     setCaseHistory(updatedHistory);
     await window.storage.set('cathcpt_case_history', JSON.stringify(updatedHistory));
     if (orgId) {
-      saveCaseHistoryToFirestore(orgId, updatedHistory).catch(() => {});
+      saveCaseHistoryToFirestore(orgId, updatedHistory).catch(err => logger.error('Failed to sync case history', err));
     }
   }, [caseHistory, orgId]);
 

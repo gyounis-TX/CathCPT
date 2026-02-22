@@ -151,6 +151,12 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       }
 
+      // Metadata (case history, etc.)
+      match /metadata/{docId} {
+        allow read, write: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+      }
+
       // Charges (flat — not nested under inpatients; some charges use unlinked cath-* IDs)
       match /charges/{chargeId} {
         allow read, create, update: if request.auth != null

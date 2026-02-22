@@ -69,7 +69,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [hospitals, cathLabs]);
 
   const loadSettings = async () => {
     try {
@@ -91,18 +91,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       if (notifResult?.value) setNotificationsEnabled(notifResult.value === 'true');
       if (notifDaysResult?.value) setBillingReminderDays(parseInt(notifDaysResult.value) || 2);
 
-      // Load admin hospitals/cath labs from storage, fall back to props
-      if (adminHospResult?.value) {
-        setLocalOrgHospitals(JSON.parse(adminHospResult.value));
-      } else if (hospitals.length > 0) {
+      // Load admin hospitals/cath labs — prefer props (fresh from Firestore), fall back to storage
+      if (hospitals.length > 0) {
         setLocalOrgHospitals(hospitals);
         await window.storage.set('admin_hospitals', JSON.stringify(hospitals));
+      } else if (adminHospResult?.value) {
+        setLocalOrgHospitals(JSON.parse(adminHospResult.value));
       }
-      if (adminLabsResult?.value) {
-        setLocalOrgCathLabs(JSON.parse(adminLabsResult.value));
-      } else if (cathLabs.length > 0) {
+      if (cathLabs.length > 0) {
         setLocalOrgCathLabs(cathLabs);
         await window.storage.set('admin_cathLabs', JSON.stringify(cathLabs));
+      } else if (adminLabsResult?.value) {
+        setLocalOrgCathLabs(JSON.parse(adminLabsResult.value));
       }
 
       // Biometric
