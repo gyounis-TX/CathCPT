@@ -436,7 +436,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     };
 
     loadSettings();
-  }, []);
+  }, [orgId]);
 
 
   // Save favorites when changed

@@ -471,9 +471,10 @@ const App: React.FC = () => {
   };
 
   const handleRoundsRefresh = async () => {
-    await loadPatients(userMode.organizationId);
-    await loadCallList(userMode.organizationId, authUser?.id || 'user-1');
-    await loadChargesAndDiagnoses();
+    const orgId = userMode.organizationId;
+    await loadPatients(orgId);
+    await loadCallList(orgId, authUser?.id || 'user-1');
+    await loadChargesAndDiagnoses(orgId);
   };
 
   const handlePatientSave = async (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[], cathMatchKey?: string) => {
