@@ -229,6 +229,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   const [ruleViolations, setRuleViolations] = useState<RuleViolation[]>([]);
   const [overriddenRules, setOverriddenRules] = useState<string[]>([]);
   const [showRuleDetails, setShowRuleDetails] = useState<string | null>(null);
+  const [acknowledgedWarnings, setAcknowledgedWarnings] = useState<Set<string>>(new Set());
 
   // 2026 Updates Info
   const [show2026Updates, setShow2026Updates] = useState(false);
@@ -5860,11 +5861,38 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                   {feedback.warnings.length > 0 && (
                     <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
                       <h3 className="font-semibold text-blue-800 mb-2">ℹ️ Warnings - Review Carefully</h3>
-                      <ul className="list-disc list-inside space-y-1">
-                        {feedback.warnings.map((warning, idx) => (
-                          <li key={idx} className="text-sm text-blue-700">{warning}</li>
-                        ))}
-                      </ul>
+                      <div className="space-y-2">
+                        {feedback.warnings.map((warning, idx) => {
+                          const isAcknowledged = acknowledgedWarnings.has(warning);
+                          return (
+                            <div key={idx} className={`flex items-start justify-between gap-2 text-sm ${isAcknowledged ? 'opacity-50' : ''}`}>
+                              <span className={`flex-1 ${isAcknowledged ? 'line-through text-blue-400' : 'text-blue-700'}`}>
+                                {warning}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setAcknowledgedWarnings(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(warning)) {
+                                      next.delete(warning);
+                                    } else {
+                                      next.add(warning);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className={`flex-shrink-0 px-3 py-1 rounded text-xs font-semibold transition-colors ${
+                                  isAcknowledged
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-blue-200 text-blue-800 hover:bg-blue-300'
+                                }`}
+                              >
+                                {isAcknowledged ? '✓ Confirmed' : 'Confirm'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
