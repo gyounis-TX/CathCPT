@@ -50,6 +50,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [isAddingHospital, setIsAddingHospital] = useState(false);
   const [isAddingCathLab, setIsAddingCathLab] = useState(false);
 
+  // Sync local state when props update (e.g. after Firestore refresh with real IDs)
+  useEffect(() => { setLocalOrgHospitals(hospitals); }, [hospitals]);
+  useEffect(() => { setLocalOrgCathLabs(cathLabs); }, [cathLabs]);
 
   // Biometric state
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -198,25 +201,23 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     const name = newOrgHospital.trim();
     if (!name) return;
     setIsAddingHospital(true);
-    const newH: Hospital = {
+    const original = localOrgHospitals;
+    const tempH: Hospital = {
       id: `hosp-${Date.now()}`,
       organizationId: orgId,
       name,
       isActive: true,
       createdAt: new Date().toISOString(),
     };
-    const updated = [...localOrgHospitals, newH];
-    setLocalOrgHospitals(updated);
-    saveOrgHospitalsToStorage(updated);
+    setLocalOrgHospitals([...original, tempH]);
     setNewOrgHospital('');
     try {
       await addHospitalToOrg(orgId, name);
-      onHospitalsChanged().catch(() => {});
+      // Refresh from Firestore to get real IDs
+      await onHospitalsChanged();
     } catch (err) {
-      // Rollback
-      const rolledBack = localOrgHospitals;
-      setLocalOrgHospitals(rolledBack);
-      saveOrgHospitalsToStorage(rolledBack);
+      setLocalOrgHospitals(original);
+      saveOrgHospitalsToStorage(original);
       alert(err instanceof Error ? err.message : 'Failed to add hospital');
     } finally {
       setIsAddingHospital(false);
@@ -230,16 +231,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       return;
     }
     if (!window.confirm(`Are you sure you want to remove "${hospital.name}"? This action cannot be undone.`)) return;
-    const updated = localOrgHospitals.filter(h => h.id !== hospital.id);
+    const original = localOrgHospitals;
+    const updated = original.filter(h => h.id !== hospital.id);
     setLocalOrgHospitals(updated);
     saveOrgHospitalsToStorage(updated);
     try {
       await deactivateHospitalFromOrg(orgId, hospital.id);
       onHospitalsChanged().catch(() => {});
     } catch (err) {
-      const rolledBack = [...localOrgHospitals, hospital];
-      setLocalOrgHospitals(rolledBack);
-      saveOrgHospitalsToStorage(rolledBack);
+      setLocalOrgHospitals(original);
+      saveOrgHospitalsToStorage(original);
       alert(err instanceof Error ? err.message : 'Failed to remove hospital');
     }
   };
@@ -248,24 +249,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     const name = newOrgCathLab.trim();
     if (!name) return;
     setIsAddingCathLab(true);
-    const newL: CathLab = {
+    const original = localOrgCathLabs;
+    const tempL: CathLab = {
       id: `lab-${Date.now()}`,
       organizationId: orgId,
       name,
       isActive: true,
       createdAt: new Date().toISOString(),
     };
-    const updated = [...localOrgCathLabs, newL];
-    setLocalOrgCathLabs(updated);
-    saveOrgCathLabsToStorage(updated);
+    setLocalOrgCathLabs([...original, tempL]);
     setNewOrgCathLab('');
     try {
       await addCathLabToOrg(orgId, name);
-      onHospitalsChanged().catch(() => {});
+      await onHospitalsChanged();
     } catch (err) {
-      const rolledBack = localOrgCathLabs;
-      setLocalOrgCathLabs(rolledBack);
-      saveOrgCathLabsToStorage(rolledBack);
+      setLocalOrgCathLabs(original);
+      saveOrgCathLabsToStorage(original);
       alert(err instanceof Error ? err.message : 'Failed to add cath lab');
     } finally {
       setIsAddingCathLab(false);
@@ -274,16 +273,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const handleRemoveOrgCathLab = async (lab: CathLab) => {
     if (!window.confirm(`Are you sure you want to remove "${lab.name}"? This action cannot be undone.`)) return;
-    const updated = localOrgCathLabs.filter(l => l.id !== lab.id);
+    const original = localOrgCathLabs;
+    const updated = original.filter(l => l.id !== lab.id);
     setLocalOrgCathLabs(updated);
     saveOrgCathLabsToStorage(updated);
     try {
       await deactivateCathLabFromOrg(orgId, lab.id);
       onHospitalsChanged().catch(() => {});
     } catch (err) {
-      const rolledBack = [...localOrgCathLabs, lab];
-      setLocalOrgCathLabs(rolledBack);
-      saveOrgCathLabsToStorage(rolledBack);
+      setLocalOrgCathLabs(original);
+      saveOrgCathLabsToStorage(original);
       alert(err instanceof Error ? err.message : 'Failed to remove cath lab');
     }
   };

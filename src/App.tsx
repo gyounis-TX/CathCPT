@@ -371,22 +371,28 @@ const App: React.FC = () => {
 
   const loadHospitals = async (orgIdOverride?: string | null) => {
     const orgId = orgIdOverride ?? userMode.organizationId;
-    // Check storage first (admin-managed hospitals/cath labs persist here)
-    const [storedHosp, storedLabs] = await Promise.all([
-      window.storage.get('admin_hospitals'),
-      window.storage.get('admin_cathLabs'),
-    ]);
-    if (storedHosp?.value) {
-      setHospitals(JSON.parse(storedHosp.value));
-    } else {
-      const hospitalList = await getHospitals(orgId);
+    // Always fetch from Firestore to ensure multi-user consistency.
+    // Cache to local storage for offline fallback only.
+    try {
+      const [hospitalList, labList] = await Promise.all([
+        getHospitals(orgId),
+        getCathLabs(undefined, orgId),
+      ]);
       setHospitals(hospitalList);
-    }
-    if (storedLabs?.value) {
-      setCathLabs(JSON.parse(storedLabs.value));
-    } else {
-      const labList = await getCathLabs(undefined, orgId);
       setCathLabs(labList);
+      // Cache for offline use
+      await Promise.all([
+        window.storage.set('admin_hospitals', JSON.stringify(hospitalList)),
+        window.storage.set('admin_cathLabs', JSON.stringify(labList)),
+      ]);
+    } catch {
+      // Offline fallback — use cached data
+      const [storedHosp, storedLabs] = await Promise.all([
+        window.storage.get('admin_hospitals'),
+        window.storage.get('admin_cathLabs'),
+      ]);
+      if (storedHosp?.value) setHospitals(JSON.parse(storedHosp.value));
+      if (storedLabs?.value) setCathLabs(JSON.parse(storedLabs.value));
     }
   };
 
