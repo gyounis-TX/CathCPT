@@ -768,7 +768,9 @@ const App: React.FC = () => {
       cptCode: codesDisplay, // Store all codes combined
       cptDescription: descriptionsDisplay,
       timeMinutes: charge.timeMinutes,
-      diagnoses: charge.diagnoses
+      diagnoses: charge.diagnoses,
+      submittedByUserId: authUser?.id,
+      submittedByUserName: authUser?.displayName || undefined
     }, userMode.organizationId);
 
     // Update local state immediately
@@ -1198,6 +1200,7 @@ const App: React.FC = () => {
             cathLabs={cathLabs}
             patientDiagnoses={patientDiagnoses}
             orgId={userMode.organizationId || 'YOCA'}
+            userId={authUser?.id}
             userName={authUser?.displayName || ''}
             bottomTab={cathLabBottomTab}
             onPatientCreated={handleCreatePatientFromCharge}

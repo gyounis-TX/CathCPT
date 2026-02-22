@@ -127,6 +127,7 @@ interface CardiologyCPTAppProps {
   cathLabs?: CathLab[];
   patientDiagnoses?: Record<string, string[]>;
   orgId?: string;
+  userId?: string;
   userName?: string;
   bottomTab?: CathLabBottomTab;
   onPatientCreated?: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => Promise<Inpatient>;
@@ -148,7 +149,7 @@ export interface CardiologyCPTAppHandle {
   exportHistory: () => void;
 }
 
-const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userName = '', bottomTab = 'addcase', onPatientCreated, onChargeUpdated, onBadgeCounts }, ref) => {
+const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userId, userName = '', bottomTab = 'addcase', onPatientCreated, onChargeUpdated, onBadgeCounts }, ref) => {
   // Patient matching state (replaces caseId)
   const [patientName, setPatientName] = useState('');
   const [patientDob, setPatientDob] = useState(''); // stored as YYYY-MM-DD
@@ -2428,10 +2429,10 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     // Concurrent visit detection (only for new charges in Pro mode)
     if (!editingChargeId && matchedPatient && orgId) {
       const chargeDate = procedureDateText;
-      const concurrent = await checkConcurrentVisit(matchedPatient.id, chargeDate, 'user-1');
+      const concurrent = await checkConcurrentVisit(matchedPatient.id, chargeDate, userId || 'unknown');
       if (concurrent) {
         const proceed = window.confirm(
-          `${concurrent.otherPhysicianName} already has a charge for this patient on ${chargeDate}. ` +
+          `${concurrent.physicianName} already has a charge for this patient on ${chargeDate}. ` +
           `Concurrent care is common — continue?`
         );
         if (!proceed) return;
@@ -2550,6 +2551,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
         cptDescription: descriptionStrings.join(' + '),
         rvu: totalRVU,
         diagnoses,
+        submittedByUserId: userId,
         submittedByUserName: userName || cardiologistName || undefined,
         caseSnapshot
       }, orgId);
@@ -2558,7 +2560,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       if (orgId) {
         logAuditEvent(orgId, {
           action: 'charge_submitted',
-          userId: 'user-1',
+          userId: userId || 'unknown',
           userName: userName || cardiologistName || 'Unknown',
           targetPatientId: resolvedPatient?.id || null,
           targetPatientName: resolvedPatient?.patientName || patientName.trim(),
