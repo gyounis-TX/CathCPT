@@ -8,11 +8,13 @@ import {
   getDocs,
   addDoc,
   updateDoc,
-  doc
+  doc,
+  onSnapshot
 } from 'firebase/firestore';
 import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { getDevModeSettings } from './devMode';
 import { Inpatient } from '../types';
+import { logger } from './logger';
 
 const LOCAL_INPATIENTS_KEY = 'local_inpatients';
 
@@ -232,6 +234,34 @@ export async function dischargeInpatient(orgId: string, inpatientId: string): Pr
 /** Remove from practice (soft delete — set isActive=false) */
 export async function removeFromPractice(orgId: string, inpatientId: string): Promise<void> {
   return dischargeInpatient(orgId, inpatientId);
+}
+
+/** Real-time listener for active org inpatients. Returns an unsubscribe function. */
+export function onOrgInpatientsSnapshot(
+  orgId: string,
+  callback: (patients: Inpatient[]) => void
+): () => void {
+  if (!isFirebaseConfigured()) return () => {};
+  try {
+    const db = getFirebaseDb();
+    const q = query(
+      collection(db, `organizations/${orgId}/inpatients`),
+      where('isActive', '==', true)
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const patients = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inpatient));
+        callback(patients);
+      },
+      (error) => {
+        logger.error('Inpatients snapshot error', error);
+      }
+    );
+  } catch (error) {
+    logger.error('Failed to set up inpatients snapshot', error);
+    return () => {};
+  }
 }
 
 /** Get ALL org inpatients including discharged (for admin roster) */

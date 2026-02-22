@@ -28,7 +28,7 @@ import { getCurrentSession, signOut, AuthUser } from './services/authService';
 import { initializeFirebase, isFirebaseConfigured } from './services/firebaseConfig';
 import { getSyncStatus, SyncStatus, processSyncQueue, setOnlineStatus } from './services/syncService';
 import { getPracticeConnection, getHospitals, getCathLabs } from './services/practiceConnection';
-import { getOrgInpatients, createInpatient, dischargeInpatient, getLocalPatients, saveLocalPatient, updateLocalPatient } from './services/inpatientService';
+import { getOrgInpatients, createInpatient, dischargeInpatient, getLocalPatients, saveLocalPatient, updateLocalPatient, onOrgInpatientsSnapshot } from './services/inpatientService';
 import { getCallListEntries, addToCallList, removeFromCallList, clearCallList } from './services/callListService';
 import { logAuditEvent } from './services/auditService';
 import { logger } from './services/logger';
@@ -45,7 +45,7 @@ import {
   markChargeBilled,
   relinkChargesToPatient
 } from './services/chargesService';
-import { loadChargesFromFirestore } from './services/firestoreChargesService';
+import { loadChargesFromFirestore, onChargesSnapshot } from './services/firestoreChargesService';
 
 // Active tab type
 type AppTab = 'cathlab' | 'rounds' | 'admin';
@@ -98,6 +98,10 @@ const App: React.FC = () => {
 
   // Ref for CathCPT header buttons
   const cathCPTRef = useRef<CardiologyCPTAppHandle>(null);
+
+  // Real-time Firestore listener unsubscribe refs
+  const unsubChargesRef = useRef<(() => void) | null>(null);
+  const unsubPatientsRef = useRef<(() => void) | null>(null);
 
   // Patients state (for Rounds)
   const [patients, setPatients] = useState<Inpatient[]>([]);
@@ -213,6 +217,58 @@ const App: React.FC = () => {
     setHeaderVisible(true);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [cathLabBottomTab]);
+
+  // Real-time Firestore listeners for Pro users
+  useEffect(() => {
+    if (!authUser || userMode.tier !== 'pro' || !userMode.organizationId) return;
+
+    const orgId = userMode.organizationId;
+
+    // Charges listener — builds grouped structure matching loadChargesAndDiagnoses
+    unsubChargesRef.current = onChargesSnapshot(orgId, async (firestoreCharges) => {
+      let grouped: Record<string, Record<string, StoredCharge>> = {};
+      for (const charge of firestoreCharges) {
+        if (!grouped[charge.inpatientId]) {
+          grouped[charge.inpatientId] = {};
+        }
+        const existing = grouped[charge.inpatientId][charge.chargeDate];
+        if (!existing || new Date(charge.createdAt) > new Date(existing.createdAt)) {
+          grouped[charge.inpatientId][charge.chargeDate] = charge;
+        }
+      }
+
+      // Merge dev mode mock charges
+      const devSettings = await getDevModeSettings();
+      if (devSettings?.enabled) {
+        for (const mc of mockCharges) {
+          const charge = mc as StoredCharge;
+          if (!grouped[charge.inpatientId]) {
+            grouped[charge.inpatientId] = {};
+          }
+          if (!grouped[charge.inpatientId][charge.chargeDate]) {
+            grouped[charge.inpatientId][charge.chargeDate] = charge;
+          }
+        }
+      }
+
+      setCharges(grouped);
+    });
+
+    // Patients listener — merges with local patients
+    unsubPatientsRef.current = onOrgInpatientsSnapshot(orgId, async (backendPatients) => {
+      const localPatients = await getLocalPatients();
+      const backendIds = new Set(backendPatients.map(p => p.id));
+      const merged = [...backendPatients, ...localPatients.filter(p => !backendIds.has(p.id))];
+      setPatients(merged);
+    });
+
+    return () => {
+      unsubChargesRef.current?.();
+      unsubChargesRef.current = null;
+      unsubPatientsRef.current?.();
+      unsubPatientsRef.current = null;
+    };
+  }, [authUser, userMode.tier, userMode.organizationId]);
 
   const initializeApp = async () => {
     // Hard deadline — never stay on loading screen longer than 8 seconds
@@ -436,6 +492,12 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    // Tear down real-time listeners before signing out
+    unsubChargesRef.current?.();
+    unsubChargesRef.current = null;
+    unsubPatientsRef.current?.();
+    unsubPatientsRef.current = null;
+
     clearSentryUser();
     await signOut();
     setAuthUser(null);

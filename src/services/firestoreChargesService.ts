@@ -8,7 +8,8 @@ import {
   getDocs,
   setDoc,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { StoredCharge } from './chargesService';
@@ -73,6 +74,30 @@ export async function saveCaseHistoryToFirestore(orgId: string, history: SavedCa
     await setDoc(doc(db, `organizations/${orgId}/metadata`, 'caseHistory'), { cases: history });
   } catch (error) {
     logger.error('Failed to save case history to Firestore', error);
+  }
+}
+
+/** Real-time listener for all charges in an org. Returns an unsubscribe function. */
+export function onChargesSnapshot(
+  orgId: string,
+  callback: (charges: StoredCharge[]) => void
+): () => void {
+  if (!isFirebaseConfigured()) return () => {};
+  try {
+    const db = getFirebaseDb();
+    return onSnapshot(
+      collection(db, `organizations/${orgId}/charges`),
+      (snap) => {
+        const charges = snap.docs.map(d => ({ ...d.data(), id: d.id } as StoredCharge));
+        callback(charges);
+      },
+      (error) => {
+        logger.error('Charges snapshot error', error);
+      }
+    );
+  } catch (error) {
+    logger.error('Failed to set up charges snapshot', error);
+    return () => {};
   }
 }
 
