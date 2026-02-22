@@ -131,6 +131,7 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
   const [dateOption, setDateOption] = useState<DateOption>('today');
   const [customDate, setCustomDate] = useState<Date | undefined>();
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDateSection, setShowDateSection] = useState(false);
   const [rankedSubcategories, setRankedSubcategories] = useState<Map<string, ICD10Code[]>>(new Map());
 
   // Helper to parse stored code string (handles "99232-25 + 99291" format)
@@ -198,6 +199,7 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
         setDateOption('today');
         setCustomDate(undefined);
         setShowDatePicker(false);
+        setShowDateSection(false);
       }
     }
   }, [isOpen, previousDiagnoses, isFirstEncounter, editingCharge]);
@@ -423,17 +425,16 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
     return canAddCode(code, Array.from(selectedCodes));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Extracted save logic - returns true if save was successful
+  const doSave = (): boolean => {
     if (selectedCodes.size === 0) {
       showToast('Please select a charge code', 'warning');
-      return;
+      return false;
     }
 
     if (requiresTimeEntry && !timeMinutes) {
       showToast('Please enter time for critical care', 'warning');
-      return;
+      return false;
     }
 
     // Apply modifiers to codes that need them
@@ -444,7 +445,6 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
     const descriptionsArray = selectedCodesData.map(c => c.summary);
 
     if (isEditMode && editingCharge && onUpdate) {
-      // Edit mode - update existing charge (still single code for now)
       const primaryCode = codesArray[0];
       const primaryCodeData = selectedCodesData[0];
       onUpdate(editingCharge.id, {
@@ -454,7 +454,6 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
         diagnoses: Array.from(selectedDiagnoses)
       });
     } else {
-      // Add mode - create new charge(s)
       onSave({
         cptCodes: codesArray,
         cptDescriptions: descriptionsArray,
@@ -470,7 +469,37 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
       recordMultipleCodeUsage(Array.from(selectedDiagnoses));
     }
 
-    onClose();
+    return true;
+  };
+
+  // Reset form for "Save & Add Another"
+  const resetForm = () => {
+    setSelectedCodes(new Set());
+    setTimeMinutes(undefined);
+    // Keep diagnoses from previous — they carry forward
+    if (isFirstEncounter) {
+      setExpandedCategories(new Set(['E/M - Initial Hospital', 'Consults']));
+    } else {
+      setExpandedCategories(new Set(['E/M - Subsequent']));
+    }
+    setShowDiagnoses(false);
+    setDiagnosisSearch('');
+    setDateOption('today');
+    setCustomDate(undefined);
+    setShowDatePicker(false);
+    setShowDateSection(false);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (doSave()) onClose();
+  };
+
+  const handleSaveAndContinue = () => {
+    if (doSave()) {
+      showToast('Charge saved', 'success');
+      resetForm();
+    }
   };
 
   if (!isOpen || !patient) return null;
@@ -494,63 +523,77 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
           </button>
         </div>
 
-        {/* Date Selection - hidden in edit mode */}
+        {/* Date Selection - compact chip, expandable */}
         {!isEditMode && (
           <div className="px-4 pt-3">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Calendar className="w-4 h-4 inline mr-1" />
-              Date of Service
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(['today', 'yesterday', '2daysago'] as DateOption[]).map((option) => (
+            <button
+              type="button"
+              onClick={() => setShowDateSection(!showDateSection)}
+              className="flex items-center gap-2 w-full text-left"
+            >
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-200">
+                {getDateLabel(dateOption, customDate)}
+              </span>
+              {showDateSection ? (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+            {showDateSection && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(['today', 'yesterday', '2daysago'] as DateOption[]).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setDateOption(option);
+                      setShowDatePicker(false);
+                      setShowDateSection(false);
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      dateOption === option && !showDatePicker
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {getDateLabel(option)}
+                  </button>
+                ))}
                 <button
-                  key={option}
                   type="button"
                   onClick={() => {
-                    setDateOption(option);
-                    setShowDatePicker(false);
+                    setDateOption('custom');
+                    setShowDatePicker(true);
                   }}
                   className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                    dateOption === option && !showDatePicker
+                    dateOption === 'custom'
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  {getDateLabel(option)}
+                  {dateOption === 'custom' && customDate
+                    ? formatDateShort(customDate)
+                    : 'Other...'}
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setDateOption('custom');
-                  setShowDatePicker(true);
-                }}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                  dateOption === 'custom'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {dateOption === 'custom' && customDate
-                  ? formatDateShort(customDate)
-                  : 'Other...'}
-              </button>
-            </div>
-            {showDatePicker && (
-              <div className="mt-2">
-                <input
-                  type="date"
-                  max={new Date().toISOString().split('T')[0]}
-                  value={customDate ? customDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const date = new Date(e.target.value + 'T00:00:00');
-                      setCustomDate(date);
-                      setDateOption('custom');
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                {showDatePicker && (
+                  <div className="w-full mt-1">
+                    <input
+                      type="date"
+                      max={new Date().toISOString().split('T')[0]}
+                      value={customDate ? customDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const date = new Date(e.target.value + 'T00:00:00');
+                          setCustomDate(date);
+                          setDateOption('custom');
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1096,6 +1139,16 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
                 {isEditMode ? 'Update Charge' : `Save ${selectedCodes.size > 1 ? `${selectedCodes.size} Codes` : 'Charge'}`}
               </button>
             </div>
+            {/* Save & Add Another - only in add mode */}
+            {!isEditMode && selectedCodes.size > 0 && (
+              <button
+                type="button"
+                onClick={handleSaveAndContinue}
+                className="w-full mt-2 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                Save & Add Another
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Plus,
   User,
@@ -157,6 +157,22 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
   const [swipeStartX, setSwipeStartX] = useState(0);
   const [swipeOffsetX, setSwipeOffsetX] = useState(0);
 
+  // Swipe hint - show once to teach swipe-to-discharge gesture
+  const [hasSeenSwipeHint, setHasSeenSwipeHint] = useState(() => {
+    return localStorage.getItem('rounds-swipeHintSeen') === 'true';
+  });
+
+  // Show/hide empty hospitals
+  const [showEmptyHospitals, setShowEmptyHospitals] = useState(() => {
+    return localStorage.getItem(`rounds-showEmpty-${currentUserId}`) === 'true';
+  });
+
+  // Last sync time for freshness indicator
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+
+  // Track whether initial hospital expand state has been loaded
+  const initialExpandLoaded = useRef(false);
+
   const handleTouchStart = useCallback((e: React.TouchEvent, patientId: string) => {
     setSwipeStartX(e.touches[0].clientX);
     setSwipedPatientId(patientId);
@@ -175,19 +191,44 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
       // Threshold reached — open discharge review modal
       setDischargingPatient(patient);
     }
+    // Mark swipe hint as seen after any meaningful swipe attempt
+    if (swipeOffsetX > 20 && !hasSeenSwipeHint) {
+      setHasSeenSwipeHint(true);
+      localStorage.setItem('rounds-swipeHintSeen', 'true');
+    }
     setSwipedPatientId(null);
     setSwipeOffsetX(0);
-  }, [swipeOffsetX]);
+  }, [swipeOffsetX, hasSeenSwipeHint]);
 
-  // Auto-expand hospitals that have patients
+  // Load hospital collapse state from localStorage, or auto-expand populated ones
   useEffect(() => {
-    const hospitalIds = new Set(patients.map(p => p.hospitalId));
-    hospitals.forEach(h => hospitalIds.add(h.id));
-    setExpandedHospitals(hospitalIds);
-  }, [hospitals, patients]);
+    if (initialExpandLoaded.current) return;
+    const stored = localStorage.getItem(`rounds-expanded-${currentUserId}`);
+    if (stored) {
+      try {
+        const expandedIds: string[] = JSON.parse(stored);
+        setExpandedHospitals(new Set(expandedIds));
+        initialExpandLoaded.current = true;
+        return;
+      } catch { /* fall through to default */ }
+    }
+    // First load: expand only hospitals that have patients
+    if (patients.length > 0 || hospitals.length > 0) {
+      const withPatients = new Set(patients.map(p => p.hospitalId));
+      setExpandedHospitals(withPatients);
+      initialExpandLoaded.current = true;
+    }
+  }, [hospitals, patients, currentUserId]);
 
   // Get today's date string for lookups
   const todayDateStr = useMemo(() => formatDateForStorage(new Date()), []);
+
+  // Today as a Date object (midnight) for day calculations
+  const todayDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   // Get all codes for RVU lookup (inpatient + EP + echo)
   const allCodes = useMemo(() => [
@@ -340,6 +381,43 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     return map;
   }, [callListEntries]);
 
+  // Tab counts for badges (always computed regardless of active tab)
+  const tabCounts = useMemo(() => ({
+    my: patients.filter(p => p.isActive && p.primaryPhysicianId === currentUserId).length,
+    practice: patients.filter(p => p.isActive).length,
+    call: callListEntries.filter(e => e.isActive).length
+  }), [patients, currentUserId, callListEntries]);
+
+  // Hospital abbreviation helper (e.g., "Springfield General Hospital" → "SGH")
+  const getHospitalAbbr = (name: string): string => {
+    const words = name.split(/\s+/);
+    if (words.length <= 1) return name.substring(0, 3).toUpperCase();
+    return words
+      .filter(w => !['of', 'the', 'and', 'at', 'in'].includes(w.toLowerCase()))
+      .map(w => w[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 4);
+  };
+
+  // Get last charge info for billing gap detection
+  const getLastChargeInfo = (patientId: string): { daysSinceLastCharge: number; lastChargeDate: string | null } => {
+    const patientCharges = charges[patientId];
+    if (!patientCharges) return { daysSinceLastCharge: 0, lastChargeDate: null };
+    const dates = Object.keys(patientCharges).sort();
+    if (dates.length === 0) return { daysSinceLastCharge: 0, lastChargeDate: null };
+    const last = dates[dates.length - 1];
+    const lastDate = new Date(last + 'T00:00:00');
+    lastDate.setHours(0, 0, 0, 0);
+    const diff = Math.round((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+    return { daysSinceLastCharge: diff, lastChargeDate: last };
+  };
+
+  // Format sync time for display
+  const formatSyncTime = (date: Date): string => {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
   // Group patients by hospital (include all hospitals from the list, even empty ones)
   const patientsByHospital = useMemo(() => {
     const grouped: Record<string, { hospitalName: string; patients: Inpatient[] }> = {};
@@ -368,6 +446,18 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     return grouped;
   }, [filteredPatients, hospitals]);
 
+  // Filter out empty hospitals unless toggled on
+  const visiblePatientsByHospital = useMemo(() => {
+    if (showEmptyHospitals) return patientsByHospital;
+    const filtered: Record<string, { hospitalName: string; patients: Inpatient[] }> = {};
+    Object.entries(patientsByHospital).forEach(([id, data]) => {
+      if (data.patients.length > 0) {
+        filtered[id] = data;
+      }
+    });
+    return filtered;
+  }, [patientsByHospital, showEmptyHospitals]);
+
   const toggleHospital = (hospitalId: string) => {
     setExpandedHospitals(prev => {
       const next = new Set(prev);
@@ -376,6 +466,16 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
       } else {
         next.add(hospitalId);
       }
+      // Persist collapse state to localStorage
+      localStorage.setItem(`rounds-expanded-${currentUserId}`, JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+
+  const toggleShowEmpty = () => {
+    setShowEmptyHospitals(prev => {
+      const next = !prev;
+      localStorage.setItem(`rounds-showEmpty-${currentUserId}`, String(next));
       return next;
     });
   };
@@ -390,6 +490,7 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     setIsRefreshing(true);
     await onRefresh();
     setIsRefreshing(false);
+    setLastSyncTime(new Date());
   };
 
   const formatDOB = (dob: string) => {
@@ -397,16 +498,20 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
   };
 
-  const getTodayCharge = (patientId: string): { code: string; description: string } | null => {
+  const getTodayCharge = (patientId: string): { code: string; description: string; rvu: number } | null => {
     const patientCharges = charges[patientId];
     if (!patientCharges) return null;
 
     const todayCharge = patientCharges[todayDateStr];
     if (!todayCharge) return null;
 
+    // Use stored RVU if available, fall back to code lookup
+    const rvu = todayCharge.rvu ?? getRVUForCode(todayCharge.cptCode);
+
     return {
       code: todayCharge.cptCode,
-      description: todayCharge.cptDescription || ''
+      description: todayCharge.cptDescription || '',
+      rvu
     };
   };
 
@@ -416,10 +521,26 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      {/* Shimmer animation for swipe hint */}
+      <style>{`
+        @keyframes shimmerSlide {
+          0% { transform: translateX(100%); opacity: 0; }
+          30% { opacity: 1; }
+          70% { opacity: 1; }
+          100% { transform: translateX(-100%); opacity: 0; }
+        }
+      `}</style>
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-semibold text-gray-900">Rounds</h1>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Rounds</h1>
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+              Synced {formatSyncTime(lastSyncTime)}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
@@ -449,7 +570,7 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
             }`}
           >
             <User className="w-4 h-4" />
-            My Patients
+            My ({tabCounts.my})
           </button>
           <button
             onClick={() => setActiveTab('practice')}
@@ -460,7 +581,7 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            Practice
+            Practice ({tabCounts.practice})
           </button>
           <button
             onClick={() => setActiveTab('call')}
@@ -471,7 +592,7 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
             }`}
           >
             <Phone className="w-4 h-4" />
-            Call
+            Call ({tabCounts.call})
           </button>
         </div>
 
@@ -532,7 +653,18 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {Object.entries(patientsByHospital).map(([hospitalId, { hospitalName, patients: hospitalPatients }]) => (
+            {/* Show empty hospitals toggle */}
+            {hospitals.length > Object.keys(visiblePatientsByHospital).length && (
+              <div className="flex items-center justify-end px-4 py-1.5 bg-gray-50">
+                <button
+                  onClick={toggleShowEmpty}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  {showEmptyHospitals ? 'Hide empty hospitals' : `Show all hospitals (${hospitals.length})`}
+                </button>
+              </div>
+            )}
+            {Object.entries(visiblePatientsByHospital).map(([hospitalId, { hospitalName, patients: hospitalPatients }], hospitalIdx) => (
               <div key={hospitalId}>
                 {/* Hospital Header */}
                 <button
@@ -552,9 +684,14 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
                 {/* Patients */}
                 {expandedHospitals.has(hospitalId) && (
                   <div className="divide-y divide-gray-100">
-                    {hospitalPatients.map(patient => {
+                    {hospitalPatients.map((patient, patientIdx) => {
                       const todayCharge = getTodayCharge(patient.id);
                       const patientDiagnoses = getPatientDiagnoses(patient.id);
+                      const admitDate = getAdmitDate(patient.id, patient.createdAt);
+                      const daysSinceAdmit = Math.max(1, Math.round((todayDate.getTime() - admitDate.getTime()) / (1000 * 60 * 60 * 24)));
+                      const dxCount = patientDiagnoses.length;
+                      const lastChargeInfo = getLastChargeInfo(patient.id);
+                      const isFirstCard = hospitalIdx === 0 && patientIdx === 0;
 
                       return (
                         <div
@@ -588,10 +725,35 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
                                 <div className="font-medium text-gray-900">
                                   {patient.patientName}
                                 </div>
+                                <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                  <span>{daysSinceAdmit}d</span>
+                                  {dxCount > 0 && (
+                                    <>
+                                      <span className="text-gray-300">·</span>
+                                      <span>{dxCount} dx</span>
+                                    </>
+                                  )}
+                                  {activeTab === 'practice' && patient.hospitalName && (
+                                    <>
+                                      <span className="text-gray-300">·</span>
+                                      <span>{getHospitalAbbr(patient.hospitalName)}</span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
-                              {activeTab === 'practice' && patient.primaryPhysicianId !== currentUserId && (
+                              {activeTab === 'practice' && (
                                 <span className="text-xs text-gray-500">
-                                  {patient.primaryPhysicianName || 'Other physician'}
+                                  {(() => {
+                                    const name = patient.primaryPhysicianName || '';
+                                    const stripped = name.replace(/^Dr\.?\s*/i, '');
+                                    const parts = stripped.trim().split(/\s+/);
+                                    if (parts.length >= 2) {
+                                      const last = parts[parts.length - 1];
+                                      const first = parts.slice(0, -1).join(' ');
+                                      return `${last}, ${first}`;
+                                    }
+                                    return stripped || 'Other physician';
+                                  })()}
                                 </span>
                               )}
                               {activeTab === 'call' && (() => {
@@ -606,16 +768,32 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
 
                             {/* Today's Charge Status */}
                             <div className="flex items-center gap-2 mb-3">
-                              <Clock className="w-4 h-4 text-gray-400" />
                               {todayCharge?.code ? (
-                                <span className="text-sm text-green-600 flex items-center gap-1">
-                                  <Check className="w-4 h-4" />
-                                  Today: {todayCharge.code}
+                                <span className="text-sm text-green-600 flex items-center gap-1 flex-wrap">
+                                  <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span>Today: {todayCharge.code}</span>
+                                  <span className="text-gray-400">·</span>
+                                  <span>{todayCharge.rvu.toFixed(1)} RVU</span>
+                                  <span className="text-gray-400">·</span>
+                                  <span>${calculateMedicarePayment(todayCharge.rvu).toFixed(0)}</span>
                                 </span>
                               ) : (
-                                <span className="text-sm text-amber-600">
-                                  No charges today
-                                </span>
+                                (() => {
+                                  if (daysSinceAdmit > 1 && lastChargeInfo.daysSinceLastCharge > 1) {
+                                    return (
+                                      <span className="text-sm text-amber-600 flex items-center gap-1">
+                                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                        No charge today · last {lastChargeInfo.daysSinceLastCharge}d ago
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span className="text-sm text-amber-600 flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                                      No charges today
+                                    </span>
+                                  );
+                                })()
                               )}
                             </div>
 
@@ -648,6 +826,30 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
                                 </button>
                               )}
                             </div>
+
+                            {/* Swipe hint chevron on right edge */}
+                            {activeTab !== 'call' && (
+                              <div className="absolute right-0.5 top-1/2 -translate-y-1/2 text-gray-200 pointer-events-none">
+                                <ChevronRight className="w-4 h-4" />
+                              </div>
+                            )}
+
+                            {/* Shimmer animation for first-time swipe discovery */}
+                            {!hasSeenSwipeHint && isFirstCard && activeTab !== 'call' && (
+                              <div
+                                className="absolute inset-0 pointer-events-none overflow-hidden rounded"
+                              >
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    background: 'linear-gradient(90deg, transparent 0%, rgba(239, 68, 68, 0.06) 40%, rgba(239, 68, 68, 0.12) 50%, rgba(239, 68, 68, 0.06) 60%, transparent 100%)',
+                                    animation: 'shimmerSlide 2s ease-in-out 1.5s 2',
+                                    transform: 'translateX(100%)'
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
