@@ -130,6 +130,7 @@ interface CardiologyCPTAppProps {
   bottomTab?: CathLabBottomTab;
   onPatientCreated?: (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[]) => Promise<Inpatient>;
   onChargeUpdated?: () => void;
+  onBadgeCounts?: (counts: { icd10: number; cpt: number; violations: number }) => void;
 }
 
 export interface CardiologyCPTAppHandle {
@@ -146,7 +147,7 @@ export interface CardiologyCPTAppHandle {
   exportHistory: () => void;
 }
 
-const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userName = '', bottomTab = 'addcase', onPatientCreated, onChargeUpdated }, ref) => {
+const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userName = '', bottomTab = 'addcase', onPatientCreated, onChargeUpdated, onBadgeCounts }, ref) => {
   // Patient matching state (replaces caseId)
   const [patientName, setPatientName] = useState('');
   const [patientDob, setPatientDob] = useState(''); // stored as YYYY-MM-DD
@@ -326,6 +327,18 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       setSubmittedChargeInfo(null);
     },
   }));
+
+  // Push badge counts to parent whenever relevant state changes
+  useEffect(() => {
+    if (!onBadgeCounts) return;
+    let icd10 = 0;
+    if (selectedCardiacIndication) icd10++;
+    if (selectedPeripheralIndication) icd10++;
+    if (selectedStructuralIndication) icd10++;
+    const cpt = selectedCodes.length + selectedCodesVessel2.length + selectedCodesVessel3.length;
+    const violations = ruleViolations.filter(v => v.severity === 'error').length;
+    onBadgeCounts({ icd10, cpt, violations });
+  }, [selectedCodes, selectedCodesVessel2, selectedCodesVessel3, selectedCardiacIndication, selectedPeripheralIndication, selectedStructuralIndication, ruleViolations, onBadgeCounts]);
 
   // Auto-recall diagnoses when a patient match is selected
   useEffect(() => {

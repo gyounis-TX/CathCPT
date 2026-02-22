@@ -66,6 +66,7 @@ const App: React.FC = () => {
   // Navigation state
   const [activeTab, setActiveTab] = useState<AppTab>('cathlab');
   const [cathLabBottomTab, setCathLabBottomTab] = useState<CathLabBottomTab>('addcase');
+  const [badgeCounts, setBadgeCounts] = useState({ icd10: 0, cpt: 0, violations: 0 });
 
   // Collapsing header state
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -1199,6 +1200,7 @@ const App: React.FC = () => {
             bottomTab={cathLabBottomTab}
             onPatientCreated={handleCreatePatientFromCharge}
             onChargeUpdated={loadChargesAndDiagnoses}
+            onBadgeCounts={setBadgeCounts}
           />
         )}
         {!fullScreenView && activeTab === 'rounds' && (
@@ -1250,11 +1252,11 @@ const App: React.FC = () => {
               { id: 'review' as CathLabBottomTab, label: 'Review', Icon: ClipboardCheck },
             ]).map(({ id, label, Icon }) => {
               const isActive = cathLabBottomTab === id;
-              // Badge counts
-              let badge: number | null = null;
-              if (id === 'icd10') badge = cathCPTRef.current?.getIcd10Count() || null;
-              if (id === 'cpt') badge = cathCPTRef.current?.getCptCount() || null;
-              if (id === 'review') badge = cathCPTRef.current?.getViolationCount() || null;
+              // Badge counts from state (updated in real-time via callback)
+              let badge = 0;
+              if (id === 'icd10') badge = badgeCounts.icd10;
+              if (id === 'cpt') badge = badgeCounts.cpt;
+              if (id === 'review') badge = badgeCounts.violations;
 
               return (
                 <button
@@ -1263,21 +1265,23 @@ const App: React.FC = () => {
                   aria-selected={isActive}
                   aria-label={label}
                   onClick={() => { setFullScreenView(null); setCathLabBottomTab(id); }}
-                  className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                  className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
                     isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
                   }`}
                 >
-                  <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                  <div className="relative">
+                    <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                    {badge > 0 && (
+                      <span className={`absolute -top-1.5 -right-3 min-w-[16px] h-4 flex items-center justify-center text-[10px] font-bold rounded-full px-1 ${
+                        id === 'review' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
+                      }`}>
+                        {badge}
+                      </span>
+                    )}
+                  </div>
                   <span className={`text-[10px] mt-0.5 font-medium ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
                     {label}
                   </span>
-                  {badge !== null && badge > 0 && (
-                    <span className={`absolute top-1 right-1/4 min-w-[16px] h-4 flex items-center justify-center text-[10px] font-bold rounded-full px-1 ${
-                      id === 'review' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
-                    }`}>
-                      {badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
