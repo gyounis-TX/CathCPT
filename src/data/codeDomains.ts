@@ -158,6 +158,7 @@ const structuralCodes = new Set([
   '93580', '93581', '93582', '93583',
   '93590', '93591',           // Paravalvular leak closure
   '33340',                    // LAA closure (Watchman)
+  '33477',                    // TPVI (pulmonary valve)
   '33418', '33419',
   '0569T', '0570T',
   // EVAR
@@ -321,7 +322,7 @@ export const addOnCodePrimaries: Record<string, string[]> = {
   '93657': ['93656'],
   // ICE (intracardiac echo) — used with EP ablation, structural procedures
   '93662': ['93653', '93654', '93656', '93619', '93620',
-            '93580', '93581', '93582', '93590', '33340',
+            '93580', '93581', '93582', '93590', '33340', '33477',
             '33361', '33362', '33363', '33364', '33365', '33366',
             '33418', '33419', '0569T'],
   // Cath add-ons
@@ -391,7 +392,7 @@ export const sedationInherentProcedures = new Set([
   // TAVR
   '33361', '33362', '33363', '33364', '33365', '33366',
   // Structural
-  '93580', '93581', '93582', '93583', '93590', '93591', '33340',
+  '93580', '93581', '93582', '93583', '93590', '93591', '33340', '33477',
   // MCS
   '33990', '33991', '33995', '33946', '33947',
   // Balloon valvuloplasty
@@ -477,6 +478,8 @@ export const globalPeriodDays: Record<string, number> = {
   '33224': 90, '33225': 90, '33226': 90,
   '33274': 90, '33275': 90,
   '33270': 90, '33271': 90, '33272': 90, '33273': 90,
+  // TPVI — 90-day global
+  '33477': 90,
   // TAVR — 90-day global
   '33361': 90, '33362': 90, '33363': 90, '33364': 90, '33365': 90, '33366': 90,
   // EVAR — 90-day global
@@ -680,6 +683,7 @@ export const priorAuthProcedures: Record<string, string> = {
   '33946': 'ECMO initiation, VA — prior auth for elective; emergent reviewed retrospectively',
   '33947': 'ECMO initiation, VV — prior auth for elective; emergent reviewed retrospectively',
   // Structural
+  '33477': 'TPVI (transcatheter pulmonary valve implantation) — prior authorization required, verify congenital heart/pulmonary valve diagnosis',
   '93580': 'ASD closure — prior authorization required',
   '93581': 'VSD closure — prior authorization required',
   '93582': 'PFO closure — prior authorization required (limited coverage)',
@@ -747,8 +751,18 @@ export const ageRestrictedProcedures: { codes: string[]; minAge?: number; maxAge
     note: 'Leadless pacemaker — FDA indication for adults. Pediatric use is off-label and may not be covered.'
   },
   {
-    codes: ['93580', '93581', '93582'],
-    note: 'Structural closure — ASD/VSD/PFO closure. Verify payer-specific age requirements. PFO closure (93582) typically requires age 18-60 for stroke prevention indication.'
+    codes: ['93580', '93581'],
+    note: 'Structural closure — ASD/VSD closure. Verify payer-specific age requirements for congenital defect closure.'
+  },
+  {
+    codes: ['93582'],
+    minAge: 18,
+    maxAge: 60,
+    note: 'PFO closure for stroke prevention — FDA-approved for ages 18-60 with cryptogenic stroke. Outside this range, coverage is denied by most payers. Verify neurology evaluation and hypercoagulable workup.'
+  },
+  {
+    codes: ['33477'],
+    note: 'TPVI — transcatheter pulmonary valve implantation. FDA-approved for patients with dysfunctional RV-to-PA conduits or bioprosthetic pulmonary valves. Congenital heart disease documentation required. Verify valve size eligibility (conduit diameter).'
   },
   {
     codes: ['33340'],
@@ -825,6 +839,14 @@ export const ncdRules: NCDRule[] = [
     requiredDiagnosisPrefixes: ['T82.0', 'T82.5', 'I38', 'T82.6'],
     clinicalCriteria: 'Symptomatic paravalvular regurgitation post valve replacement/repair, high surgical risk for redo operation, documented hemolysis or heart failure from paravalvular leak.',
     documentationChecklist: 'Prior valve surgery documentation, echo showing paravalvular leak location and severity, symptom documentation (heart failure, hemolysis), surgical risk assessment for redo.'
+  },
+  {
+    id: 'ncd-tpvi',
+    name: 'TPVI Coverage',
+    procedures: ['33477'],
+    requiredDiagnosisPrefixes: ['Q22', 'I37', 'T82.0'],
+    clinicalCriteria: 'Dysfunctional RV-to-PA conduit or bioprosthetic pulmonary valve with moderate-severe stenosis and/or regurgitation, NYHA Class II or greater symptoms, conduit diameter within device specifications.',
+    documentationChecklist: 'Congenital heart disease history and prior surgical records, echo/MRI showing valve dysfunction (gradient and regurgitation severity), RVSP/RV function, conduit diameter measurement, symptom documentation (NYHA class), heart team discussion if applicable.'
   },
   {
     id: 'ncd-pfo-closure',
@@ -933,10 +955,32 @@ export const genericTEEBaseCodes = new Set(['93312', '93314', '93315']);
 export const structuralProceduresExpectingTEE = new Set([
   '33361', '33362', '33363', '33364', '33365', '33366',  // TAVR
   '93580', '93581', '93582',  // ASD/VSD/PFO closure
-  '33340',                     // LAA closure (Watchman)
   '93590',                     // Paravalvular leak closure
   '33418', '33419',           // MitraClip/TEER
   '0569T', '0570T',           // TTVR
+  '33477',                     // TPVI (may use TEE or ICE)
+]);
+
+// ==================== TEE vs ICE Imaging Preference for Structural ====================
+// Distinguishes which structural procedures typically use TEE (93355) vs ICE (93662)
+
+/** Procedures that typically use TEE (93355) for intraprocedural imaging guidance */
+export const structuralProceduresPreferTEE = new Set([
+  '33361', '33362', '33363', '33364', '33365', '33366',  // TAVR — TEE standard
+  '93580', '93581', '93582',  // ASD/VSD/PFO closure — TEE for sizing/positioning
+  '93590',                     // Paravalvular leak closure — TEE for localization
+  '33418', '33419',           // MitraClip/TEER — TEE required for guidance
+]);
+
+/** Procedures that typically use ICE (93662) for intraprocedural imaging guidance */
+export const structuralProceduresPreferICE = new Set([
+  '33340',                     // LAA closure (Watchman) — ICE standard
+]);
+
+/** Procedures that may use either TEE or ICE based on operator preference */
+export const structuralProceduresEitherImaging = new Set([
+  '0569T', '0570T',           // TTVR — operator discretion
+  '33477',                     // TPVI — operator discretion
 ]);
 
 // ==================== Coronary Vessel Territories ====================
@@ -1023,7 +1067,7 @@ export const fluoroscopyInherentProcedures = new Set([
   // EP procedures
   '93653', '93654', '93656',
   // Structural
-  '93580', '93581', '93582', '93590', '33340', '33361', '33362', '33363', '33364', '33365', '33366',
+  '93580', '93581', '93582', '93590', '33340', '33477', '33361', '33362', '33363', '33364', '33365', '33366',
   // Pericardiocentesis
   '33016', '33017',
   // IABP / MCS
@@ -1178,7 +1222,7 @@ export const accessSiteBundledProcedures = new Set([
   // Device implants
   '33206', '33207', '33208', '33249', '33240', '33274',
   // Structural
-  '93580', '93581', '93582', '93590', '33340', '33361', '33362', '33363', '33364', '33365', '33366',
+  '93580', '93581', '93582', '93590', '33340', '33477', '33361', '33362', '33363', '33364', '33365', '33366',
 ]);
 
 // ==================== Medicare Consult Code Restrictions ====================
@@ -1244,6 +1288,37 @@ export const watchmanDiagnosisRequirements = {
   primaryExcluded: 'I48.20',     // I48.20 (chronic AF, unspecified) is NOT accepted
   secondaryRequired: 'Z00.6',    // Encounter for examination for normal comparison and control in clinical research program
   guidance: 'Watchman (33340) requires two diagnosis codes: (1) Primary: Atrial fibrillation (I48.x, but NEVER I48.20), and (2) Secondary: Z00.6 (clinical research/CED enrollment). Missing either diagnosis or using I48.20 will result in claim denial.',
+};
+
+// ==================== Diagnostic Cath + Structural Same-Day Rules ====================
+
+/** Structural procedures where diagnostic cath on the same day requires -59 on the cath */
+export const structuralProceduresCathModifier59 = new Set([
+  '33361', '33362', '33363', '33364', '33365', '33366',  // TAVR
+  '93580', '93581', '93582',  // ASD/VSD/PFO closure
+  '93590',                     // Paravalvular leak closure
+  '33340',                     // LAA closure (Watchman)
+  '33477',                     // TPVI
+  '33418', '33419',           // TEER
+  '0569T',                     // TTVR
+]);
+
+// ==================== ICE -26 Modifier Enforcement ====================
+
+/** When ICE (93662) is used with structural procedures, the physician should bill with -26 */
+export const iceModifier26Guidance = {
+  iceCode: '93662',
+  modifier: '-26',
+  structuralProcedures: new Set([
+    '33340',                     // LAA closure
+    '93580', '93581', '93582',  // ASD/VSD/PFO closure
+    '33361', '33362', '33363', '33364', '33365', '33366',  // TAVR
+    '33477',                     // TPVI
+    '33418', '33419',           // TEER
+    '0569T',                     // TTVR
+    '93590',                     // Paravalvular leak closure
+  ]),
+  guidance: 'ICE (93662) with structural procedure — physician should bill with modifier -26 (professional component). The hospital bills the technical component. Without -26, the claim assumes global billing which is typically incorrect for hospital-based procedures.',
 };
 
 /** ICE (93662) with modifier -26 is standard with Watchman */

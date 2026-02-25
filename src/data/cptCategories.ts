@@ -59,11 +59,11 @@ export const cptCategories: Record<string, CPTCode[]> = {
     { code: '92990', summary: 'Pulmonary valvuloplasty (BPV)', description: 'Percutaneous balloon pulmonary valvuloplasty' },
   ],
   'Structural Heart Interventions': [
-    { code: '33274', summary: 'TPVI (pulmonary valve)', description: 'Transcatheter pulmonary valve implantation (TPVI)' },
+    { code: '33477', summary: 'TPVI (pulmonary valve)', description: 'Transcatheter pulmonary valve implantation, percutaneous approach (e.g., Melody valve)' },
     { code: '93580', summary: 'ASD closure', description: 'Percutaneous transcatheter closure of congenital atrial septal defect' },
     { code: '93581', summary: 'VSD closure', description: 'Percutaneous transcatheter closure of ventricular septal defect' },
     { code: '93582', summary: 'PFO closure', description: 'Percutaneous transcatheter closure of patent foramen ovale' },
-    { code: '93583', summary: 'Septal reduction (alcohol ablation)', description: 'Percutaneous transcatheter septal reduction therapy' },
+    { code: '93583', summary: 'Septal reduction for HOCM', description: 'Percutaneous transcatheter septal reduction therapy (alcohol septal ablation) for hypertrophic obstructive cardiomyopathy (HOCM)' },
     { code: '93590', summary: 'Paravalvular leak closure, initial', description: 'Percutaneous transcatheter closure of paravalvular leak, initial occlusion device' },
     { code: '93591', summary: 'Paravalvular leak closure, add-on', description: 'Percutaneous transcatheter closure of paravalvular leak, each additional device', isAddOn: true },
     { code: '33340', summary: 'LAA closure (Watchman)', description: 'Percutaneous transcatheter closure of left atrial appendage with endocardial implant (requires Q0 modifier, dual Dx: AF + Z00.6)' },

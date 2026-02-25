@@ -151,10 +151,40 @@ export const diagnosisCptRules: DiagnosisCptRule[] = [
   {
     id: 'structural-closure-diagnosis',
     name: 'Structural closure requires septal defect diagnosis',
-    cptCodes: ['93580', '93581', '93582', '93583'],
-    icd10Prefixes: ['Q21', 'I51.0', 'Q25.0'],
+    cptCodes: ['93580', '93581', '93582'],
+    icd10Prefixes: ['Q21', 'I51.0', 'Q25.0', 'I63', 'G45'],
     severity: 'error',
-    message: 'Structural closure (ASD/PFO/VSD) requires a septal defect diagnosis (Q21.x congenital, I51.0 acquired ASD).'
+    message: 'Structural closure (ASD/PFO/VSD) requires a septal defect diagnosis (Q21.x congenital, I51.0 acquired). PFO closure also accepts stroke (I63.x) or TIA (G45.x) as supporting diagnosis.'
+  },
+
+  // === Septal Reduction (Alcohol Ablation for HOCM) ===
+  {
+    id: 'septal-reduction-hocm-diagnosis',
+    name: 'Septal reduction requires HOCM diagnosis',
+    cptCodes: ['93583'],
+    icd10Prefixes: ['I42.1', 'I42.2'],
+    severity: 'error',
+    message: 'Septal reduction therapy (93583) requires a hypertrophic cardiomyopathy diagnosis (I42.1 obstructive HCM, I42.2 other HCM).'
+  },
+
+  // === LAA Closure (Watchman) ===
+  {
+    id: 'laa-closure-af-diagnosis',
+    name: 'LAA closure requires atrial fibrillation diagnosis',
+    cptCodes: ['33340'],
+    icd10Prefixes: ['I48'],
+    severity: 'error',
+    message: 'LAA closure (Watchman, 33340) requires an atrial fibrillation diagnosis (I48.x). Note: I48.20 is NOT accepted — use a more specific AF code. Z00.6 is also required as a secondary diagnosis for CED.'
+  },
+
+  // === TPVI (Transcatheter Pulmonary Valve Implantation) ===
+  {
+    id: 'tpvi-pulmonary-valve-diagnosis',
+    name: 'TPVI requires pulmonary valve or congenital heart diagnosis',
+    cptCodes: ['33477'],
+    icd10Prefixes: ['Q22', 'I37', 'T82.0', 'T82.5'],
+    severity: 'error',
+    message: 'Transcatheter pulmonary valve implantation (33477) requires a pulmonary valve disorder (I37.x nonrheumatic, Q22.x congenital) or prosthetic valve complication (T82.0/T82.5 for valve-in-valve) diagnosis.'
   },
 
   // === Mitral Valve Repair ===

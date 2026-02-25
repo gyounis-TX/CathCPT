@@ -90,6 +90,10 @@ import {
   epTEEGuidance,
   observationCodes,
   isObservationCode,
+  structuralProceduresPreferTEE,
+  structuralProceduresPreferICE,
+  structuralProceduresCathModifier59,
+  iceModifier26Guidance,
 } from '../data/codeDomains';
 import { validateDiagnosisCpt } from '../data/diagnosisCptRules';
 import { StoredCharge, CaseSnapshot } from './chargesService';
@@ -331,7 +335,7 @@ export function validateChargeCodes(codes: string[]): ValidationResult {
   checkIABPDisambiguation(cleanCodes, errors);
 
   // 27. Balloon valvuloplasty + TAVR bundling
-  checkValvuloplastyBundling(cleanCodes, warnings);
+  checkValvuloplastyBundling(cleanCodes, warnings, errors);
 
   // 28. ECMO initiation + cannula pairing
   checkECMOCannulaPairing(cleanCodes, warnings);
@@ -344,6 +348,15 @@ export function validateChargeCodes(codes: string[]): ValidationResult {
 
   // 31. Observation + critical care same-day mutual exclusion
   checkObservationCriticalCareExclusion(cleanCodes, errors);
+
+  // 32. ICE (93662) -26 modifier enforcement with structural procedures
+  checkICEModifier26(codes, cleanCodes, suggestions);
+
+  // 33. Diagnostic cath + structural procedure → -59 on diagnostic cath
+  checkDiagCathStructural(cleanCodes, suggestions, warnings);
+
+  // 34. TEE vs ICE imaging appropriateness for structural procedures
+  checkStructuralImagingAppropriateness(cleanCodes, warnings);
 
   return { suggestions, warnings, errors, scrubbed: true };
 }
@@ -750,6 +763,11 @@ export function preBillingScrub(
   // Cross-charge: Echo + EP same-day TEE rules
   for (const [, group] of groups) {
     checkEchoPlusEPSameDay(group, results);
+  }
+
+  // Cross-charge: Diagnostic cath + structural procedure across charges → -59
+  for (const [, group] of groups) {
+    checkCrossChargeDiagCathStructural(group, results);
   }
 
   // Cross-date: Pre-operative day global period check
@@ -2049,19 +2067,27 @@ function checkIABPDisambiguation(codes: string[], errors: string[]): void {
 }
 
 /** 27. Balloon valvuloplasty + TAVR bundling */
-function checkValvuloplastyBundling(codes: string[], warnings: string[]): void {
+function checkValvuloplastyBundling(codes: string[], warnings: string[], errors: string[]): void {
   const valvCodes = codes.filter(c => balloonValvuloplastyCodes.has(c));
   if (valvCodes.length === 0) return;
 
-  // Check for TAVR codes
+  // Check for TAVR codes — BAV (92986) + TAVR is a hard error (BAV is bundled as pre-dilation)
   const tavrCodes = codes.filter(c => c.startsWith('3336') && structuralProceduresExpectingTEE.has(c));
   if (tavrCodes.length > 0) {
     for (const vc of valvCodes) {
-      const bundleNote = tavrBundlesBAV[vc];
-      if (bundleNote) {
-        warnings.push(
-          `${bundleNote} TAVR code(s) present: ${tavrCodes.join(', ')}. If BAV was pre-dilation for TAVR, it is bundled and not separately billable.`
+      if (vc === '92986') {
+        // BAV + TAVR = bundled, not separately billable — upgrade to error
+        errors.push(
+          `Aortic balloon valvuloplasty (92986) is bundled into TAVR (${tavrCodes.join(', ')}) when performed as pre-dilation during the same session. Remove 92986 before billing. BAV is only separately billable if it was a distinct diagnostic/therapeutic procedure at a separate session.`
         );
+      } else {
+        // Mitral/pulmonary valvuloplasty + TAVR = unusual but possible, keep as warning
+        const bundleNote = tavrBundlesBAV[vc];
+        if (bundleNote) {
+          warnings.push(
+            `${bundleNote} TAVR code(s) present: ${tavrCodes.join(', ')}. Verify this is a distinct procedure from the TAVR.`
+          );
+        }
       }
     }
   }
@@ -2234,6 +2260,87 @@ function checkObservationCriticalCareExclusion(codes: string[], errors: string[]
     errors.push(
       `Observation same-day codes (${obsCodes.join(', ')}) and critical care (${ccCodes.join(', ')}) cannot be billed together on the same charge. If the patient required critical care during observation, bill critical care codes only — the observation E/M is included in critical care time.`
     );
+  }
+}
+
+// ==================== Within-Charge Checks 32-34 ====================
+
+/** 32. ICE (93662) -26 modifier enforcement with structural procedures */
+function checkICEModifier26(
+  originalCodes: string[],
+  cleanCodes: string[],
+  suggestions: ModifierSuggestion[]
+): void {
+  const iceIdx = cleanCodes.indexOf(iceModifier26Guidance.iceCode);
+  if (iceIdx === -1) return;
+
+  // Check if any structural procedure is present
+  const hasStructural = cleanCodes.some(c => iceModifier26Guidance.structuralProcedures.has(c));
+  if (!hasStructural) return;
+
+  // Check if -26 is already present on the ICE code
+  const originalICE = originalCodes[iceIdx] || '';
+  if (originalICE.includes('-26') || originalICE.includes('26')) return;
+
+  suggestions.push({
+    code: iceModifier26Guidance.iceCode,
+    modifier: '-26',
+    reason: iceModifier26Guidance.guidance,
+    confidence: 'required',
+    autoApplied: false,
+    ruleId: 'ice-structural-modifier-26'
+  });
+}
+
+/** 33. Diagnostic cath + structural procedure → -59 on diagnostic cath */
+function checkDiagCathStructural(
+  codes: string[],
+  suggestions: ModifierSuggestion[],
+  warnings: string[]
+): void {
+  const cathCodes = codes.filter(isDiagnosticCathCode);
+  if (cathCodes.length === 0) return;
+
+  const structuralPresent = codes.filter(c => structuralProceduresCathModifier59.has(c));
+  if (structuralPresent.length === 0) return;
+
+  for (const cath of cathCodes) {
+    suggestions.push({
+      code: cath,
+      modifier: '-59',
+      reason: `Diagnostic cath (${cath}) billed with structural procedure (${structuralPresent.join(', ')}) in the same session. Modifier -59 needed to indicate the diagnostic cath was a distinct service — document that the cath provided separate clinical information (e.g., coronary evaluation, hemodynamic assessment) beyond what was needed for the structural procedure.`,
+      confidence: 'recommended',
+      autoApplied: false,
+      ruleId: 'diag-cath-structural-59'
+    });
+  }
+}
+
+/** 34. TEE vs ICE imaging appropriateness for structural procedures */
+function checkStructuralImagingAppropriateness(codes: string[], warnings: string[]): void {
+  const hasICE = codes.includes('93662');
+  const hasTEE = codes.includes('93355') || codes.some(c => genericTEEBaseCodes.has(c));
+
+  if (!hasICE && !hasTEE) return;
+
+  // Flag ICE used with TEE-preferred procedures
+  if (hasICE && !hasTEE) {
+    const teePreferred = codes.filter(c => structuralProceduresPreferTEE.has(c));
+    if (teePreferred.length > 0) {
+      warnings.push(
+        `ICE (93662) used with ${teePreferred.join(', ')} — these procedures typically use TEE (93355) for intraprocedural imaging. ICE may be appropriate if TEE was contraindicated or not feasible, but document the clinical rationale.`
+      );
+    }
+  }
+
+  // Flag TEE used with ICE-preferred procedures
+  if (hasTEE && !hasICE) {
+    const icePreferred = codes.filter(c => structuralProceduresPreferICE.has(c));
+    if (icePreferred.length > 0) {
+      warnings.push(
+        `TEE used with ${icePreferred.join(', ')} — these procedures typically use ICE (93662) for intraprocedural imaging. TEE is acceptable but verify the correct imaging code is billed.`
+      );
+    }
   }
 }
 
@@ -2453,6 +2560,41 @@ function checkEchoPlusEPSameDay(
       const existing = results.get(teeCharge.id);
       if (existing) {
         existing.warnings.push(epTEEGuidance.guidance);
+      }
+    }
+  }
+}
+
+/** Cross-charge: Diagnostic cath + structural procedure across separate charges → -59 */
+function checkCrossChargeDiagCathStructural(
+  sameDayCharges: StoredCharge[],
+  results: Map<string, ValidationResult>
+): void {
+  if (sameDayCharges.length < 2) return;
+
+  const cathCharges: StoredCharge[] = [];
+  const structuralCharges: StoredCharge[] = [];
+
+  for (const charge of sameDayCharges) {
+    const code = stripModifier(charge.cptCode);
+    if (isDiagnosticCathCode(code)) cathCharges.push(charge);
+    if (structuralProceduresCathModifier59.has(code)) structuralCharges.push(charge);
+  }
+
+  if (cathCharges.length > 0 && structuralCharges.length > 0) {
+    for (const cathCharge of cathCharges) {
+      const existing = results.get(cathCharge.id);
+      if (existing) {
+        const cathCode = stripModifier(cathCharge.cptCode);
+        const structCodes = structuralCharges.map(c => stripModifier(c.cptCode));
+        existing.suggestions.push({
+          code: cathCode,
+          modifier: '-59',
+          reason: `Diagnostic cath (${cathCode}) on separate charge from structural procedure (${structCodes.join(', ')}) on the same date. Modifier -59 needed if the cath was a distinct diagnostic service.`,
+          confidence: 'recommended',
+          autoApplied: false,
+          ruleId: 'cross-charge-diag-cath-structural-59'
+        });
       }
     }
   }
