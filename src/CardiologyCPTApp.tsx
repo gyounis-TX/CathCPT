@@ -15,10 +15,12 @@ import { logAuditEvent } from './services/auditService';
 import { scanFieldsForPHI, scrubPHI } from './services/phiScanner';
 import { searchICD10Codes } from './data/icd10Codes';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
+import { getCodeGroupSettings, isCategoryVisible, CodeGroupSettings as CodeGroupSettingsType, defaultCodeGroupSettings } from './services/codeGroupSettings';
 import { validateCCIEdits, CCIViolation } from './data/cciEdits';
 import { checkConcurrentVisit } from './services/concurrentVisitService';
 import { saveCaseHistoryToFirestore, loadCaseHistoryFromFirestore } from './services/firestoreChargesService';
 import { showToast } from './hooks/useToast';
+import { ConfirmDialog, useConfirmDialog } from './components/ConfirmDialog';
 
 // Category color mapping for visual distinction
 const categoryColors: Record<string, { dot: string; bg: string; text: string; border: string; hoverBg: string }> = {
@@ -65,16 +67,11 @@ const categoryColors: Record<string, { dot: string; bg: string; text: string; bo
   'Subclavian/Innominate': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
   // Echocardiography subcategories
   'Echocardiography': { dot: 'bg-sky-600', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-300', hoverBg: 'hover:bg-sky-100' },
-  'TTE Complete': { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100' },
-  'TTE Limited': { dot: 'bg-sky-400', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100' },
-  'TTE with Doppler': { dot: 'bg-cyan-500', bg: 'bg-cyan-50', text: 'text-cyan-900', border: 'border-cyan-200', hoverBg: 'hover:bg-cyan-100' },
+  'TTE': { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100' },
   'TEE': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100' },
   'Stress Echo': { dot: 'bg-lime-500', bg: 'bg-lime-50', text: 'text-lime-900', border: 'border-lime-200', hoverBg: 'hover:bg-lime-100' },
-  'Congenital Echo': { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100' },
-  'Contrast Echo': { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100' },
-  'Strain Imaging': { dot: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200', hoverBg: 'hover:bg-indigo-100' },
-  '3D Echo': { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-900', border: 'border-purple-200', hoverBg: 'hover:bg-purple-100' },
-  'ICE': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
+  'Intracardiac Echo (ICE)': { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50', text: 'text-fuchsia-900', border: 'border-fuchsia-200', hoverBg: 'hover:bg-fuchsia-100' },
+  'Cardioversion': { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-900', border: 'border-pink-200', hoverBg: 'hover:bg-pink-100' },
   // Electrophysiology subcategories
   'Electrophysiology': { dot: 'bg-violet-600', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-300', hoverBg: 'hover:bg-violet-100' },
   'EP Studies': { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100' },
@@ -151,6 +148,9 @@ export interface CardiologyCPTAppHandle {
 
 const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProps>(({ isProMode = false, patients = [], hospitals = [], cathLabs = [], patientDiagnoses = {}, orgId, userId, userName = '', bottomTab = 'addcase', onPatientCreated, onChargeUpdated, onBadgeCounts }, ref) => {
   // Patient matching state (replaces caseId)
+  // Confirm dialog (replaces window.confirm)
+  const { confirm: confirmDialog, dialogProps: confirmDialogProps } = useConfirmDialog();
+
   const [patientName, setPatientName] = useState('');
   const [patientDob, setPatientDob] = useState(''); // stored as YYYY-MM-DD
   const [patientDobDisplay, setPatientDobDisplay] = useState(''); // displayed as MM/DD/YYYY
@@ -210,6 +210,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
 
   // Code Group Settings
   const [showCodeGroupSettings, setShowCodeGroupSettings] = useState(false);
+  const [codeGroupVisibility, setCodeGroupVisibility] = useState<CodeGroupSettingsType>(defaultCodeGroupSettings);
 
   // Feature 2: Favorites
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -330,6 +331,11 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       setSubmittedChargeInfo(null);
     },
   }));
+
+  // Load code group visibility settings on mount and when CPT tab is shown
+  useEffect(() => {
+    getCodeGroupSettings().then(setCodeGroupVisibility);
+  }, [bottomTab]);
 
   // Push badge counts to parent whenever relevant state changes
   useEffect(() => {
@@ -746,6 +752,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       id: `case-${Date.now()}`,
       timestamp: Date.now(),
       caseId: patientName || '',
+      patientDob: matchedPatient?.dob || patientDob || undefined,
       location: selectedLocation,
       codes: {
         primary: selectedCodes,
@@ -794,9 +801,12 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
 
   const loadFromHistory = useCallback((savedCase: SavedCase) => {
     setPatientName(savedCase.caseId);
-    setMatchedPatient(null);
-    setPatientDob('');
-    setPatientDobDisplay('');
+    // Try to match an active inpatient; fall back to DOB stored in the saved case
+    const match = patients?.find(p => p.isActive && p.patientName === savedCase.caseId) || null;
+    setMatchedPatient(match);
+    const dob = match?.dob || savedCase.patientDob || '';
+    setPatientDob(dob);
+    setPatientDobDisplay(dob ? (() => { const [y, m, d] = dob.split('-'); return `${m}/${d}/${y}`; })() : '');
     setSelectedLocation(savedCase.location);
     setSelectedCodes(savedCase.codes.primary);
     setSelectedCodesVessel2(savedCase.codes.vessel2);
@@ -827,7 +837,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     }
 
     setShowHistoryModal(false);
-  }, []);
+  }, [patients]);
 
   const deleteFromHistory = useCallback(async (caseId: string) => {
     const updatedHistory = caseHistory.filter(c => c.id !== caseId);
@@ -2382,8 +2392,10 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
 
     // Warn if no moderate sedation is included
     if (!includeSedation) {
-      const proceed = window.confirm(
-        'No moderate sedation codes are included.\n\nMost cath lab procedures require sedation billing (99152/99153). Are you sure you want to submit without sedation?'
+      const proceed = await confirmDialog(
+        'No Sedation Codes',
+        'No moderate sedation codes are included.\n\nMost cath lab procedures require sedation billing (99152/99153). Are you sure you want to submit without sedation?',
+        { confirmLabel: 'Submit Anyway' }
       );
       if (!proceed) return;
     }
@@ -2431,9 +2443,9 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       const chargeDate = procedureDateText;
       const concurrent = await checkConcurrentVisit(matchedPatient.id, chargeDate, userId || 'unknown');
       if (concurrent) {
-        const proceed = window.confirm(
-          `${concurrent.physicianName} already has a charge for this patient on ${chargeDate}. ` +
-          `Concurrent care is common — continue?`
+        const proceed = await confirmDialog(
+          'Concurrent Care',
+          `${concurrent.physicianName} already has a charge for this patient on ${chargeDate}.\n\nConcurrent care is common — continue?`
         );
         if (!proceed) return;
       }
@@ -2585,7 +2597,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   };
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 px-4 pt-4 pb-2">
       <div className="max-w-4xl mx-auto">
 
         {/* Settings Modal */}
@@ -4110,7 +4122,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
           )}
 
           <div className="space-y-2">
-            {Object.entries(searchQuery ? filterCodes(cptCategories, searchQuery) : cptCategories).map(([category, codes]) => {
+            {Object.entries(searchQuery ? filterCodes(cptCategories, searchQuery) : cptCategories).filter(([category]) => searchQuery || isCategoryVisible(category, codeGroupVisibility)).map(([category, codes]) => {
               // Special handling for PCI category with vessel submenus
               if (category === 'PCI') {
                 return (
@@ -4713,7 +4725,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             )}
 
             {/* Peripheral Vascular Angiography Parent Dropdown */}
-            {!searchQuery && (
+            {!searchQuery && codeGroupVisibility.peripheralAngiography && (
               <div className="border border-sky-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Peripheral Vascular Angiography')}
@@ -4818,7 +4830,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             )}
 
             {/* Peripheral Intervention Parent Dropdown */}
-            {!searchQuery && (
+            {!searchQuery && codeGroupVisibility.peripheralIntervention && (
               <div className="border border-teal-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Peripheral Intervention')}
@@ -4914,7 +4926,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             )}
 
             {/* Venous Interventions Parent Dropdown */}
-            {!searchQuery && (
+            {!searchQuery && codeGroupVisibility.venousInterventions && (
               <div className="border border-indigo-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Venous Interventions')}
@@ -5007,7 +5019,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             )}
 
             {/* Miscellaneous Parent Dropdown */}
-            {!searchQuery && (
+            {!searchQuery && codeGroupVisibility.miscellaneous && (
               <div className="border border-gray-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Miscellaneous')}
@@ -5100,7 +5112,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             )}
 
             {/* Endovascular Parent Dropdown */}
-            {!searchQuery && (
+            {!searchQuery && codeGroupVisibility.endovascular && (
               <div className="border border-rose-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Endovascular')}
@@ -5204,7 +5216,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             )}
 
             {/* Echocardiography Parent Dropdown */}
-            {!searchQuery && (
+            {!searchQuery && codeGroupVisibility.echocardiography && (
               <div className="border border-sky-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Echocardiography')}
@@ -5298,7 +5310,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             )}
 
             {/* Electrophysiology Parent Dropdown */}
-            {!searchQuery && (
+            {!searchQuery && codeGroupVisibility.electrophysiology && (
               <div className="border border-violet-300 rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleCategory('Electrophysiology')}
@@ -6220,17 +6232,69 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Individual Mode: Copy Report to Clipboard (primary action) */}
+              {!isProMode && !editingChargeId && (
+                <>
+                  <button
+                    onClick={async () => {
+                      const report = generateEmailBody();
+                      try {
+                        await navigator.clipboard.writeText(report);
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2500);
+                      } catch {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = report;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2500);
+                      }
+                    }}
+                    className={`w-full py-3 px-4 font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                      copySuccess
+                        ? 'bg-green-600 text-white'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }`}
+                  >
+                    {copySuccess ? (
+                      <>
+                        <Check size={18} />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Download size={18} />
+                        Copy Report to Clipboard
+                      </>
+                    )}
+                  </button>
+                  <textarea
+                    readOnly
+                    value={generateEmailBody()}
+                    onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                    className="w-full h-48 px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono bg-gray-50 text-gray-800 resize-y"
+                  />
+                </>
+              )}
+
               <button
                 id="submit-charges-btn"
                 onClick={handleSubmitCharges}
                 className={`w-full font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors ${
                   editingChargeId
                     ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    : isProMode
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      : 'bg-gray-600 hover:bg-gray-700 text-white'
                 }`}
               >
                 <Check size={20} />
-                {editingChargeId ? 'Update Charge' : 'Submit Charges'}
+                {editingChargeId ? 'Update Charge' : isProMode ? 'Submit Charges' : 'Save & Submit Charges'}
               </button>
 
               <p className="text-xs text-gray-500 text-center">
@@ -6238,28 +6302,31 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                   ? 'This will update the existing charge. Status will reset to pending if previously entered.'
                   : isProMode
                     ? 'Charges will be saved and available for review in Admin Portal.'
-                    : 'Charges will be saved locally. Use "Copy Report to Clipboard" to email to your billing office.'}
+                    : 'Copy the report above and email to your billing office. Save & Submit stores a local record.'}
               </p>
+            </div>
+          )}
+
+          {/* Disclaimers for individual users */}
+          {!isProMode && (
+            <div className="mt-6 text-center text-sm text-gray-500">
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-800">
+                  <strong>PHI Caution:</strong> This application processes protected health information (PHI).
+                  All data is encrypted at rest and in transit. Do not share patient information
+                  outside of authorized clinical and billing workflows.
+                </p>
+              </div>
+              <p>CPT® codes © American Medical Association. All rights reserved.</p>
+              <p className="mt-1">CathCPT uses 2026 CPT codes</p>
+              <p className="mt-1 text-xs">Last Updated: February 2026 - v2.4</p>
+              <p className="mt-4 text-lg font-bold" style={{ color: '#7C3AED' }}>A product of Lumen Innovations</p>
             </div>
           )}
         </div>
 
         </>)}
 
-        {/* Footer with HIPAA notice */}
-        <div className="text-center text-sm text-gray-500 pb-4">
-          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-xs text-amber-800">
-              <strong>PHI Caution:</strong> This application processes protected health information (PHI).
-              All data is encrypted at rest and in transit. Do not share patient information
-              outside of authorized clinical and billing workflows.
-            </p>
-          </div>
-          <p>CPT® codes © American Medical Association. All rights reserved.</p>
-          <p className="mt-1">CathCPT uses 2026 CPT codes</p>
-          <p className="mt-1 text-xs">Last Updated: February 2026 - v2.4</p>
-          <p className="mt-4 text-lg font-bold" style={{ color: '#7C3AED' }}>A product of Lumen Innovations</p>
-        </div>
       </div>
 
       {/* Code Group Settings Modal */}
@@ -6267,10 +6334,12 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
         isOpen={showCodeGroupSettings}
         onClose={() => setShowCodeGroupSettings(false)}
         onSettingsChanged={() => {
-          // Settings are saved to storage - they will take effect on next app load
-          // No action needed here - stay on the settings screen
+          getCodeGroupSettings().then(setCodeGroupVisibility);
         }}
       />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog {...confirmDialogProps} />
     </div>
   );
 });

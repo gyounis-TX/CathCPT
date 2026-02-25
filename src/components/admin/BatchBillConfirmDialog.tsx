@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { X, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 import { ChargeQueueItem } from '../../types';
 import { batchMarkChargesBilled, batchMarkChargesEntered } from '../../services/adminChargeService';
 import { logAuditEvent } from '../../services/auditService';
+import { preBillingScrub, getValidationStatus, getActionableSuggestions, PatientContext } from '../../services/modifierEngine';
+import ValidationBadge from '../ValidationBadge';
 
 interface BatchBillConfirmDialogProps {
   isOpen: boolean;
@@ -27,6 +29,39 @@ export const BatchBillConfirmDialog: React.FC<BatchBillConfirmDialogProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+
+  // Run validation scrub on all charges in the batch
+  const validationResults = useMemo(() => {
+    if (!isOpen || items.length === 0) return null;
+    const charges = items.map(item => item.charge);
+    // Build patient context map for discharge/admit date awareness
+    const patientContextMap = new Map<string, PatientContext>();
+    for (const item of items) {
+      if (!patientContextMap.has(item.patient.id)) {
+        patientContextMap.set(item.patient.id, {
+          dischargeDate: item.patient.dischargedAt ? item.patient.dischargedAt.split('T')[0] : undefined,
+          admitDate: item.patient.createdAt ? item.patient.createdAt.split('T')[0] : undefined,
+          dob: item.patient.dob,
+        });
+      }
+    }
+    return preBillingScrub(charges, patientContextMap);
+  }, [isOpen, items]);
+
+  const validationSummary = useMemo(() => {
+    if (!validationResults) return { errors: 0, warnings: 0, clean: 0 };
+    let errors = 0, warnings = 0, clean = 0;
+    for (const result of validationResults.values()) {
+      const status = getValidationStatus(result);
+      if (status === 'errors') errors++;
+      else if (status === 'warnings') warnings++;
+      else clean++;
+    }
+    return { errors, warnings, clean };
+  }, [validationResults]);
+
+  // Block billing if any charge has validation errors
+  const hasValidationErrors = action === 'billed' && validationSummary.errors > 0;
 
   if (!isOpen) return null;
 
@@ -70,7 +105,7 @@ export const BatchBillConfirmDialog: React.FC<BatchBillConfirmDialogProps> = ({
   };
 
   // Calculate summary stats
-  const totalRVU = items.reduce((sum, item) => sum + (item.charge.rvu || 0), 0);
+  const totalRVU = items.reduce((sum, item) => sum + (item.charge.rvu ?? 0), 0);
   const uniquePatients = new Set(items.map(item => item.patient.patientName)).size;
 
   const actionLabel = action === 'billed' ? 'Mark as Billed' : 'Mark as Entered';
@@ -133,16 +168,40 @@ export const BatchBillConfirmDialog: React.FC<BatchBillConfirmDialogProps> = ({
                           {item.charge.cptCode} | {item.charge.chargeDate}
                         </p>
                       </div>
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        item.charge.status === 'pending'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {item.charge.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {validationResults && (
+                          <ValidationBadge result={validationResults.get(item.charge.id) || null} size="sm" showTooltip={false} />
+                        )}
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                          item.charge.status === 'pending'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {item.charge.status}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Validation summary */}
+                {validationResults && (validationSummary.errors > 0 || validationSummary.warnings > 0) && (
+                  <div className={`flex items-start gap-2 ${validationSummary.errors > 0 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'} border rounded-lg px-3 py-2`}>
+                    <Shield className={`w-4 h-4 mt-0.5 flex-shrink-0 ${validationSummary.errors > 0 ? 'text-red-500' : 'text-amber-500'}`} />
+                    <div className="text-xs">
+                      {validationSummary.errors > 0 && (
+                        <p className="text-red-700 font-medium">
+                          {validationSummary.errors} charge{validationSummary.errors !== 1 ? 's' : ''} with validation errors — must be resolved before billing.
+                        </p>
+                      )}
+                      {validationSummary.warnings > 0 && (
+                        <p className="text-amber-700">
+                          {validationSummary.warnings} charge{validationSummary.warnings !== 1 ? 's' : ''} with modifier suggestions to review.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {action === 'billed' && (
                   <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -164,14 +223,14 @@ export const BatchBillConfirmDialog: React.FC<BatchBillConfirmDialogProps> = ({
                 </button>
                 <button
                   onClick={handleConfirm}
-                  disabled={isProcessing}
-                  className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-white disabled:opacity-50 ${
+                  disabled={isProcessing || hasValidationErrors}
+                  className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed ${
                     action === 'billed'
                       ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
-                  {isProcessing ? 'Processing...' : actionLabel}
+                  {isProcessing ? 'Processing...' : hasValidationErrors ? 'Fix Errors First' : actionLabel}
                 </button>
               </div>
             </>

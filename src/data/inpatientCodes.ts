@@ -17,6 +17,7 @@ export const inpatientCategoryColors: Record<string, { dot: string; bg: string; 
   'No Charge': { dot: 'bg-gray-400', bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200' },
   'E/M - Initial Hospital': { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
   'E/M - Subsequent': { dot: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+  'E/M - Observation (Same-Day)': { dot: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
   'E/M - Discharge': { dot: 'bg-teal-500', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
   'Consults': { dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
   'Critical Care': { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
@@ -82,6 +83,30 @@ export const inpatientCategories: Record<string, InpatientCode[]> = {
       description: 'Subsequent hospital care, per day, for the evaluation and management of a patient, which requires a medically appropriate history and/or examination and high level medical decision making. When using total time on the date of the encounter for code selection, 50 minutes must be met or exceeded.',
       rvu: 2.00,
       category: 'E/M - Subsequent'
+    }
+  ],
+
+  'E/M - Observation (Same-Day)': [
+    {
+      code: '99234',
+      summary: 'Observation same-day admit/discharge, low complexity',
+      description: 'Observation or inpatient hospital care, for the evaluation and management of a patient including admission and discharge on the same date, which requires a medically appropriate history and/or examination and straightforward or low level medical decision making. When using total time on the date of the encounter for code selection, 45 minutes must be met or exceeded.',
+      rvu: 2.56,
+      category: 'E/M - Observation (Same-Day)'
+    },
+    {
+      code: '99235',
+      summary: 'Observation same-day admit/discharge, moderate complexity',
+      description: 'Observation or inpatient hospital care, for the evaluation and management of a patient including admission and discharge on the same date, which requires a medically appropriate history and/or examination and moderate level medical decision making. When using total time on the date of the encounter for code selection, 70 minutes must be met or exceeded.',
+      rvu: 3.41,
+      category: 'E/M - Observation (Same-Day)'
+    },
+    {
+      code: '99236',
+      summary: 'Observation same-day admit/discharge, high complexity',
+      description: 'Observation or inpatient hospital care, for the evaluation and management of a patient including admission and discharge on the same date, which requires a medically appropriate history and/or examination and high level medical decision making. When using total time on the date of the encounter for code selection, 90 minutes must be met or exceeded.',
+      rvu: 4.60,
+      category: 'E/M - Observation (Same-Day)'
     }
   ],
 
@@ -300,12 +325,13 @@ export const PRIMARY_EM_CATEGORIES = [
 // Critical Care can be billed with E/M if separate service (requires -25)
 // Prolonged Services are add-ons to primary E/M codes
 
-export type BillingGroup = 'primary_em' | 'discharge' | 'critical_care' | 'prolonged' | 'no_charge';
+export type BillingGroup = 'primary_em' | 'observation' | 'discharge' | 'critical_care' | 'prolonged' | 'no_charge';
 
 // Map categories to billing groups
 export function getBillingGroup(category: string): BillingGroup {
   if (category === 'No Charge') return 'no_charge';
   if (PRIMARY_EM_CATEGORIES.includes(category)) return 'primary_em';
+  if (category === 'E/M - Observation (Same-Day)') return 'observation';
   if (category === 'E/M - Discharge') return 'discharge';
   if (category === 'Critical Care') return 'critical_care';
   if (category === 'Prolonged Services') return 'prolonged';
@@ -343,6 +369,14 @@ export function checkBillingCompatibility(code1: string, code2: string): Billing
   // Primary E/M categories are mutually exclusive with each other
   if (group1 === 'primary_em' && group2 === 'primary_em') {
     return { canBill: false, reason: 'Cannot bill Initial, Subsequent, and Consult codes together' };
+  }
+
+  // Observation is mutually exclusive with primary E/M and discharge (replaces both)
+  if (group1 === 'observation' || group2 === 'observation') {
+    const otherGroup = group1 === 'observation' ? group2 : group1;
+    if (otherGroup === 'primary_em' || otherGroup === 'discharge') {
+      return { canBill: false, reason: 'Observation same-day codes (99234-99236) include both admission and discharge — cannot combine with Initial Hospital, Subsequent, Consult, or Discharge codes' };
+    }
   }
 
   // Primary E/M + Discharge = NOT allowed same day (patient either discharged or not)

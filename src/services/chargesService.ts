@@ -44,6 +44,14 @@ export interface StoredCharge {
   billedBy?: string;
   // Full case snapshot for re-editing cath lab cases
   caseSnapshot?: CaseSnapshot;
+  // Modifier validation
+  modifiers?: Record<string, string>;  // code → modifier applied (e.g., "99232": "-25")
+  validationResult?: {
+    warnings: string[];
+    errors: string[];
+    scrubbed: boolean;
+    scrubbedAt: string;  // ISO timestamp
+  };
 }
 
 // Get all stored charges

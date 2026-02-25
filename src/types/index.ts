@@ -39,6 +39,7 @@ export interface SavedCase {
   id: string;
   timestamp: number;
   caseId: string;
+  patientDob?: string; // YYYY-MM-DD — added for history reload
   location: string;
   codes: {
     primary: SelectedCode[];

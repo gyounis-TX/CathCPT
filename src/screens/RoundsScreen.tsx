@@ -26,6 +26,8 @@ import { inpatientCategories, inpatientCategoryColors, calculateMedicarePayment,
 import { getAllEPCodes } from '../data/epCodes';
 import { getAllEchoCodes } from '../data/echoCodes';
 import { StoredCharge, formatDateForStorage, ChargeStatus, canEditCharge } from '../services/chargesService';
+import { validateChargeCodes, ValidationResult } from '../services/modifierEngine';
+import ValidationBadge from '../components/ValidationBadge';
 
 interface RoundsScreenProps {
   userMode: UserMode;
@@ -46,6 +48,8 @@ interface RoundsScreenProps {
   onEditCharge: (charge: StoredCharge, patient: Inpatient) => void;
   onMarkChargeBilled: (chargeId: string) => Promise<void>;
   onRemoveFromMyList?: (patient: Inpatient) => void;
+  onQuickCharge?: (patient: Inpatient, code: string) => void;
+  onCoverPatient?: (patient: Inpatient) => void;
 }
 
 // Mock data for development - Simpsons characters
@@ -126,6 +130,13 @@ const initialMockDiagnoses: Record<string, string[]> = {
   '5': ['I50.32', 'I48.2', 'I10', 'N18.3'] // Grandma Bouvier - Diastolic CHF, Chronic AFib, HTN, CKD3
 };
 
+// Quick charge template codes (subsequent E/M)
+const QUICK_CHARGE_CODES = [
+  { code: '99231', rvu: 0.99 },
+  { code: '99232', rvu: 1.39 },
+  { code: '99233', rvu: 2.00 },
+];
+
 export const RoundsScreen: React.FC<RoundsScreenProps> = ({
   userMode,
   hospitals,
@@ -144,7 +155,9 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
   onRefresh,
   onEditCharge,
   onMarkChargeBilled,
-  onRemoveFromMyList
+  onRemoveFromMyList,
+  onQuickCharge,
+  onCoverPatient
 }) => {
   const [activeTab, setActiveTab] = useState<PatientListType>('my');
   const [expandedHospitals, setExpandedHospitals] = useState<Set<string>>(new Set());
@@ -166,6 +179,14 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
   const [showEmptyHospitals, setShowEmptyHospitals] = useState(() => {
     return localStorage.getItem(`rounds-showEmpty-${currentUserId}`) === 'true';
   });
+
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const pullStartY = useRef(0);
+  const pullStartX = useRef(0);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const isRefreshingRef = useRef(false);
 
   // Last sync time for freshness indicator
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
@@ -269,7 +290,7 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     // Convert to array and sort by date
     return Object.entries(patientCharges)
       .map(([dateStr, charge]) => {
-        const rvu = charge.rvu || getRVUForCode(charge.cptCode);
+        const rvu = charge.rvu ?? getRVUForCode(charge.cptCode);
         return {
           ...charge,
           dateStr,
@@ -357,6 +378,18 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     return { totalDays, billedDays, gapCount };
   }, [dischargeDays]);
 
+  // Discharge totals for financial summary card
+  const dischargeTotals = useMemo(() => {
+    const chargedDays = dischargeDays.filter(d => d.hasCharge && d.charge);
+    const totalRVU = chargedDays.reduce((sum, d) => {
+      const rvu = d.charge!.rvu ?? getRVUForCode(d.charge!.cptCode);
+      return sum + rvu;
+    }, 0);
+    const totalPayment = calculateMedicarePayment(totalRVU);
+    const pendingCount = chargedDays.filter(d => d.charge!.status !== 'billed').length;
+    return { totalRVU, totalPayment, chargeCount: chargedDays.length, pendingCount };
+  }, [dischargeDays]);
+
   // Filter patients by active tab (query-based resolution)
   const filteredPatients = useMemo(() => {
     if (activeTab === 'my') {
@@ -387,6 +420,19 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     practice: patients.filter(p => p.isActive).length,
     call: callListEntries.filter(e => e.isActive).length
   }), [patients, currentUserId, callListEntries]);
+
+  // Today's RVU totals for footer
+  const todayTotals = useMemo(() => {
+    let totalRvu = 0;
+    filteredPatients.forEach(p => {
+      const patientCharges = charges[p.id];
+      if (!patientCharges) return;
+      const todayCharge = patientCharges[todayDateStr];
+      if (!todayCharge) return;
+      totalRvu += todayCharge.rvu ?? getRVUForCode(todayCharge.cptCode);
+    });
+    return { totalRvu, totalPayment: calculateMedicarePayment(totalRvu) };
+  }, [filteredPatients, charges, todayDateStr]);
 
   // Hospital abbreviation helper (e.g., "Springfield General Hospital" → "SGH")
   const getHospitalAbbr = (name: string): string => {
@@ -487,11 +533,71 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
   };
 
   const handleRefresh = async () => {
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
     setIsRefreshing(true);
-    await onRefresh();
-    setIsRefreshing(false);
-    setLastSyncTime(new Date());
+    try {
+      await onRefresh();
+    } finally {
+      isRefreshingRef.current = false;
+      setIsRefreshing(false);
+      setLastSyncTime(new Date());
+    }
   };
+
+  // Pull-to-refresh handlers
+  const handlePullStart = useCallback((e: React.TouchEvent) => {
+    if (listScrollRef.current && listScrollRef.current.scrollTop === 0) {
+      pullStartY.current = e.touches[0].clientY;
+      pullStartX.current = e.touches[0].clientX;
+      setIsPulling(true);
+    }
+  }, []);
+
+  const handlePullMove = useCallback((e: React.TouchEvent) => {
+    if (!isPulling) return;
+    const diffY = e.touches[0].clientY - pullStartY.current;
+    const diffX = Math.abs(e.touches[0].clientX - pullStartX.current);
+    // Cancel pull if horizontal movement exceeds vertical (swipe-to-discharge)
+    if (diffX > diffY && diffX > 10) {
+      setIsPulling(false);
+      setPullDistance(0);
+      return;
+    }
+    if (diffY > 0) {
+      setPullDistance(Math.min(diffY * 0.5, 80));
+    } else {
+      setIsPulling(false);
+      setPullDistance(0);
+    }
+  }, [isPulling]);
+
+  const handlePullEnd = useCallback(() => {
+    const shouldRefresh = pullDistance > 60;
+    setPullDistance(0);
+    setIsPulling(false);
+    if (shouldRefresh) {
+      handleRefresh();
+    }
+  }, [pullDistance]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (reviewingPatient || dischargingPatient) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      switch (e.key) {
+        case 'n': onAddPatient(); break;
+        case '1': setActiveTab('my'); break;
+        case '2': setActiveTab('practice'); break;
+        case '3': setActiveTab('call'); break;
+        case 'r': handleRefresh(); break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [reviewingPatient, dischargingPatient, onAddPatient]);
 
   const formatDOB = (dob: string) => {
     const date = new Date(dob);
@@ -623,33 +729,68 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
       </div>
 
       {/* Patient List */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={listScrollRef}
+        className="flex-1 overflow-y-auto"
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+      >
+        {/* Pull-to-refresh indicator */}
+        {pullDistance > 0 && (
+          <div
+            className="flex items-center justify-center text-sm overflow-hidden"
+            style={{ height: pullDistance }}
+          >
+            <RefreshCw className={`w-5 h-5 mr-2 ${pullDistance > 60 ? 'text-blue-600' : 'text-gray-400'} ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className={pullDistance > 60 ? 'text-blue-600 font-medium' : 'text-gray-400'}>
+              {pullDistance > 60 ? 'Release to refresh' : 'Pull to refresh'}
+            </span>
+          </div>
+        )}
         {filteredPatients.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-            <Users className="w-12 h-12 mb-3 text-gray-300" />
-            <p className="text-lg font-medium">No patients</p>
-            <p className="text-sm">
-              {activeTab === 'my' && 'Add your first patient to get started'}
-              {activeTab === 'practice' && 'No shared practice patients'}
-              {activeTab === 'call' && 'Add patients from My or Practice lists'}
-            </p>
-            {activeTab === 'call' ? (
-              <button
-                onClick={() => onAddToCallList()}
-                className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4" />
-                Add to Call List
-              </button>
-            ) : (
-              <button
-                onClick={onAddPatient}
-                className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4" />
-                Add Patient
-              </button>
-            )}
+          <div className="flex flex-col items-center justify-center h-64">
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 bg-gray-50/50 flex flex-col items-center max-w-xs">
+              {activeTab === 'my' && (
+                <>
+                  <User className="w-12 h-12 mb-3 text-gray-300" />
+                  <p className="text-lg font-medium text-gray-700">My Patients</p>
+                  <p className="text-sm text-gray-500 text-center mt-1">Track your inpatients and bill daily charges</p>
+                  <p className="text-xs text-gray-400 mt-2 italic">Tip: Swipe left on a patient to discharge</p>
+                </>
+              )}
+              {activeTab === 'practice' && (
+                <>
+                  <Users className="w-12 h-12 mb-3 text-gray-300" />
+                  <p className="text-lg font-medium text-gray-700">Practice Patients</p>
+                  <p className="text-sm text-gray-500 text-center mt-1">Patients from all physicians in your practice appear here</p>
+                </>
+              )}
+              {activeTab === 'call' && (
+                <>
+                  <Phone className="w-12 h-12 mb-3 text-gray-300" />
+                  <p className="text-lg font-medium text-gray-700">Call Coverage</p>
+                  <p className="text-sm text-gray-500 text-center mt-1">Add patients you're covering for the weekend or on-call shift</p>
+                </>
+              )}
+              {activeTab === 'call' ? (
+                <button
+                  onClick={() => onAddToCallList()}
+                  className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add to Call List
+                </button>
+              ) : activeTab === 'my' ? (
+                <button
+                  onClick={onAddPatient}
+                  className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Patient
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -797,6 +938,21 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
                               )}
                             </div>
 
+                            {/* Quick Charge Templates */}
+                            {!todayCharge?.code && onQuickCharge && (
+                              <div className="flex gap-1.5 mb-2">
+                                {QUICK_CHARGE_CODES.map(qc => (
+                                  <button
+                                    key={qc.code}
+                                    onClick={(e) => { e.stopPropagation(); onQuickCharge(patient, qc.code); }}
+                                    className="flex-1 py-1.5 px-2 bg-gray-100 hover:bg-blue-50 text-xs font-medium text-gray-700 hover:text-blue-700 rounded-lg transition-colors text-center"
+                                  >
+                                    {qc.code} <span className="text-green-600">${calculateMedicarePayment(qc.rvu).toFixed(0)}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
                             {/* Action Buttons */}
                             <div className="flex gap-2">
                               <button
@@ -813,6 +969,15 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
                                 <FileText className="w-4 h-4" />
                                 Review
                               </button>
+                              {activeTab !== 'call' && onCoverPatient && !callEntryByPatientId.has(patient.id) && (
+                                <button
+                                  onClick={() => onCoverPatient(patient)}
+                                  className="flex items-center justify-center py-2 px-3 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100"
+                                  title="Add to Call List"
+                                >
+                                  <Phone className="w-4 h-4" />
+                                </button>
+                              )}
                               {activeTab === 'call' && (
                                 <button
                                   onClick={() => {
@@ -867,12 +1032,17 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
         <div className="bg-white border-t border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">
-              {filteredPatients.length} patient{filteredPatients.length !== 1 ? 's' : ''} •{' '}
-              {filteredPatients.filter(p => getTodayCharge(p.id)?.code).length} charged today
+              {filteredPatients.length} patient{filteredPatients.length !== 1 ? 's' : ''} · {filteredPatients.filter(p => getTodayCharge(p.id)?.code).length} charged
             </span>
-            <span className="text-gray-900 font-medium">
-              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </span>
+            {todayTotals.totalRvu > 0 ? (
+              <span className="text-gray-900 font-medium">
+                {todayTotals.totalRvu.toFixed(1)} RVU · ${todayTotals.totalPayment.toFixed(0)}
+              </span>
+            ) : (
+              <span className="text-gray-400 text-xs">
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -994,6 +1164,13 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
                                 <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
                                   No Charge
                                 </span>
+                              )}
+                              {charge.cptCode !== '00000' && (
+                                <ValidationBadge
+                                  result={validateChargeCodes([charge.cptCode])}
+                                  size="sm"
+                                  showTooltip={false}
+                                />
                               )}
                             </div>
                             {charge.cptDescription && (
@@ -1162,6 +1339,20 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
               </div>
             </div>
 
+            {/* Discharge Totals */}
+            {dischargeTotals.chargeCount > 0 && (
+              <div className="px-4 py-3 border-b border-gray-200 bg-white">
+                <div className="text-sm text-gray-700 font-medium">
+                  {dischargeTotals.chargeCount} charge{dischargeTotals.chargeCount !== 1 ? 's' : ''} · {dischargeTotals.totalRVU.toFixed(1)} RVU · ${dischargeTotals.totalPayment.toFixed(0)}
+                </div>
+                {dischargeTotals.pendingCount > 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    {dischargeTotals.pendingCount} charge{dischargeTotals.pendingCount !== 1 ? 's' : ''} still pending
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Day-by-Day List */}
             <div className="flex-1 overflow-y-auto">
               <div className="divide-y divide-gray-100">
@@ -1191,10 +1382,10 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
                                 {day.charge.cptCode}
                               </span>
                               <span className="text-xs text-gray-500">
-                                {(day.charge.rvu || getRVUForCode(day.charge.cptCode)).toFixed(2)} RVU
+                                {(day.charge.rvu ?? getRVUForCode(day.charge.cptCode)).toFixed(2)} RVU
                               </span>
                               <span className="text-xs text-green-600">
-                                ${calculateMedicarePayment(day.charge.rvu || getRVUForCode(day.charge.cptCode)).toFixed(2)}
+                                ${calculateMedicarePayment(day.charge.rvu ?? getRVUForCode(day.charge.cptCode)).toFixed(2)}
                               </span>
                             </div>
                           ) : (

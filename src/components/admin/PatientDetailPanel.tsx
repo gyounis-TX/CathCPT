@@ -9,7 +9,8 @@ import {
   CheckCircle,
   Lock,
   DollarSign,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react';
 import { Inpatient, PatientWithCharges } from '../../types';
 import { StoredCharge, markChargeEntered, markChargeBilled } from '../../services/chargesService';
@@ -19,6 +20,9 @@ import { calculateMedicarePayment, getAllInpatientCodes } from '../../data/inpat
 import { getAllEPCodes } from '../../data/epCodes';
 import { getAllEchoCodes } from '../../data/echoCodes';
 import { ChargeEditDialog } from './ChargeEditDialog';
+import { preBillingScrub, ValidationResult, getValidationStatus, PatientContext } from '../../services/modifierEngine';
+import ValidationBadge from '../ValidationBadge';
+import ModifierSuggestionBanner from '../ModifierSuggestionBanner';
 
 interface PatientDetailPanelProps {
   isOpen: boolean;
@@ -71,6 +75,30 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
     setPatientData(data);
     setIsLoading(false);
   };
+
+  // Cross-charge validation results for all patient charges
+  const validationResults = useMemo(() => {
+    if (!patientData || patientData.charges.length === 0) return new Map<string, ValidationResult>();
+    // Build patient context for discharge/admit date awareness
+    const contextMap = new Map<string, PatientContext>();
+    if (patient) {
+      contextMap.set(patient.id, {
+        dischargeDate: patient.dischargedAt ? patient.dischargedAt.split('T')[0] : undefined,
+        admitDate: patient.createdAt ? patient.createdAt.split('T')[0] : undefined,
+        dob: patient.dob,
+      });
+    }
+    return preBillingScrub(patientData.charges, contextMap);
+  }, [patientData, patient]);
+
+  // Check if any charges have cross-charge issues
+  const hasCrossChargeIssues = useMemo(() => {
+    for (const result of validationResults.values()) {
+      const status = getValidationStatus(result);
+      if (status !== 'clean') return true;
+    }
+    return false;
+  }, [validationResults]);
 
   const handleMarkEntered = async (charge: StoredCharge) => {
     await markChargeEntered(charge.id, adminName, undefined, orgId);
@@ -182,6 +210,16 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
           </div>
         )}
 
+        {/* Cross-charge validation banner */}
+        {hasCrossChargeIssues && (
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-200">
+            <div className="flex items-center gap-2 text-xs text-amber-700">
+              <Shield className="w-4 h-4 text-amber-500" />
+              <span className="font-medium">Cross-charge modifier issues detected for this patient. Review validation badges below.</span>
+            </div>
+          </div>
+        )}
+
         {/* Charges List */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
@@ -196,7 +234,7 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
           ) : (
             <div className="divide-y divide-gray-100">
               {patientData.charges.map((charge, index) => {
-                const rvu = charge.rvu || getRVU(charge.cptCode);
+                const rvu = charge.rvu ?? getRVU(charge.cptCode);
                 const payment = calculateMedicarePayment(rvu);
                 const isBilled = charge.status === 'billed';
                 const isEntered = charge.status === 'entered';
@@ -231,9 +269,12 @@ export const PatientDetailPanel: React.FC<PatientDetailPanelProps> = ({
                     {/* Charge Details */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <span className="font-mono text-sm font-semibold text-gray-900">
-                          {charge.cptCode}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-semibold text-gray-900">
+                            {charge.cptCode}
+                          </span>
+                          <ValidationBadge result={validationResults.get(charge.id) || null} size="sm" />
+                        </div>
                         {charge.cptDescription && (
                           <p className="text-sm text-gray-600 mt-0.5">{charge.cptDescription}</p>
                         )}

@@ -3,6 +3,8 @@ import { X, Clock, DollarSign, ChevronDown, ChevronRight, Check, AlertCircle, In
 import { showToast } from '../hooks/useToast';
 import { validateCCIEdits, CCIViolation } from '../data/cciEdits';
 import { Inpatient, InpatientCharge } from '../types';
+import { validateChargeCodes, getActionableSuggestions, ModifierSuggestion } from '../services/modifierEngine';
+import ModifierSuggestionBanner from './ModifierSuggestionBanner';
 
 // Date options for charge entry
 type DateOption = 'today' | 'yesterday' | '2daysago' | 'custom';
@@ -106,6 +108,7 @@ interface AddChargeDialogProps {
     timeMinutes?: number;
     diagnoses: string[];
   }) => void;
+  preselectedCode?: string;
 }
 
 export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
@@ -117,7 +120,8 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
   previousDiagnoses,
   onSave,
   editingCharge,
-  onUpdate
+  onUpdate,
+  preselectedCode
 }) => {
   const isEditMode = !!editingCharge;
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
@@ -200,9 +204,14 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
         setCustomDate(undefined);
         setShowDatePicker(false);
         setShowDateSection(false);
+        // Auto-select preselected code (from quick charge template)
+        if (preselectedCode) {
+          setSelectedCodes(new Set([preselectedCode]));
+          setExpandedCategories(new Set(['E/M - Subsequent']));
+        }
       }
     }
-  }, [isOpen, previousDiagnoses, isFirstEncounter, editingCharge]);
+  }, [isOpen, previousDiagnoses, isFirstEncounter, editingCharge, preselectedCode]);
 
   // Rank ICD-10 codes by usage frequency when dialog opens
   useEffect(() => {
@@ -310,6 +319,12 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
   // CCI edit validation
   const cciViolations = useMemo(() => {
     return validateCCIEdits(Array.from(selectedCodes));
+  }, [selectedCodes]);
+
+  // Modifier engine validation (comprehensive)
+  const modifierValidation = useMemo(() => {
+    if (selectedCodes.size === 0) return null;
+    return validateChargeCodes(Array.from(selectedCodes));
   }, [selectedCodes]);
 
   // Check if a code needs a modifier
@@ -1105,6 +1120,13 @@ export const AddChargeDialog: React.FC<AddChargeDialogProps> = ({
                         ))}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Modifier Engine Suggestions */}
+                {modifierValidation && getActionableSuggestions(modifierValidation).length > 0 && (
+                  <div className="mb-2">
+                    <ModifierSuggestionBanner result={modifierValidation} compact />
                   </div>
                 )}
 

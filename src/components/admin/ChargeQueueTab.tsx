@@ -6,7 +6,8 @@ import {
   CheckCheck,
   Edit2,
   DollarSign,
-  Clock
+  Clock,
+  Shield
 } from 'lucide-react';
 import { ChargeQueueFilters, ChargeQueueItem, Hospital, Inpatient } from '../../types';
 import { StoredCharge, ChargeStatus, markChargeEntered, markChargeBilled } from '../../services/chargesService';
@@ -18,6 +19,8 @@ import { getAllEchoCodes } from '../../data/echoCodes';
 import { icd10Codes } from '../../data/icd10Codes';
 import { ChargeEditDialog } from './ChargeEditDialog';
 import { BatchBillConfirmDialog } from './BatchBillConfirmDialog';
+import { preBillingScrub, ValidationResult, PatientContext } from '../../services/modifierEngine';
+import ValidationBadge from '../ValidationBadge';
 
 interface ChargeQueueTabProps {
   orgId: string;
@@ -44,6 +47,8 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [editingCharge, setEditingCharge] = useState<{ charge: StoredCharge; patientName: string } | null>(null);
   const [batchAction, setBatchAction] = useState<{ items: ChargeQueueItem[]; action: 'entered' | 'billed' } | null>(null);
+  const [validationResults, setValidationResults] = useState<Map<string, ValidationResult>>(new Map());
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   const [filters, setFilters] = useState<ChargeQueueFilters>({
     status: 'all',
@@ -173,6 +178,27 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
     onChargesUpdated();
   };
 
+  const handleScrubAll = () => {
+    setIsScrubbing(true);
+    setTimeout(() => {
+      const charges = visibleItems.map(item => item.charge);
+      // Build patient context map for discharge date / admit date awareness
+      const patientContextMap = new Map<string, PatientContext>();
+      for (const item of visibleItems) {
+        if (!patientContextMap.has(item.patient.id)) {
+          patientContextMap.set(item.patient.id, {
+            dischargeDate: item.patient.dischargedAt ? item.patient.dischargedAt.split('T')[0] : undefined,
+            admitDate: item.patient.createdAt ? item.patient.createdAt.split('T')[0] : undefined,
+            dob: item.patient.dob,
+          });
+        }
+      }
+      const results = preBillingScrub(charges, patientContextMap);
+      setValidationResults(results);
+      setIsScrubbing(false);
+    }, 100);
+  };
+
   // Unique physicians for filter
   const physicians = useMemo(() => {
     const map = new Map<string, string>();
@@ -234,6 +260,18 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
           >
             <Filter className="w-4 h-4" />
             Filters
+          </button>
+          <button
+            onClick={handleScrubAll}
+            disabled={isScrubbing || visibleItems.length === 0}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
+              isScrubbing
+                ? 'border-blue-300 bg-blue-50 text-blue-400 cursor-wait'
+                : 'border-blue-300 text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            {isScrubbing ? 'Scrubbing...' : 'Scrub All'}
           </button>
 
           {/* Batch actions */}
@@ -333,6 +371,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Physician</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">CPT Code</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Status</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Validation</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">RVU</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Payment</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Actions</th>
@@ -340,7 +379,7 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {visibleItems.map(item => {
-                const rvu = item.charge.rvu || getRVU(item.charge.cptCode);
+                const rvu = item.charge.rvu ?? getRVU(item.charge.cptCode);
                 const payment = calculateMedicarePayment(rvu);
                 const isSelected = selectedIds.has(item.charge.id);
                 const isBilled = item.charge.status === 'billed';
@@ -416,6 +455,11 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
                       {getStatusBadge(item.charge.status)}
                     </td>
 
+                    {/* Validation */}
+                    <td className="px-4 py-3 text-center">
+                      <ValidationBadge result={validationResults.get(item.charge.id) || null} size="sm" />
+                    </td>
+
                     {/* RVU */}
                     <td className="px-4 py-3 text-right">
                       <span className="text-sm font-medium text-gray-700">{rvu.toFixed(2)}</span>
@@ -474,10 +518,10 @@ export const ChargeQueueTab: React.FC<ChargeQueueTabProps> = ({
               {visibleItems.length} charge{visibleItems.length !== 1 ? 's' : ''}
             </span>
             <span className="text-gray-700 font-medium">
-              Total: {visibleItems.reduce((sum, item) => sum + (item.charge.rvu || getRVU(item.charge.cptCode)), 0).toFixed(2)} RVU
+              Total: {visibleItems.reduce((sum, item) => sum + (item.charge.rvu ?? getRVU(item.charge.cptCode)), 0).toFixed(2)} RVU
               {' | '}
               <span className="text-green-600">
-                ${visibleItems.reduce((sum, item) => sum + calculateMedicarePayment(item.charge.rvu || getRVU(item.charge.cptCode)), 0).toFixed(0)}
+                ${visibleItems.reduce((sum, item) => sum + calculateMedicarePayment(item.charge.rvu ?? getRVU(item.charge.cptCode)), 0).toFixed(0)}
               </span>
             </span>
           </div>

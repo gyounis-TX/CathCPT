@@ -15,13 +15,49 @@ import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { StoredCharge } from './chargesService';
 import { SavedCase } from '../types';
 import { logger } from './logger';
+import { validateChargeCodes, validateCrossChargeModifiers } from './modifierEngine';
 
-/** Save (or overwrite) a charge doc using the local charge ID as the Firestore doc ID */
+/** Save (or overwrite) a charge doc using the local charge ID as the Firestore doc ID.
+ *  Runs modifier validation automatically and stores the result on the charge. */
 export async function saveChargeToFirestore(orgId: string, charge: StoredCharge): Promise<void> {
   if (!isFirebaseConfigured()) return;
   try {
+    // Run within-charge validation
+    const validationResult = validateChargeCodes([charge.cptCode]);
+    charge.validationResult = {
+      warnings: validationResult.warnings,
+      errors: validationResult.errors,
+      scrubbed: validationResult.scrubbed,
+      scrubbedAt: new Date().toISOString()
+    };
+
+    // Cross-charge validation: fetch same-patient, same-date charges
+    try {
+      const db = getFirebaseDb();
+      const allChargesSnap = await getDocs(collection(db, `organizations/${orgId}/charges`));
+      const sameDayCharges = allChargesSnap.docs
+        .map(d => ({ ...d.data(), id: d.id } as StoredCharge))
+        .filter(c => c.inpatientId === charge.inpatientId && c.chargeDate === charge.chargeDate && c.id !== charge.id);
+
+      if (sameDayCharges.length > 0) {
+        const crossResult = validateCrossChargeModifiers([charge.cptCode], sameDayCharges, charge.id);
+        charge.validationResult.warnings = [
+          ...charge.validationResult.warnings,
+          ...crossResult.warnings
+        ];
+        charge.validationResult.errors = [
+          ...charge.validationResult.errors,
+          ...crossResult.errors
+        ];
+      }
+    } catch (crossError) {
+      logger.error('Cross-charge validation failed (non-blocking)', crossError);
+    }
+
     const db = getFirebaseDb();
-    await setDoc(doc(db, `organizations/${orgId}/charges`, charge.id), charge);
+    // Strip undefined values — Firestore rejects them
+    const clean = Object.fromEntries(Object.entries(charge).filter(([, v]) => v !== undefined));
+    await setDoc(doc(db, `organizations/${orgId}/charges`, charge.id), clean);
   } catch (error) {
     logger.error('Failed to save charge to Firestore', error);
   }
