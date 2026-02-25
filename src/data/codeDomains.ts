@@ -151,6 +151,8 @@ const peripheralIntCodes = new Set([
 const structuralCodes = new Set([
   // TAVR
   '33361', '33362', '33363', '33364', '33365', '33366', '33367', '33368', '33369',
+  // Balloon Valvuloplasty
+  '92986', '92987', '92990',
   // Structural
   '93580', '93581', '93582', '93583',
   '93590', '93591', '93592',
@@ -377,6 +379,8 @@ export const sedationInherentProcedures = new Set([
   '93580', '93581', '93582', '93583', '93590', '93591', '93592',
   // MCS
   '33990', '33991', '33995', '33946', '33947',
+  // Balloon valvuloplasty
+  '92986', '92987', '92990',
   // Peripheral interventions (representative)
   '37220', '37221', '37224', '37225', '37226', '37227', '37228', '37229',
   '37230', '37231', '37236', '37237', '37238', '37239',
@@ -660,6 +664,11 @@ export const priorAuthProcedures: Record<string, string> = {
   '34701': 'EVAR, infrarenal — prior authorization required for elective',
   '34702': 'EVAR, infrarenal with extension — prior auth required for elective',
   '33880': 'TEVAR, initial — prior authorization required for elective',
+  // Atherectomy
+  '92924': 'Coronary atherectomy — prior authorization required by some payers, especially for rotational/orbital devices',
+  '92933': 'Coronary atherectomy + stent — prior authorization may be required',
+  // Coronary lithotripsy (IVL)
+  '92972': 'Coronary lithotripsy (IVL) — prior authorization required by many payers for Shockwave device',
 };
 
 // ==================== Modifier Documentation Requirements ====================
@@ -931,3 +940,166 @@ export const basePCICodes = new Set([
   '92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945',
   '0913T',
 ]);
+
+// ==================== Balloon Valvuloplasty Codes ====================
+// Percutaneous balloon valvuloplasty — separately billable from TAVR only when performed
+// as a distinct diagnostic procedure (not as part of TAVR preparation)
+
+export const balloonValvuloplastyCodes = new Set(['92986', '92987', '92990']);
+
+export function isValvuloplastyCode(code: string): boolean {
+  return balloonValvuloplastyCodes.has(code);
+}
+
+/** TAVR codes that bundle balloon aortic valvuloplasty (BAV) when used as pre-dilation */
+export const tavrBundlesBAV: Record<string, string> = {
+  '92986': 'Aortic balloon valvuloplasty (BAV) is bundled into TAVR when performed as pre-dilation. Only bill separately if BAV was a distinct diagnostic/therapeutic procedure at a separate session.',
+};
+
+// ==================== Fluoroscopy/Guidance Bundled Procedures ====================
+// Standalone fluoroscopy codes that are inherently included in cath lab procedures
+
+export const standaloneFluoroscopyCodes = new Set([
+  '76000',  // Fluoroscopy, up to 1 hour
+  '76001',  // Fluoroscopy, >1 hour
+  '77001',  // Fluoroscopic guidance for central venous access
+  '77002',  // Fluoroscopic guidance, needle placement
+]);
+
+/** Procedures that inherently include fluoroscopic guidance — do NOT bill fluoroscopy separately */
+export const fluoroscopyInherentProcedures = new Set([
+  // Diagnostic cath
+  '93451', '93452', '93453', '93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461',
+  // PCI
+  '92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945',
+  // IVC filter (descriptions explicitly include fluoroscopic guidance)
+  '37191', '37192', '37193',
+  // EVAR/TEVAR (includes all radiological supervision & interpretation)
+  '34701', '34702', '34703', '34704', '34705', '34706',
+  '33880', '33881', '33883', '33884', '33886',
+  // Peripheral interventions (2026 codes bundle imaging)
+  '37254', '37255', '37256', '37257', '37258', '37259', '37260', '37261',
+  '37263', '37264', '37265', '37266', '37267', '37268', '37269', '37270',
+  '37280', '37281', '37282', '37283', '37284', '37285', '37286', '37287',
+  // Device implants
+  '33206', '33207', '33208', '33249', '33240', '33274',
+  // EP procedures
+  '93653', '93654', '93656',
+  // Structural
+  '93580', '93581', '93582', '93590', '33361', '33362', '33363', '33364', '33365', '33366',
+  // Pericardiocentesis
+  '33016', '33017',
+  // IABP / MCS
+  '33989', '33967', '33990', '33991',
+]);
+
+// ==================== ECMO Cannula + Initiation Pairing ====================
+
+/** ECMO initiation codes and their required cannula insertion codes */
+export const ecmoInitiationCannulaPairing: Record<string, { cannulaCodes: string[]; description: string }> = {
+  '33946': { cannulaCodes: ['33951', '33952'], description: 'ECMO VV initiation requires peripheral cannula insertion (33951 percutaneous or 33952 open)' },
+  '33947': { cannulaCodes: ['33951', '33952'], description: 'ECMO VA initiation requires peripheral cannula insertion (33951 percutaneous or 33952 open)' },
+};
+
+/** ECMO daily management codes (not currently in the main code sets) */
+export const ecmoManagementCodes = new Set([
+  '33948',  // ECMO daily management, first day
+  '33949',  // ECMO daily management, each subsequent day (pediatric only for percutaneous cannula ≤5)
+  '33954',  // ECMO/ECLS daily management, VA, first day
+  '33956',  // ECMO/ECLS daily management, VA, subsequent day
+  '33958',  // ECMO/ECLS daily management, VV, first day
+  '33962',  // ECMO/ECLS daily management, VV, subsequent day
+  '33964',  // ECMO/ECLS repositioning
+  '33966',  // ECMO/ECLS removal, percutaneous
+  '33984',  // ECMO/ECLS removal, open
+  '33968',  // IABP removal
+]);
+
+// ==================== IABP Code Disambiguation ====================
+
+export const iabpInsertionCodes = new Set(['33967', '33989']);
+
+// ==================== Injection Code Context Rules ====================
+// Injection add-on codes (93566-93568) should only be billed when the injection
+// provides information BEYOND what the base cath code already evaluates
+
+/** Maps injection codes to cath codes where the injection is redundant */
+export const injectionCodeRedundancy: Record<string, { redundantWith: string[]; reason: string }> = {
+  '93566': {
+    redundantWith: ['93451', '93453', '93456', '93457', '93460', '93461'],
+    reason: 'RV/RA injection (93566) may be redundant when the base cath code already includes right heart catheterization with hemodynamic evaluation. Only bill 93566 if a separate RV/RA contrast angiogram was performed beyond the standard hemodynamic assessment.',
+  },
+  '93568': {
+    redundantWith: ['93451', '93456', '93457', '93460', '93461'],
+    reason: 'Pulmonary angiography (93568) may be redundant with right heart cath codes that include PA pressure measurement. Only bill 93568 if a separate contrast pulmonary angiogram was performed for a distinct clinical question (e.g., PE evaluation).',
+  },
+};
+
+// ==================== CTO Documentation Requirements ====================
+
+export const ctoDocumentationRequirements: Record<string, string[]> = {
+  '92943': [
+    'Confirm chronic total occlusion (>3 months or unknown duration)',
+    'Document crossing strategy: antegrade wire escalation, antegrade dissection/re-entry, or subintimal',
+    'Record prior PCI attempts if applicable',
+    'Document equipment used (microcatheters, specialty wires, re-entry devices)',
+    'Report procedure duration and contrast volume',
+    'J-CTO score recommended for complexity documentation',
+  ],
+  '92945': [
+    'All documentation from 92943 PLUS:',
+    'Document retrograde approach: donor artery used, retrograde wire/microcatheter details',
+    'Confirm both antegrade AND retrograde techniques were used',
+    'Document reason antegrade-only approach was insufficient',
+    'Record retrograde channel used (septal, epicardial)',
+    'J-CTO score recommended — 92945 typically applies to J-CTO ≥3 (difficult/very difficult)',
+  ],
+};
+
+// ==================== Bypass Graft PCI Documentation ====================
+
+export const bypassGraftPCICode = '92937';
+
+export const bypassGraftDocRequirements = [
+  'Document graft type: saphenous vein graft (SVG), left internal mammary (LIMA), right internal mammary (RIMA), radial artery, or other',
+  'For SVG intervention: document whether distal embolic protection device was used (strongly recommended per guidelines)',
+  'If distal protection NOT used for SVG PCI, document clinical rationale for omission',
+  'Report native vessel the graft supplies and anastomosis site',
+  'Note graft age if known — relevant for treatment strategy',
+];
+
+// ==================== Modifier -22 Suggestion Triggers ====================
+
+export const modifier22Triggers: { codes: string[]; condition: string; description: string }[] = [
+  {
+    codes: ['92943', '92945'],
+    condition: 'cto',
+    description: 'CTO PCI is inherently complex. Consider modifier -22 if the procedure was substantially more difficult than typical (e.g., J-CTO ≥3, multiple crossing strategies, procedure >3 hours, excessive contrast).',
+  },
+  {
+    codes: ['92920', '92924', '92928', '92930', '92933', '92937', '92941'],
+    condition: 'mcs_support',
+    description: 'PCI requiring mechanical circulatory support (Impella/IABP) indicates high-risk complexity. Consider modifier -22 with documentation of hemodynamic instability and MCS necessity.',
+  },
+  {
+    codes: ['93653', '93654', '93656'],
+    condition: 'complex_ablation',
+    description: 'Ablation procedure may warrant modifier -22 if substantially more complex than typical (e.g., multiple ablation targets, redo procedure, unusual anatomy, procedure >6 hours).',
+  },
+];
+
+// ==================== Unsuccessful PCI ====================
+
+export const unsuccessfulPCICode = '92998';
+
+// ==================== Atherectomy Codes ====================
+
+export const atherectomyCodes = new Set(['92924', '92933']);
+
+export const atherectomyDeviceDocuirements = [
+  'Document atherectomy device type: rotational (Rotablator), orbital (Diamondback), laser (excimer), or directional (Silverhawk/TurboHawk)',
+  'Report number of runs/passes performed',
+  'Document burr size (rotational) or crown size (orbital) used',
+  'For laser atherectomy: report catheter size and fluence/rate settings',
+  'Document lesion characteristics requiring atherectomy (severe calcification, fibrotic plaque, undilatable lesion)',
+];

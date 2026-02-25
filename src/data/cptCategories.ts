@@ -53,6 +53,11 @@ export const cptCategories: Record<string, CPTCode[]> = {
     { code: '33368', summary: 'TAVR, transcarotid', description: 'TAVR, transcarotid access' },
     { code: '33369', summary: 'TAVR, transcaval', description: 'TAVR, transcaval access' }
   ],
+  'Balloon Valvuloplasty': [
+    { code: '92986', summary: 'Aortic valvuloplasty (BAV)', description: 'Percutaneous balloon aortic valvuloplasty' },
+    { code: '92987', summary: 'Mitral valvuloplasty (BMV)', description: 'Percutaneous balloon mitral valvuloplasty' },
+    { code: '92990', summary: 'Pulmonary valvuloplasty (BPV)', description: 'Percutaneous balloon pulmonary valvuloplasty' },
+  ],
   'Structural Heart Interventions': [
     { code: '33274', summary: 'TPVI (pulmonary valve)', description: 'Transcatheter pulmonary valve implantation (TPVI)' },
     { code: '93580', summary: 'ASD closure', description: 'Percutaneous transcatheter closure of congenital atrial septal defect' },

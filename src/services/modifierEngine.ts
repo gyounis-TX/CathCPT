@@ -57,7 +57,22 @@ import {
   isIntravascularImagingCode,
   isCardioversionCode,
   basePCICodes,
-  CodeDomain
+  CodeDomain,
+  balloonValvuloplastyCodes,
+  isValvuloplastyCode,
+  tavrBundlesBAV,
+  standaloneFluoroscopyCodes,
+  fluoroscopyInherentProcedures,
+  ecmoInitiationCannulaPairing,
+  iabpInsertionCodes,
+  injectionCodeRedundancy,
+  ctoDocumentationRequirements,
+  bypassGraftPCICode,
+  bypassGraftDocRequirements,
+  modifier22Triggers,
+  unsuccessfulPCICode,
+  atherectomyCodes,
+  atherectomyDeviceDocuirements,
 } from '../data/codeDomains';
 import { validateDiagnosisCpt } from '../data/diagnosisCptRules';
 import { StoredCharge, CaseSnapshot } from './chargesService';
@@ -178,6 +193,18 @@ export function validateChargeContext(
   // 17. IVUS/FFR without intervention — documentation reminder
   checkImagingWithoutIntervention(code, charge.cptCode, warnings);
 
+  // 18. CTO documentation requirements — specific documentation prompts
+  checkCTODocumentation(code, warnings);
+
+  // 19. Bypass graft PCI documentation — graft type and distal protection
+  checkBypassGraftDocumentation(code, warnings);
+
+  // 20. Modifier -22 suggestion — complex CTO, MCS-supported PCI
+  checkModifier22Suggestion(code, charge.cptCode, suggestions);
+
+  // 21. Atherectomy device documentation — device type and technique
+  checkAtherectomyDocumentation(code, warnings);
+
   return { suggestions, warnings, errors, scrubbed: true };
 }
 
@@ -264,6 +291,24 @@ export function validateChargeCodes(codes: string[]): ValidationResult {
 
   // 22. Structural TEE code selection
   checkStructuralTEECode(cleanCodes, warnings);
+
+  // 23. Fluoroscopy bundling — standalone fluoroscopy with inherent procedures
+  checkFluoroscopyBundling(cleanCodes, errors);
+
+  // 24. Injection code context — 93566-93568 redundancy with base cath
+  checkInjectionCodeContext(cleanCodes, warnings);
+
+  // 25. Unsuccessful PCI modifier enforcement — 92998 requires -52 or -53
+  checkUnsuccessfulPCIModifier(codes, errors);
+
+  // 26. IABP code disambiguation — prevent 33967 + 33989 together
+  checkIABPDisambiguation(cleanCodes, errors);
+
+  // 27. Balloon valvuloplasty + TAVR bundling
+  checkValvuloplastyBundling(cleanCodes, warnings);
+
+  // 28. ECMO initiation + cannula pairing
+  checkECMOCannulaPairing(cleanCodes, warnings);
 
   return { suggestions, warnings, errors, scrubbed: true };
 }
@@ -639,6 +684,11 @@ export function preBillingScrub(
     checkStagedPCIDocumentation(pCharges, results);
   }
 
+  // Cross-charge: MCS + PCI same-session pairing
+  for (const [, group] of groups) {
+    checkMCSPCIPairing(group, results);
+  }
+
   return results;
 }
 
@@ -841,7 +891,9 @@ function checkCriticalCareBundling(codes: string[], warnings: string[]): void {
   }
 }
 
-/** 10. Sedation code bundling — flag sedation codes with procedures that include sedation */
+/** 10. Sedation code bundling — flag sedation codes with procedures that include sedation
+ *  Reconciled: produces a warning (not error) since the form UI may add sedation codes
+ *  automatically. The admin portal should strip these before billing. */
 function checkSedationBundling(codes: string[], errors: string[]): void {
   const sedationCodesFound = codes.filter(isSedationCode);
   if (sedationCodesFound.length === 0) return;
@@ -849,8 +901,10 @@ function checkSedationBundling(codes: string[], errors: string[]): void {
   const inherentProcs = codes.filter(c => sedationInherentProcedures.has(c));
   if (inherentProcs.length > 0) {
     for (const sc of sedationCodesFound) {
+      // Warning rather than error — the code should be stripped before billing,
+      // but it shouldn't block the charge from being saved
       errors.push(
-        `Sedation code ${sc} cannot be billed separately — moderate sedation is inherent in ${inherentProcs.join(', ')}.`
+        `Sedation code ${sc} should not be billed separately — moderate sedation is inherent in ${inherentProcs.join(', ')}. Remove ${sc} before submitting the claim.`
       );
     }
   }
@@ -1846,6 +1900,208 @@ function checkStagedPCIDocumentation(
       if (existing) {
         existing.warnings.push(
           `Staged PCI: This PCI (${currDate}) is ${daysBetween} day${daysBetween !== 1 ? 's' : ''} after a prior PCI (${prevDate}) for this patient. Staged multi-vessel PCI requires documentation stating the procedure was intentionally planned as staged. Include: clinical rationale for staging (contrast limits, patient stability), which vessels were treated at each session, and that multi-vessel CAD was identified at the index procedure.`
+        );
+      }
+    }
+  }
+}
+
+// ==================== Within-Charge Checks 23-28 ====================
+
+/** 23. Fluoroscopy bundling — standalone fluoroscopy codes are bundled into cath lab procedures */
+function checkFluoroscopyBundling(codes: string[], errors: string[]): void {
+  const fluoroCodes = codes.filter(c => standaloneFluoroscopyCodes.has(c));
+  if (fluoroCodes.length === 0) return;
+
+  const inherentProcs = codes.filter(c => fluoroscopyInherentProcedures.has(c));
+  if (inherentProcs.length > 0) {
+    for (const fc of fluoroCodes) {
+      errors.push(
+        `Standalone fluoroscopy code ${fc} is bundled into ${inherentProcs.join(', ')} — fluoroscopic guidance is included in the procedure description. Remove ${fc} before billing.`
+      );
+    }
+  }
+}
+
+/** 24. Injection code context — 93566/93568 may be redundant with base cath codes */
+function checkInjectionCodeContext(codes: string[], warnings: string[]): void {
+  const codeSet = new Set(codes);
+
+  for (const [injCode, { redundantWith, reason }] of Object.entries(injectionCodeRedundancy)) {
+    if (!codeSet.has(injCode)) continue;
+
+    const redundantPresent = redundantWith.filter(c => codeSet.has(c));
+    if (redundantPresent.length > 0) {
+      warnings.push(
+        `${reason} Base code(s) present: ${redundantPresent.join(', ')}. Common audit target — ensure separate medical necessity is documented.`
+      );
+    }
+  }
+}
+
+/** 25. Unsuccessful PCI (92998) modifier enforcement — requires -52 or -53 */
+function checkUnsuccessfulPCIModifier(originalCodes: string[], errors: string[]): void {
+  for (const code of originalCodes) {
+    const base = stripModifier(code);
+    if (base !== unsuccessfulPCICode) continue;
+
+    // Check if the original code already has -52 or -53
+    const hasReducedModifier = code.includes('-52') || code.includes('-53');
+    if (!hasReducedModifier) {
+      errors.push(
+        `Unsuccessful PCI (92998) must be reported with modifier -52 (reduced services, partial attempt) or -53 (discontinued procedure, patient safety concern). Add the appropriate modifier based on the reason for discontinuation.`
+      );
+    }
+  }
+}
+
+/** 26. IABP code disambiguation — 33967 and 33989 both map to IABP insertion */
+function checkIABPDisambiguation(codes: string[], errors: string[]): void {
+  const iabpPresent = codes.filter(c => iabpInsertionCodes.has(c));
+  if (iabpPresent.length > 1) {
+    errors.push(
+      `Both IABP insertion codes (${iabpPresent.join(', ')}) are present. Use only one: 33989 is the primary IABP insertion code. 33967 is an older/alternative code. Do not bill both for the same insertion.`
+    );
+  }
+}
+
+/** 27. Balloon valvuloplasty + TAVR bundling */
+function checkValvuloplastyBundling(codes: string[], warnings: string[]): void {
+  const valvCodes = codes.filter(c => balloonValvuloplastyCodes.has(c));
+  if (valvCodes.length === 0) return;
+
+  // Check for TAVR codes
+  const tavrCodes = codes.filter(c => c.startsWith('3336') && structuralProceduresExpectingTEE.has(c));
+  if (tavrCodes.length > 0) {
+    for (const vc of valvCodes) {
+      const bundleNote = tavrBundlesBAV[vc];
+      if (bundleNote) {
+        warnings.push(
+          `${bundleNote} TAVR code(s) present: ${tavrCodes.join(', ')}. If BAV was pre-dilation for TAVR, it is bundled and not separately billable.`
+        );
+      }
+    }
+  }
+
+  // Check for diagnostic cath — valvuloplasty with cath needs separate indication
+  const cathCodes = codes.filter(isDiagnosticCathCode);
+  if (cathCodes.length > 0) {
+    for (const vc of valvCodes) {
+      const type = vc === '92986' ? 'aortic' : vc === '92987' ? 'mitral' : 'pulmonary';
+      warnings.push(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} balloon valvuloplasty (${vc}) with diagnostic cath — ensure separate medical necessity is documented if both are billed.`
+      );
+    }
+  }
+}
+
+/** 28. ECMO initiation + cannula code pairing */
+function checkECMOCannulaPairing(codes: string[], warnings: string[]): void {
+  const codeSet = new Set(codes);
+
+  for (const [initCode, { cannulaCodes, description }] of Object.entries(ecmoInitiationCannulaPairing)) {
+    if (!codeSet.has(initCode)) continue;
+
+    const hasCannula = cannulaCodes.some(c => codeSet.has(c));
+    if (!hasCannula) {
+      warnings.push(
+        `${description}. ECMO initiation code ${initCode} is present but no cannula insertion code (${cannulaCodes.join('/')}) was found. Ensure cannula placement is captured as a separate billable component.`
+      );
+    }
+  }
+}
+
+// ==================== Context-Aware Checks 18-21 ====================
+
+/** 18. CTO documentation requirements */
+function checkCTODocumentation(code: string, warnings: string[]): void {
+  const docReqs = ctoDocumentationRequirements[code];
+  if (!docReqs) return;
+
+  warnings.push(
+    `CTO PCI (${code}) documentation checklist: ${docReqs.join('; ')}. Complete documentation reduces audit risk and supports medical necessity.`
+  );
+}
+
+/** 19. Bypass graft PCI documentation */
+function checkBypassGraftDocumentation(code: string, warnings: string[]): void {
+  if (code !== bypassGraftPCICode) return;
+
+  warnings.push(
+    `Bypass graft intervention (${code}) documentation requirements: ${bypassGraftDocRequirements.join('; ')}.`
+  );
+}
+
+/** 20. Modifier -22 suggestion — proactively suggest for complex cases */
+function checkModifier22Suggestion(
+  code: string,
+  fullCptString: string,
+  suggestions: ModifierSuggestion[]
+): void {
+  for (const trigger of modifier22Triggers) {
+    if (!trigger.codes.includes(code)) continue;
+
+    // For MCS-support condition, check if MCS codes are in the combined code string
+    if (trigger.condition === 'mcs_support') {
+      const parts = fullCptString.split(' + ').map(p => stripModifier(p.replace(/-[A-Z]+$/, '').trim()));
+      const hasMCS = parts.some(p => p === '33990' || p === '33991' || p === '33989' || p === '33967');
+      if (!hasMCS) continue;
+    }
+
+    suggestions.push({
+      code,
+      modifier: '-22',
+      reason: trigger.description,
+      confidence: 'optional',
+      autoApplied: false,
+      ruleId: `modifier-22-${trigger.condition}`
+    });
+    break; // Only one -22 suggestion per code
+  }
+}
+
+/** 21. Atherectomy device documentation */
+function checkAtherectomyDocumentation(code: string, warnings: string[]): void {
+  if (!atherectomyCodes.has(code)) return;
+
+  warnings.push(
+    `Coronary atherectomy (${code}) documentation requirements: ${atherectomyDeviceDocuirements.join('; ')}.`
+  );
+}
+
+// ==================== Cross-Charge: MCS + PCI Pairing ====================
+
+/** Cross-charge MCS + PCI same-session — ensure proper billing relationship */
+function checkMCSPCIPairing(
+  sameDayCharges: StoredCharge[],
+  results: Map<string, ValidationResult>
+): void {
+  if (sameDayCharges.length < 2) return;
+
+  const mcsCharges: StoredCharge[] = [];
+  const pciCharges: StoredCharge[] = [];
+
+  for (const charge of sameDayCharges) {
+    const parts = charge.cptCode.split(' + ').map(p => stripModifier(p.replace(/-[A-Z]+$/, '').trim()));
+    if (parts.some(p => p === '33990' || p === '33991' || p === '33995' || p === '33989' || p === '33967')) {
+      mcsCharges.push(charge);
+    }
+    if (parts.some(p => basePCICodes.has(p))) {
+      pciCharges.push(charge);
+    }
+  }
+
+  if (mcsCharges.length > 0 && pciCharges.length > 0) {
+    // MCS + PCI on same date — provide guidance
+    for (const mcsCharge of mcsCharges) {
+      const existing = results.get(mcsCharge.id);
+      if (existing) {
+        const mcsCode = stripModifier(mcsCharge.cptCode);
+        const isImpella = mcsCode === '33990' || mcsCode === '33991' || mcsCode === '33995';
+        const device = isImpella ? 'Impella' : 'IABP';
+
+        existing.warnings.push(
+          `${device} (${mcsCode}) and PCI billed on the same date. ${device} insertion during PCI is separately billable — ensure the ${device} has its own charge record. Document hemodynamic indication for MCS (cardiogenic shock, high-risk PCI, unprotected left main, severely depressed EF).`
         );
       }
     }
