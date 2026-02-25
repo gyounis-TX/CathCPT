@@ -66,7 +66,7 @@ export const cptCategories: Record<string, CPTCode[]> = {
     { code: '93583', summary: 'Septal reduction (alcohol ablation)', description: 'Percutaneous transcatheter septal reduction therapy' },
     { code: '93590', summary: 'Paravalvular leak closure, initial', description: 'Percutaneous transcatheter closure of paravalvular leak, initial occlusion device' },
     { code: '93591', summary: 'Paravalvular leak closure, add-on', description: 'Percutaneous transcatheter closure of paravalvular leak, each additional device', isAddOn: true },
-    { code: '93592', summary: 'LAA closure (Watchman)', description: 'Percutaneous transcatheter closure of left atrial appendage' },
+    { code: '33340', summary: 'LAA closure (Watchman)', description: 'Percutaneous transcatheter closure of left atrial appendage with endocardial implant (requires Q0 modifier, dual Dx: AF + Z00.6)' },
     { code: '33418', summary: 'TMVR, initial', description: 'Transcatheter mitral valve repair, percutaneous approach, initial prosthesis' },
     { code: '33419', summary: 'TMVR, additional', description: 'Transcatheter mitral valve repair, percutaneous approach, additional prosthesis(es) during same session', isAddOn: true },
     { code: '0569T', summary: 'TTVR, percutaneous', description: 'Transcatheter tricuspid valve repair, percutaneous approach; initial prosthesis' },

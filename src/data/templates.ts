@@ -188,10 +188,10 @@ export const builtInTemplates: CaseTemplate[] = [
   {
     id: 'laa-closure',
     name: 'LAA Closure (Watchman)',
-    description: 'Left atrial appendage closure for AF stroke prevention',
+    description: 'Left atrial appendage closure for AF stroke prevention (Q0 modifier, dual Dx: AF + Z00.6)',
     isBuiltIn: true,
     codes: {
-      primary: ['93592']
+      primary: ['33340']
     },
     indication: {
       category: 'structural',

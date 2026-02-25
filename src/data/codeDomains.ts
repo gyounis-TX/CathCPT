@@ -156,7 +156,8 @@ const structuralCodes = new Set([
   '92986', '92987', '92990',
   // Structural
   '93580', '93581', '93582', '93583',
-  '93590', '93591', '93592',
+  '93590', '93591',           // Paravalvular leak closure
+  '33340',                    // LAA closure (Watchman)
   '33418', '33419',
   '0569T', '0570T',
   // EVAR
@@ -320,7 +321,7 @@ export const addOnCodePrimaries: Record<string, string[]> = {
   '93657': ['93656'],
   // ICE (intracardiac echo) — used with EP ablation, structural procedures
   '93662': ['93653', '93654', '93656', '93619', '93620',
-            '93580', '93581', '93582', '93590', '93592',
+            '93580', '93581', '93582', '93590', '33340',
             '33361', '33362', '33363', '33364', '33365', '33366',
             '33418', '33419', '0569T'],
   // Cath add-ons
@@ -390,7 +391,7 @@ export const sedationInherentProcedures = new Set([
   // TAVR
   '33361', '33362', '33363', '33364', '33365', '33366',
   // Structural
-  '93580', '93581', '93582', '93583', '93590', '93591', '93592',
+  '93580', '93581', '93582', '93583', '93590', '93591', '33340',
   // MCS
   '33990', '33991', '33995', '33946', '33947',
   // Balloon valvuloplasty
@@ -491,6 +492,8 @@ export const globalPeriodDays: Record<string, number> = {
   '33285': 10, '33286': 10,
   // Pericardiocentesis — 0-day global
   '33016': 0, '33017': 0,
+  // LAA closure (Watchman) — 0-day global
+  '33340': 0,
 };
 
 // ==================== Discharge and Special Code Sets ====================
@@ -680,7 +683,8 @@ export const priorAuthProcedures: Record<string, string> = {
   '93580': 'ASD closure — prior authorization required',
   '93581': 'VSD closure — prior authorization required',
   '93582': 'PFO closure — prior authorization required (limited coverage)',
-  '93590': 'LAA closure (Watchman) — prior authorization required',
+  '93590': 'Paravalvular leak closure — prior authorization required for transcatheter approach',
+  '33340': 'LAA closure (Watchman) — prior authorization required, Q0 modifier required (CED), dual diagnosis: AF primary + Z00.6',
   '33418': 'Mitral valve repair (TEER/MitraClip) — prior authorization required',
   '33419': 'Mitral valve repair add-on — paired with base authorization',
   '0569T': 'Transcatheter tricuspid valve repair — limited coverage, prior auth required where covered',
@@ -747,7 +751,7 @@ export const ageRestrictedProcedures: { codes: string[]; minAge?: number; maxAge
     note: 'Structural closure — ASD/VSD/PFO closure. Verify payer-specific age requirements. PFO closure (93582) typically requires age 18-60 for stroke prevention indication.'
   },
   {
-    codes: ['93590'],
+    codes: ['33340'],
     minAge: 18,
     note: 'LAA closure (Watchman) — NCD requires age ≥18, CHA₂DS₂-VASc score ≥3, and documented contraindication to long-term anticoagulation.'
   },
@@ -809,15 +813,15 @@ export const ncdRules: NCDRule[] = [
   {
     id: 'ncd-laa-closure',
     name: 'LAA Closure (Watchman) Coverage (NCD 20.34)',
-    procedures: ['93590'],
+    procedures: ['33340'],
     requiredDiagnosisPrefixes: ['I48'],
-    clinicalCriteria: 'Non-valvular AF, CHA₂DS₂-VASc ≥3, documented contraindication to long-term anticoagulation, heart team recommendation.',
-    documentationChecklist: 'CHA₂DS₂-VASc score calculation, reason for anticoagulation contraindication, heart team/multidisciplinary note, AF documentation.'
+    clinicalCriteria: 'Non-valvular AF, CHA₂DS₂-VASc ≥3, documented contraindication to long-term anticoagulation, heart team recommendation. Requires modifier Q0 (CMS coverage with evidence development). Must report two diagnoses: AF primary (never I48.20) + Z00.6.',
+    documentationChecklist: 'CHA₂DS₂-VASc score calculation, reason for anticoagulation contraindication, heart team/multidisciplinary note, AF documentation, Q0 modifier, dual diagnosis (AF + Z00.6).'
   },
   {
     id: 'ncd-paravalvular-leak',
     name: 'Paravalvular Leak Closure Coverage',
-    procedures: ['93592'],
+    procedures: ['93590'],
     requiredDiagnosisPrefixes: ['T82.0', 'T82.5', 'I38', 'T82.6'],
     clinicalCriteria: 'Symptomatic paravalvular regurgitation post valve replacement/repair, high surgical risk for redo operation, documented hemolysis or heart failure from paravalvular leak.',
     documentationChecklist: 'Prior valve surgery documentation, echo showing paravalvular leak location and severity, symptom documentation (heart failure, hemolysis), surgical risk assessment for redo.'
@@ -929,7 +933,8 @@ export const genericTEEBaseCodes = new Set(['93312', '93314', '93315']);
 export const structuralProceduresExpectingTEE = new Set([
   '33361', '33362', '33363', '33364', '33365', '33366',  // TAVR
   '93580', '93581', '93582',  // ASD/VSD/PFO closure
-  '93590',                     // LAA closure (Watchman)
+  '33340',                     // LAA closure (Watchman)
+  '93590',                     // Paravalvular leak closure
   '33418', '33419',           // MitraClip/TEER
   '0569T', '0570T',           // TTVR
 ]);
@@ -1018,7 +1023,7 @@ export const fluoroscopyInherentProcedures = new Set([
   // EP procedures
   '93653', '93654', '93656',
   // Structural
-  '93580', '93581', '93582', '93590', '33361', '33362', '33363', '33364', '33365', '33366',
+  '93580', '93581', '93582', '93590', '33340', '33361', '33362', '33363', '33364', '33365', '33366',
   // Pericardiocentesis
   '33016', '33017',
   // IABP / MCS
@@ -1173,7 +1178,7 @@ export const accessSiteBundledProcedures = new Set([
   // Device implants
   '33206', '33207', '33208', '33249', '33240', '33274',
   // Structural
-  '93580', '93581', '93582', '93590', '33361', '33362', '33363', '33364', '33365', '33366',
+  '93580', '93581', '93582', '93590', '33340', '33361', '33362', '33363', '33364', '33365', '33366',
 ]);
 
 // ==================== Medicare Consult Code Restrictions ====================
@@ -1221,4 +1226,29 @@ export const epTEEGuidance = {
   teeGuided: '93355',   // 3D TEE structural
   teeDiagnostic: new Set(['93312', '93314', '93315']),
   guidance: 'TEE during EP ablation: Use 93355 (3D TEE for structural guidance) if TEE was used for intraprocedural guidance during ablation (e.g., AF ablation with TEE for transseptal puncture and LA anatomy). If TEE was a separate diagnostic study (e.g., to rule out LAA thrombus pre-ablation), use 93312/93314 with documentation of the distinct diagnostic indication.',
+};
+
+// ==================== Watchman (LAA Closure) Specific Rules ====================
+
+export const watchmanCode = '33340';
+
+/** Watchman requires Q0 modifier (CMS Coverage with Evidence Development) */
+export const watchmanModifierQ0 = {
+  modifier: 'Q0',
+  reason: 'LAA closure (Watchman) requires modifier Q0 — CMS Coverage with Evidence Development (CED). This procedure is covered under NCD 20.34 with the condition that it is furnished in the context of an approved clinical study or CED registry.',
+};
+
+/** Watchman requires dual diagnosis codes */
+export const watchmanDiagnosisRequirements = {
+  primaryRequired: 'I48',        // Atrial fibrillation — any I48.x
+  primaryExcluded: 'I48.20',     // I48.20 (chronic AF, unspecified) is NOT accepted
+  secondaryRequired: 'Z00.6',    // Encounter for examination for normal comparison and control in clinical research program
+  guidance: 'Watchman (33340) requires two diagnosis codes: (1) Primary: Atrial fibrillation (I48.x, but NEVER I48.20), and (2) Secondary: Z00.6 (clinical research/CED enrollment). Missing either diagnosis or using I48.20 will result in claim denial.',
+};
+
+/** ICE (93662) with modifier -26 is standard with Watchman */
+export const watchmanICEGuidance = {
+  iceCode: '93662',
+  modifier: '-26',
+  guidance: 'Intracardiac echocardiography (93662) with modifier -26 (professional component) is routinely performed with Watchman LAA closure for device positioning and deployment guidance. Ensure 93662-26 is captured as a separate billable component.',
 };

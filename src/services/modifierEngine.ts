@@ -73,6 +73,10 @@ import {
   unsuccessfulPCICode,
   atherectomyCodes,
   atherectomyDeviceDocuirements,
+  watchmanCode,
+  watchmanModifierQ0,
+  watchmanDiagnosisRequirements,
+  watchmanICEGuidance,
   observationSubsequentCodes,
   isObservationSubsequentCode,
   tempPacemakerCodes,
@@ -218,10 +222,13 @@ export function validateChargeContext(
   // 21. Atherectomy device documentation — device type and technique
   checkAtherectomyDocumentation(code, warnings);
 
-  // 22. Limited vs complete echo documentation guidance
+  // 22. Watchman (33340) specific validation — Q0 modifier, dual diagnosis, ICE reminder
+  checkWatchmanValidation(code, charge.cptCode, charge.diagnoses, suggestions, warnings, errors);
+
+  // 23. Limited vs complete echo documentation guidance
   checkEchoCompletenessGuidance(code, warnings);
 
-  // 23. Contrast echo indication validation
+  // 24. Contrast echo indication validation
   checkContrastEchoIndication(code, warnings);
 
   return { suggestions, warnings, errors, scrubbed: true };
@@ -2232,7 +2239,63 @@ function checkObservationCriticalCareExclusion(codes: string[], errors: string[]
 
 // ==================== Context-Aware Checks 22-24 ====================
 
-/** 22. Limited vs complete echo documentation guidance */
+/** 22. Watchman (33340) specific validation — Q0 modifier, dual diagnosis, ICE */
+function checkWatchmanValidation(
+  code: string,
+  fullCptString: string,
+  diagnoses: string[],
+  suggestions: ModifierSuggestion[],
+  warnings: string[],
+  errors: string[]
+): void {
+  if (code !== watchmanCode) return;
+
+  // Q0 modifier required
+  if (!fullCptString.includes('Q0')) {
+    suggestions.push({
+      code,
+      modifier: '-Q0',
+      reason: watchmanModifierQ0.reason,
+      confidence: 'required',
+      autoApplied: false,
+      ruleId: 'watchman-q0-modifier'
+    });
+  }
+
+  // Dual diagnosis validation
+  if (diagnoses && diagnoses.length > 0) {
+    const hasAF = diagnoses.some(dx => dx.startsWith('I48') && dx !== 'I48.20');
+    const hasExcludedAF = diagnoses.some(dx => dx === 'I48.20');
+    const hasZ006 = diagnoses.some(dx => dx === 'Z00.6');
+
+    if (hasExcludedAF) {
+      errors.push(
+        `Watchman (33340): Diagnosis I48.20 (chronic atrial fibrillation, unspecified) is NOT accepted for LAA closure claims. Use a more specific AF diagnosis code (e.g., I48.0, I48.1, I48.11, I48.19, I48.91).`
+      );
+    }
+    if (!hasAF && !hasExcludedAF) {
+      errors.push(
+        `Watchman (33340): Missing primary atrial fibrillation diagnosis. An I48.x code (except I48.20) is required as the primary diagnosis.`
+      );
+    }
+    if (!hasZ006) {
+      errors.push(
+        `Watchman (33340): Missing secondary diagnosis Z00.6 (encounter for examination for normal comparison and control in clinical research program). This is required for CMS Coverage with Evidence Development (CED).`
+      );
+    }
+  } else {
+    errors.push(
+      watchmanDiagnosisRequirements.guidance
+    );
+  }
+
+  // ICE reminder
+  warnings.push(
+    watchmanICEGuidance.guidance
+  );
+}
+
+/** 23. Limited vs complete echo documentation guidance */
 function checkEchoCompletenessGuidance(code: string, warnings: string[]): void {
   if (echoCompletenessCodes.limited.has(code)) {
     warnings.push(

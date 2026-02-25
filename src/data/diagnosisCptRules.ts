@@ -161,7 +161,7 @@ export const diagnosisCptRules: DiagnosisCptRule[] = [
   {
     id: 'mitral-repair-diagnosis',
     name: 'Mitral valve repair requires mitral valve disorder',
-    cptCodes: ['33418', '33419', '93590', '93591', '93592'],
+    cptCodes: ['33418', '33419'],
     icd10Prefixes: ['I34', 'I05', 'I08'],
     severity: 'error',
     message: 'Mitral valve repair requires a mitral valve disorder diagnosis (I34.x nonrheumatic, I05.x rheumatic).'
