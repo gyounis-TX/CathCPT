@@ -11,7 +11,8 @@ import {
   doc,
   addDoc,
   updateDoc,
-  orderBy
+  orderBy,
+  onSnapshot
 } from 'firebase/firestore';
 import { getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { getFirebaseAuth } from './firebaseConfig';
@@ -210,16 +211,18 @@ export async function getHospitals(orgIdOverride?: string | null): Promise<Hospi
 
   const db = getFirebaseDb();
   const hospitalsRef = collection(db, 'organizations', resolvedOrgId, 'hospitals');
-  const q = query(hospitalsRef, where('isActive', '==', true), orderBy('name'));
+  const q = query(hospitalsRef, where('isActive', '==', true));
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map(d => ({
+  const hospitals = snapshot.docs.map(d => ({
     id: d.id,
     organizationId: resolvedOrgId!,
     name: d.data().name,
     isActive: true,
     createdAt: d.data().createdAt || new Date().toISOString()
   }));
+  hospitals.sort((a, b) => a.name.localeCompare(b.name));
+  return hospitals;
 }
 
 // Get cath labs for connected practice
@@ -256,15 +259,15 @@ export async function getCathLabs(hospitalId?: string, orgIdOverride?: string | 
   const db = getFirebaseDb();
   const cathLabsRef = collection(db, 'organizations', resolvedOrgId, 'cathLabs');
 
-  const constraints = [where('isActive', '==', true), orderBy('name')];
+  const constraints: any[] = [where('isActive', '==', true)];
   if (hospitalId) {
-    constraints.unshift(where('hospitalId', '==', hospitalId));
+    constraints.push(where('hospitalId', '==', hospitalId));
   }
 
   const q = query(cathLabsRef, ...constraints);
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map(d => ({
+  const labs = snapshot.docs.map(d => ({
     id: d.id,
     organizationId: resolvedOrgId!,
     hospitalId: d.data().hospitalId,
@@ -272,6 +275,79 @@ export async function getCathLabs(hospitalId?: string, orgIdOverride?: string | 
     isActive: true,
     createdAt: d.data().createdAt || new Date().toISOString()
   }));
+  labs.sort((a, b) => a.name.localeCompare(b.name));
+  return labs;
+}
+
+// Real-time listener for hospitals
+export function onHospitalsSnapshot(
+  orgId: string,
+  callback: (hospitals: Hospital[]) => void
+): () => void {
+  if (!isFirebaseConfigured()) return () => {};
+  try {
+    const db = getFirebaseDb();
+    const q = query(
+      collection(db, `organizations/${orgId}/hospitals`),
+      where('isActive', '==', true)
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const hospitals = snap.docs.map(d => ({
+          id: d.id,
+          organizationId: orgId,
+          name: d.data().name,
+          isActive: true,
+          createdAt: d.data().createdAt || new Date().toISOString()
+        } as Hospital));
+        hospitals.sort((a, b) => a.name.localeCompare(b.name));
+        callback(hospitals);
+      },
+      (error) => {
+        logger.error('Hospitals snapshot error', error);
+      }
+    );
+  } catch (error) {
+    logger.error('Failed to set up hospitals snapshot', error);
+    return () => {};
+  }
+}
+
+// Real-time listener for cath labs
+export function onCathLabsSnapshot(
+  orgId: string,
+  callback: (cathLabs: CathLab[]) => void
+): () => void {
+  if (!isFirebaseConfigured()) return () => {};
+  try {
+    const db = getFirebaseDb();
+    const q = query(
+      collection(db, `organizations/${orgId}/cathLabs`),
+      where('isActive', '==', true)
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const cathLabs = snap.docs.map(d => ({
+          id: d.id,
+          organizationId: orgId,
+          hospitalId: d.data().hospitalId,
+          name: d.data().name,
+          isActive: true,
+          createdAt: d.data().createdAt || new Date().toISOString()
+        } as CathLab));
+        cathLabs.sort((a, b) => a.name.localeCompare(b.name));
+        callback(cathLabs);
+      },
+      (error) => {
+        logger.error('Cath labs snapshot error', error);
+      }
+    );
+  } catch (error) {
+    logger.error('Failed to set up cath labs snapshot', error);
+    return () => {};
+  }
 }
 
 // Get all physicians in connected practice
@@ -482,7 +558,7 @@ export async function updatePracticeName(orgId: string, newName: string): Promis
   await updateDoc(doc(db, 'organizations', orgId), { name: newName });
 }
 
-// Add a hospital
+// Add a hospital (with duplicate prevention)
 export async function addHospital(orgId: string, name: string): Promise<Hospital> {
   const newHospital: Hospital = {
     id: `hosp-${Date.now()}`,
@@ -503,12 +579,74 @@ export async function addHospital(orgId: string, name: string): Promise<Hospital
 
   const db = getFirebaseDb();
   const hospitalsRef = collection(db, `organizations/${orgId}/hospitals`);
+
+  // Check for existing active hospital with same name (case-insensitive)
+  const existing = await getDocs(query(hospitalsRef, where('isActive', '==', true)));
+  const duplicate = existing.docs.find(d => d.data().name.toLowerCase() === name.toLowerCase());
+  if (duplicate) {
+    return { id: duplicate.id, organizationId: orgId, name: duplicate.data().name, isActive: true, createdAt: duplicate.data().createdAt || new Date().toISOString() };
+  }
+
   const docRef = await addDoc(hospitalsRef, {
     name,
     isActive: true,
     createdAt: new Date().toISOString()
   });
   return { ...newHospital, id: docRef.id };
+}
+
+// One-time cleanup: deactivate duplicate hospitals, keeping the oldest of each name
+export async function deduplicateHospitals(orgId: string): Promise<number> {
+  if (!isFirebaseConfigured()) return 0;
+  const db = getFirebaseDb();
+  const hospitalsRef = collection(db, `organizations/${orgId}/hospitals`);
+  const snapshot = await getDocs(query(hospitalsRef, where('isActive', '==', true)));
+
+  // Group by lowercase name
+  const byName: Record<string, { id: string; createdAt: string }[]> = {};
+  snapshot.docs.forEach(d => {
+    const key = (d.data().name || '').toLowerCase();
+    if (!byName[key]) byName[key] = [];
+    byName[key].push({ id: d.id, createdAt: d.data().createdAt || '' });
+  });
+
+  let deactivated = 0;
+  for (const entries of Object.values(byName)) {
+    if (entries.length <= 1) continue;
+    // Keep the oldest, deactivate the rest
+    entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    for (let i = 1; i < entries.length; i++) {
+      await updateDoc(doc(db, `organizations/${orgId}/hospitals`, entries[i].id), { isActive: false });
+      deactivated++;
+    }
+  }
+  return deactivated;
+}
+
+// One-time cleanup: deactivate duplicate cath labs, keeping the oldest of each name
+export async function deduplicateCathLabs(orgId: string): Promise<number> {
+  if (!isFirebaseConfigured()) return 0;
+  const db = getFirebaseDb();
+  const cathLabsRef = collection(db, `organizations/${orgId}/cathLabs`);
+  const snapshot = await getDocs(query(cathLabsRef, where('isActive', '==', true)));
+
+  const byName: Record<string, { id: string; createdAt: string }[]> = {};
+  snapshot.docs.forEach(d => {
+    const key = (d.data().name || '').toLowerCase();
+    if (!byName[key]) byName[key] = [];
+    byName[key].push({ id: d.id, createdAt: d.data().createdAt || '' });
+  });
+
+  let deactivated = 0;
+  for (const entries of Object.values(byName)) {
+    if (entries.length <= 1) continue;
+    entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    for (let i = 1; i < entries.length; i++) {
+      await updateDoc(doc(db, `organizations/${orgId}/cathLabs`, entries[i].id), { isActive: false });
+      deactivated++;
+    }
+  }
+  return deactivated;
 }
 
 // Deactivate a hospital
@@ -527,7 +665,7 @@ export async function deactivateHospital(orgId: string, hospitalId: string): Pro
   await updateDoc(doc(db, `organizations/${orgId}/hospitals`, hospitalId), { isActive: false });
 }
 
-// Add a cath lab
+// Add a cath lab (with duplicate prevention)
 export async function addCathLab(orgId: string, name: string, hospitalId?: string): Promise<CathLab> {
   const newLab: CathLab = {
     id: `lab-${Date.now()}`,
@@ -549,6 +687,14 @@ export async function addCathLab(orgId: string, name: string, hospitalId?: strin
 
   const db = getFirebaseDb();
   const cathLabsRef = collection(db, `organizations/${orgId}/cathLabs`);
+
+  // Check for existing active cath lab with same name (case-insensitive)
+  const existing = await getDocs(query(cathLabsRef, where('isActive', '==', true)));
+  const duplicate = existing.docs.find(d => d.data().name.toLowerCase() === name.toLowerCase());
+  if (duplicate) {
+    return { id: duplicate.id, organizationId: orgId, hospitalId: duplicate.data().hospitalId, name: duplicate.data().name, isActive: true, createdAt: duplicate.data().createdAt || new Date().toISOString() };
+  }
+
   const docRef = await addDoc(cathLabsRef, {
     name,
     hospitalId: hospitalId || null,

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Settings, User, MapPin, Fingerprint, Bell, Shield, ChevronRight, Building2, Plus, Trash2, LogOut } from 'lucide-react';
+import { ConfirmDialog, useConfirmDialog } from '../components/ConfirmDialog';
 import { isBiometricAvailable, getBiometryType, authenticateWithBiometric, getBiometricPreference, setBiometricPreference } from '../services/biometricService';
-import { addHospital as addHospitalToOrg, deactivateHospital as deactivateHospitalFromOrg, addCathLab as addCathLabToOrg, deactivateCathLab as deactivateCathLabFromOrg } from '../services/practiceConnection';
+import { addHospital as addHospitalToOrg, deactivateHospital as deactivateHospitalFromOrg, addCathLab as addCathLabToOrg, deactivateCathLab as deactivateCathLabFromOrg, getHospitals, getCathLabs } from '../services/practiceConnection';
 import { Hospital, CathLab, Inpatient } from '../types';
 import { StoredCharge } from '../services/chargesService';
 
@@ -70,6 +71,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const isAdmin = userRole === 'admin';
 
+  // Confirm dialog (replaces window.confirm)
+  const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
+
   useEffect(() => {
     loadSettings();
   }, [hospitals, cathLabs]);
@@ -94,18 +98,40 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       if (notifResult?.value) setNotificationsEnabled(notifResult.value === 'true');
       if (notifDaysResult?.value) setBillingReminderDays(parseInt(notifDaysResult.value) || 2);
 
-      // Load admin hospitals/cath labs — prefer props (fresh from Firestore), fall back to storage
+      // Load admin hospitals/cath labs — prefer props, fall back to cache, then direct Firestore fetch
       if (hospitals.length > 0) {
         setLocalOrgHospitals(hospitals);
         await window.storage.set('admin_hospitals', JSON.stringify(hospitals));
       } else if (adminHospResult?.value) {
-        setLocalOrgHospitals(JSON.parse(adminHospResult.value));
+        const cached = JSON.parse(adminHospResult.value);
+        if (cached.length > 0) setLocalOrgHospitals(cached);
+        else if (isProMode && orgId) {
+          // Direct fetch as last resort
+          const fetched = await getHospitals(orgId);
+          setLocalOrgHospitals(fetched);
+          if (fetched.length > 0) await window.storage.set('admin_hospitals', JSON.stringify(fetched));
+        }
+      } else if (isProMode && orgId) {
+        // No prop, no cache — fetch directly
+        const fetched = await getHospitals(orgId);
+        setLocalOrgHospitals(fetched);
+        if (fetched.length > 0) await window.storage.set('admin_hospitals', JSON.stringify(fetched));
       }
       if (cathLabs.length > 0) {
         setLocalOrgCathLabs(cathLabs);
         await window.storage.set('admin_cathLabs', JSON.stringify(cathLabs));
       } else if (adminLabsResult?.value) {
-        setLocalOrgCathLabs(JSON.parse(adminLabsResult.value));
+        const cached = JSON.parse(adminLabsResult.value);
+        if (cached.length > 0) setLocalOrgCathLabs(cached);
+        else if (isProMode && orgId) {
+          const fetched = await getCathLabs(undefined, orgId);
+          setLocalOrgCathLabs(fetched);
+          if (fetched.length > 0) await window.storage.set('admin_cathLabs', JSON.stringify(fetched));
+        }
+      } else if (isProMode && orgId) {
+        const fetched = await getCathLabs(undefined, orgId);
+        setLocalOrgCathLabs(fetched);
+        if (fetched.length > 0) await window.storage.set('admin_cathLabs', JSON.stringify(fetched));
       }
 
       // Biometric
@@ -230,7 +256,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       alert(`Cannot remove "${hospital.name}" — there ${openCount === 1 ? 'is 1 open charge' : `are ${openCount} open charges`} that must be billed first.`);
       return;
     }
-    if (!window.confirm(`Are you sure you want to remove "${hospital.name}"? This action cannot be undone.`)) return;
+    const ok = await confirm('Remove Hospital', `Are you sure you want to remove "${hospital.name}"?\n\nThis action cannot be undone.`, { variant: 'destructive', confirmLabel: 'Remove' });
+    if (!ok) return;
     const original = localOrgHospitals;
     const updated = original.filter(h => h.id !== hospital.id);
     setLocalOrgHospitals(updated);
@@ -272,7 +299,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const handleRemoveOrgCathLab = async (lab: CathLab) => {
-    if (!window.confirm(`Are you sure you want to remove "${lab.name}"? This action cannot be undone.`)) return;
+    const ok = await confirm('Remove Cath Lab', `Are you sure you want to remove "${lab.name}"?\n\nThis action cannot be undone.`, { variant: 'destructive', confirmLabel: 'Remove' });
+    if (!ok) return;
     const original = localOrgCathLabs;
     const updated = original.filter(l => l.id !== lab.id);
     setLocalOrgCathLabs(updated);
@@ -698,17 +726,29 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </button>
         )}
 
-        {/* Version */}
-        <div className="text-center pt-4 pb-8">
+        {/* Disclaimers & App Info */}
+        <div className="text-center pt-4 pb-8 text-sm text-gray-500">
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-800">
+              <strong>PHI Caution:</strong> This application processes protected health information (PHI).
+              All data is encrypted at rest and in transit. Do not share patient information
+              outside of authorized clinical and billing workflows.
+            </p>
+          </div>
+          <p>CPT® codes © American Medical Association. All rights reserved.</p>
+          <p className="mt-1">CathCPT uses 2026 CPT codes</p>
           <p
-            className="text-xs text-gray-400 cursor-default"
+            className="mt-1 text-xs text-gray-400 cursor-default"
             onClick={handleVersionTap}
           >
-            CathCPT v2.4 — February 2026
+            Last Updated: February 2026 - v2.4
           </p>
-          <p className="text-xs text-gray-300 mt-1">A product of Lumen Innovations</p>
+          <p className="mt-4 text-lg font-bold" style={{ color: '#7C3AED' }}>A product of Lumen Innovations</p>
         </div>
       </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog {...confirmDialogProps} />
     </div>
   );
 };

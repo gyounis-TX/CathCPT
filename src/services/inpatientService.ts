@@ -205,7 +205,9 @@ export async function createInpatient(
   if (!isFirebaseConfigured()) throw new Error('Firebase not configured');
 
   const db = getFirebaseDb();
-  const docData = { ...data, createdAt: new Date().toISOString() };
+  const raw = { ...data, createdAt: new Date().toISOString() };
+  // Strip undefined values — Firestore rejects them
+  const docData = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined));
   const ref = await addDoc(collection(db, `organizations/${orgId}/inpatients`), docData);
   return { id: ref.id, ...docData } as Inpatient;
 }
@@ -234,6 +236,13 @@ export async function dischargeInpatient(orgId: string, inpatientId: string): Pr
 /** Remove from practice (soft delete — set isActive=false) */
 export async function removeFromPractice(orgId: string, inpatientId: string): Promise<void> {
   return dischargeInpatient(orgId, inpatientId);
+}
+
+// Update an inpatient's fields (e.g. fix hospitalId after dedup)
+export async function updateInpatient(orgId: string, inpatientId: string, fields: Partial<Inpatient>): Promise<void> {
+  if (!isFirebaseConfigured()) return;
+  const db = getFirebaseDb();
+  await updateDoc(doc(db, `organizations/${orgId}/inpatients`, inpatientId), fields);
 }
 
 /** Real-time listener for active org inpatients. Returns an unsubscribe function. */

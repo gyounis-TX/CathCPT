@@ -257,6 +257,7 @@ export const CodeGroupSettings: React.FC<CodeGroupSettingsProps> = ({
                 <span className="text-xs text-gray-500">Always enabled</span>
               </div>
             </div>
+
           </div>
         </div>
 

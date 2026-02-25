@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Building2, Calendar, Hash, ChevronDown, ChevronRight, Search, Check, Users } from 'lucide-react';
 import { logger } from '../services/logger';
-import { Inpatient, Hospital, PatientMatchResult } from '../types';
+import { Inpatient, Hospital, PatientMatchResult, SavedCase } from '../types';
 import {
   icd10Codes,
   categoryNames,
@@ -15,6 +15,7 @@ import {
 } from '../data/icd10Codes';
 import { findPatientMatches } from '../services/patientMatchingService';
 import { findRecentUnlinkedCathPatients, UnlinkedCathPatient } from '../services/chargesService';
+import { loadCaseHistoryFromFirestore } from '../services/firestoreChargesService';
 import { PatientMatchDialog } from './admin/PatientMatchDialog';
 
 interface AddPatientDialogProps {
@@ -25,6 +26,7 @@ interface AddPatientDialogProps {
   hospitals: Hospital[];
   isCrossCoverage?: boolean;
   orgId?: string;
+  caseHistory?: SavedCase[];
 }
 
 export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
@@ -34,7 +36,8 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
   onUseExisting,
   hospitals,
   isCrossCoverage = false,
-  orgId
+  orgId,
+  caseHistory = []
 }) => {
   const [patientName, setPatientName] = useState('');
   const [dob, setDob] = useState(''); // stored as YYYY-MM-DD
@@ -56,6 +59,7 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
 
   // Reverse cath linkage state
   const [cathMatches, setCathMatches] = useState<UnlinkedCathPatient[]>([]);
+  const [historyMatches, setHistoryMatches] = useState<SavedCase[]>([]);
   const [showCathMatches, setShowCathMatches] = useState(false);
   const [selectedCathMatch, setSelectedCathMatch] = useState<UnlinkedCathPatient | null>(null);
 
@@ -115,18 +119,43 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
     });
   };
 
-  // Search unlinked cath patients as user types name
-  const handleNameChange = (val: string) => {
+  // Search unlinked cath patients + case history as user types name
+  const handleNameChange = async (val: string) => {
     setPatientName(val);
     if (val.length >= 2) {
+      const lower = val.toLowerCase();
+
+      // Search unlinked cath charges (cath- prefix IDs)
       findRecentUnlinkedCathPatients().then(unlinked => {
-        const lower = val.toLowerCase();
         const matches = unlinked.filter(p => p.patientName.toLowerCase().includes(lower));
         setCathMatches(matches);
-        setShowCathMatches(matches.length > 0);
       });
+
+      // Search case history from Firestore (or local fallback) for matching patient names
+      let history = caseHistory;
+      if (history.length === 0) {
+        try {
+          if (orgId) {
+            history = await loadCaseHistoryFromFirestore(orgId);
+          }
+          if (history.length === 0) {
+            const stored = await window.storage.get('cathcpt_case_history');
+            if (stored?.value) history = JSON.parse(stored.value);
+          }
+        } catch { /* use empty */ }
+      }
+      const seen = new Set<string>();
+      const hMatches = history.filter((c: SavedCase) => {
+        if (!c.caseId.toLowerCase().includes(lower)) return false;
+        if (seen.has(c.caseId)) return false;
+        seen.add(c.caseId);
+        return true;
+      });
+      setHistoryMatches(hMatches);
+      setShowCathMatches(true);
     } else {
       setCathMatches([]);
+      setHistoryMatches([]);
       setShowCathMatches(false);
     }
   };
@@ -264,39 +293,78 @@ export const AddPatientDialog: React.FC<AddPatientDialogProps> = ({
                   required
                   autoComplete="off"
                 />
-                {/* Cath patient suggestion dropdown */}
-                {showCathMatches && cathMatches.length > 0 && (
+                {/* Patient suggestion dropdown (cath matches + case history) */}
+                {showCathMatches && (cathMatches.length > 0 || historyMatches.length > 0) && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    <div className="px-3 py-1.5 text-[10px] font-semibold text-blue-600 bg-blue-50 border-b border-gray-200">
-                      Recent Cath Lab Cases
-                    </div>
-                    {cathMatches.map(cm => (
-                      <button
-                        key={cm.inpatientKey}
-                        type="button"
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-50 last:border-b-0"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setPatientName(cm.patientName);
-                          // Auto-fill DOB from cath match (convert YYYY-MM-DD to MM/DD/YYYY display)
-                          if (cm.dob) {
-                            const [yyyy, mm, dd] = cm.dob.split('-');
-                            setDobDisplay(`${mm}/${dd}/${yyyy}`);
-                            setDob(cm.dob);
-                          }
-                          setSelectedCathMatch(cm);
-                          setShowCathMatches(false);
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">{cm.patientName}</span>
-                          <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-700 rounded">CATH</span>
+                    {cathMatches.length > 0 && (
+                      <>
+                        <div className="px-3 py-1.5 text-[10px] font-semibold text-blue-600 bg-blue-50 border-b border-gray-200">
+                          Unlinked Cath Lab Cases
                         </div>
-                        <div className="text-[11px] text-gray-500 mt-0.5">
-                          DOB: {cm.dob} &middot; {cm.charges.length} charge{cm.charges.length !== 1 ? 's' : ''} &middot; {cm.mostRecentDate}
+                        {cathMatches.map(cm => (
+                          <button
+                            key={cm.inpatientKey}
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-50 last:border-b-0"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setPatientName(cm.patientName);
+                              if (cm.dob) {
+                                const [yyyy, mm, dd] = cm.dob.split('-');
+                                setDobDisplay(`${mm}/${dd}/${yyyy}`);
+                                setDob(cm.dob);
+                              }
+                              setSelectedCathMatch(cm);
+                              setShowCathMatches(false);
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-900">{cm.patientName}</span>
+                              <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-700 rounded">CATH</span>
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              DOB: {cm.dob} &middot; {cm.charges.length} charge{cm.charges.length !== 1 ? 's' : ''} &middot; {cm.mostRecentDate}
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {historyMatches.length > 0 && (
+                      <>
+                        <div className="px-3 py-1.5 text-[10px] font-semibold text-indigo-600 bg-indigo-50 border-b border-gray-200">
+                          Recent Cath Lab Cases
                         </div>
-                      </button>
-                    ))}
+                        {historyMatches.map(hm => {
+                          const hospital = hospitals.find(h => h.name === hm.location);
+                          return (
+                            <button
+                              key={hm.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-gray-50 last:border-b-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setPatientName(hm.caseId);
+                                if (hm.patientDob) {
+                                  const [yyyy, mm, dd] = hm.patientDob.split('-');
+                                  setDobDisplay(`${mm}/${dd}/${yyyy}`);
+                                  setDob(hm.patientDob);
+                                }
+                                if (hospital) setHospitalId(hospital.id);
+                                setShowCathMatches(false);
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">{hm.caseId}</span>
+                                <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-indigo-100 text-indigo-700 rounded">CATH</span>
+                              </div>
+                              <div className="text-[11px] text-gray-500 mt-0.5">
+                                {hm.patientDob ? `DOB: ${hm.patientDob} · ` : ''}{hm.location} &middot; {new Date(hm.timestamp).toLocaleDateString()}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
                 )}
                 {/* Selected cath match indicator */}

@@ -437,7 +437,9 @@ export async function resetUnlockCounter(): Promise<void> {
 }
 
 // Check if should show dev options (5 taps on version)
+// Only available in development builds
 export async function checkUnlockDevMode(): Promise<boolean> {
+  if (!import.meta.env.DEV) return false;
   const count = await incrementUnlockCounter();
   if (count >= 5) {
     await resetUnlockCounter();

@@ -19,6 +19,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDb, isFirebaseConfigured } from './firebaseConfig';
 import { logAuditEvent } from './auditService';
 import { getPlatformName } from './platformService';
+import { logger } from './logger';
 
 // Storage keys
 const AUTH_USER_KEY = 'auth_user';

@@ -14,6 +14,7 @@ import { CallListPickerDialog } from './components/CallListPickerDialog';
 import { CodeGroupSettings } from './components/CodeGroupSettings';
 import { LockScreen } from './components/LockScreen';
 import { BiometricLoginPrompt } from './components/BiometricLoginPrompt';
+import { ConfirmDialog, useConfirmDialog } from './components/ConfirmDialog';
 import { isBiometricAvailable, getBiometricPreference } from './services/biometricService';
 import { HIPAAInlineBanner } from './components/HIPAAInlineBanner';
 // HelpPanel replaced by full-screen HelpScreen
@@ -22,13 +23,13 @@ import { SyncStatusIndicator } from './components/SyncStatusIndicator';
 import { ToastContainer } from './components/Toast';
 import { useInactivityTimer } from './hooks/useInactivityTimer';
 import { useToast, showToast } from './hooks/useToast';
-import { UserMode, Inpatient, Hospital, CathLab, CallListEntry } from './types';
+import { UserMode, Inpatient, Hospital, CathLab, CallListEntry, SavedCase } from './types';
 import { getUserMode, checkUnlockDevMode, DevModeSettings, getDevModeSettings, setDevModeUserType, disableDevMode, mockCharges } from './services/devMode';
 import { getCurrentSession, signOut, AuthUser } from './services/authService';
 import { initializeFirebase, isFirebaseConfigured } from './services/firebaseConfig';
 import { getSyncStatus, SyncStatus, processSyncQueue, setOnlineStatus } from './services/syncService';
-import { getPracticeConnection, getHospitals, getCathLabs } from './services/practiceConnection';
-import { getOrgInpatients, createInpatient, dischargeInpatient, getLocalPatients, saveLocalPatient, updateLocalPatient, onOrgInpatientsSnapshot } from './services/inpatientService';
+import { getPracticeConnection, getHospitals, getCathLabs, onHospitalsSnapshot, onCathLabsSnapshot } from './services/practiceConnection';
+import { getOrgInpatients, getAllOrgInpatients, createInpatient, updateInpatient, dischargeInpatient, getLocalPatients, saveLocalPatient, updateLocalPatient, onOrgInpatientsSnapshot } from './services/inpatientService';
 import { getCallListEntries, addToCallList, removeFromCallList, clearCallList } from './services/callListService';
 import { logAuditEvent } from './services/auditService';
 import { logger } from './services/logger';
@@ -91,6 +92,7 @@ const App: React.FC = () => {
   const [showDevOptions, setShowDevOptions] = useState(false);
   const [showCallListPicker, setShowCallListPicker] = useState(false);
   const [isCrossCoverageAdd, setIsCrossCoverageAdd] = useState(false);
+  const [preselectedCode, setPreselectedCode] = useState<string | undefined>();
 
   // Practice data
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -102,6 +104,13 @@ const App: React.FC = () => {
   // Real-time Firestore listener unsubscribe refs
   const unsubChargesRef = useRef<(() => void) | null>(null);
   const unsubPatientsRef = useRef<(() => void) | null>(null);
+  const unsubHospitalsRef = useRef<(() => void) | null>(null);
+  const unsubCathLabsRef = useRef<(() => void) | null>(null);
+
+  // Pending case to load into CathLab after re-mount (history/edit flows)
+  const pendingHistoryCaseRef = useRef<SavedCase | null>(null);
+  // Cached case history — snapshot taken before CathLab unmounts so HistoryScreen can read it
+  const cachedCaseHistoryRef = useRef<SavedCase[]>([]);
 
   // Patients state (for Rounds)
   const [patients, setPatients] = useState<Inpatient[]>([]);
@@ -127,10 +136,16 @@ const App: React.FC = () => {
   // Biometric enrollment prompt after first login
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
 
+  // Biometric gate on cold start — requires Face ID before showing app
+  const [needsBiometricOnLaunch, setNeedsBiometricOnLaunch] = useState(false);
+
   // Help is now a full-screen view via fullScreenView state
 
   // Toast notifications
   const { toasts, removeToast } = useToast();
+
+  // Confirm dialog (replaces window.confirm)
+  const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
 
   // Track previous lock state for session_locked audit
   const prevIsLockedRef = useRef(false);
@@ -254,12 +269,25 @@ const App: React.FC = () => {
       setCharges(grouped);
     });
 
-    // Patients listener — merges with local patients
+    // Patients listener — backend is source of truth; local cache is offline fallback only
     unsubPatientsRef.current = onOrgInpatientsSnapshot(orgId, async (backendPatients) => {
-      const localPatients = await getLocalPatients();
-      const backendIds = new Set(backendPatients.map(p => p.id));
-      const merged = [...backendPatients, ...localPatients.filter(p => !backendIds.has(p.id))];
-      setPatients(merged);
+      setPatients(backendPatients);
+      // Sync local cache to match backend (removes remotely-discharged patients)
+      try {
+        await window.storage.set('local_inpatients', JSON.stringify(backendPatients));
+      } catch { /* non-critical */ }
+    });
+
+    // Hospitals listener — real-time sync across org members
+    unsubHospitalsRef.current = onHospitalsSnapshot(orgId, (hospitalList) => {
+      setHospitals(hospitalList);
+      window.storage.set('admin_hospitals', JSON.stringify(hospitalList));
+    });
+
+    // Cath labs listener — real-time sync across org members
+    unsubCathLabsRef.current = onCathLabsSnapshot(orgId, (labList) => {
+      setCathLabs(labList);
+      window.storage.set('admin_cathLabs', JSON.stringify(labList));
     });
 
     return () => {
@@ -267,8 +295,31 @@ const App: React.FC = () => {
       unsubChargesRef.current = null;
       unsubPatientsRef.current?.();
       unsubPatientsRef.current = null;
+      unsubHospitalsRef.current?.();
+      unsubHospitalsRef.current = null;
+      unsubCathLabsRef.current?.();
+      unsubCathLabsRef.current = null;
     };
   }, [authUser, userMode.tier, userMode.organizationId]);
+
+  // Keep case history cache in sync while CathLab is mounted
+  useEffect(() => {
+    if (!fullScreenView && activeTab === 'cathlab' && cathCPTRef.current) {
+      cachedCaseHistoryRef.current = cathCPTRef.current.getCaseHistory();
+    }
+  }, [fullScreenView, activeTab]);
+
+  // Apply pending history case after CathLab re-mounts
+  useEffect(() => {
+    if (!fullScreenView && activeTab === 'cathlab' && pendingHistoryCaseRef.current) {
+      const savedCase = pendingHistoryCaseRef.current;
+      pendingHistoryCaseRef.current = null;
+      // Small delay to ensure ref is attached after mount
+      setTimeout(() => {
+        cathCPTRef.current?.loadFromHistory(savedCase);
+      }, 50);
+    }
+  }, [fullScreenView, activeTab]);
 
   const initializeApp = async () => {
     // Hard deadline — never stay on loading screen longer than 8 seconds
@@ -321,7 +372,18 @@ const App: React.FC = () => {
         return;
       }
 
-      // User is authenticated — continue loading app data
+      // User is authenticated — check if Face ID gate needed on launch
+      try {
+        const bioAvailable = await isBiometricAvailable();
+        const bioPref = await getBiometricPreference();
+        if (bioAvailable && bioPref) {
+          setNeedsBiometricOnLaunch(true);
+        }
+      } catch {
+        // Non-critical — skip biometric gate
+      }
+
+      // Continue loading app data
       setInitStep('loading settings...');
       try {
         const devSettings = await getDevModeSettings();
@@ -470,17 +532,24 @@ const App: React.FC = () => {
     setAuthUser(user);
     setSentryUser(user.id);
 
-    // Update user mode
-    const mode = await getUserMode(user);
-    setUserMode(mode);
+    try {
+      // Update user mode
+      const mode = await getUserMode(user);
+      setUserMode(mode);
 
-    // Load Pro data
-    if (mode.tier === 'pro' && mode.organizationId) {
-      await loadSyncStatus();
-      await loadHospitals(mode.organizationId);
-      await loadPatients(mode.organizationId);
-      await loadCallList(mode.organizationId, user.id);
-      await loadChargesAndDiagnoses(mode.organizationId);
+      // Load Pro data
+      if (mode.tier === 'pro' && mode.organizationId) {
+        await Promise.all([
+          loadSyncStatus(),
+          loadHospitals(mode.organizationId),
+          loadPatients(mode.organizationId),
+          loadCallList(mode.organizationId, user.id),
+          loadChargesAndDiagnoses(mode.organizationId)
+        ]);
+      }
+    } catch (err) {
+      logger.error('Error loading user data after login', err);
+      showToast('Some data failed to load. Pull to refresh.', 'error');
     }
 
     // Check if biometric enrollment should be offered after email/password login
@@ -534,15 +603,32 @@ const App: React.FC = () => {
     setShowAddCharge(true);
   };
 
+  const handleQuickCharge = (patient: Inpatient, code: string) => {
+    setSelectedPatientForCharge(patient);
+    setPreselectedCode(code);
+    setShowAddCharge(true);
+  };
+
+  const handleCoverPatient = (patient: Inpatient) => {
+    handleAddToCallList(patient, patient.primaryPhysicianName);
+  };
+
   const handlePracticeNameChanged = (name: string) => {
     setUserMode(prev => ({ ...prev, organizationName: name }));
   };
 
   const handleRoundsRefresh = async () => {
-    const orgId = userMode.organizationId;
-    await loadPatients(orgId);
-    await loadCallList(orgId, authUser?.id || 'user-1');
-    await loadChargesAndDiagnoses(orgId);
+    try {
+      const orgId = userMode.organizationId;
+      await Promise.all([
+        loadPatients(orgId),
+        loadCallList(orgId, authUser?.id || 'user-1'),
+        loadChargesAndDiagnoses(orgId)
+      ]);
+    } catch (err) {
+      logger.error('Error refreshing rounds data', err);
+      showToast('Refresh failed. Check your connection.', 'error');
+    }
   };
 
   const handlePatientSave = async (patient: Omit<Inpatient, 'id' | 'createdAt' | 'organizationId' | 'primaryPhysicianId'>, diagnoses: string[], cathMatchKey?: string) => {
@@ -550,18 +636,41 @@ const App: React.FC = () => {
     const userId = authUser?.id || 'user-1';
     const userName = authUser?.displayName || 'Unknown';
 
-    // Create patient via backend (Firestore or mock) + local backup
-    const newPatient = await createInpatient(orgId, {
-      ...patient,
-      organizationId: orgId,
-      primaryPhysicianId: userId,
-      primaryPhysicianName: userName,
-      isActive: true
-    });
+    // Check for a discharged patient with same name+DOB — reactivate instead of creating duplicate
+    let newPatient: Inpatient | null = null;
+    try {
+      const allPatients = await getAllOrgInpatients(orgId);
+      const discharged = allPatients.find(p =>
+        !p.isActive &&
+        p.patientName === patient.patientName &&
+        p.dob === patient.dob
+      );
+      if (discharged) {
+        await updateInpatient(orgId, discharged.id, {
+          isActive: true,
+          dischargedAt: null,
+          hospitalId: patient.hospitalId,
+          hospitalName: patient.hospitalName,
+          primaryPhysicianId: userId,
+          primaryPhysicianName: userName,
+        });
+        newPatient = { ...discharged, isActive: true, hospitalId: patient.hospitalId || discharged.hospitalId, hospitalName: patient.hospitalName || discharged.hospitalName, primaryPhysicianId: userId, primaryPhysicianName: userName };
+      }
+    } catch { /* fall through to create */ }
+
+    if (!newPatient) {
+      newPatient = await createInpatient(orgId, {
+        ...patient,
+        organizationId: orgId,
+        primaryPhysicianId: userId,
+        primaryPhysicianName: userName,
+        isActive: true
+      });
+    }
     await saveLocalPatient(newPatient);
 
-    // Add patient to state
-    setPatients(prev => [...prev, newPatient]);
+    // Add patient to state (guard against snapshot listener already adding it)
+    setPatients(prev => prev.some(p => p.id === newPatient.id) ? prev : [...prev, newPatient]);
 
     // Save diagnoses for the new patient
     if (diagnoses.length > 0) {
@@ -631,7 +740,8 @@ const App: React.FC = () => {
     });
     await saveLocalPatient(newPatient);
 
-    setPatients(prev => [...prev, newPatient]);
+    // Guard against snapshot listener already adding the patient
+    setPatients(prev => prev.some(p => p.id === newPatient.id) ? prev : [...prev, newPatient]);
 
     if (diagnoses.length > 0) {
       setPatientDiagnoses(prev => ({
@@ -814,8 +924,9 @@ const App: React.FC = () => {
     // Check for concurrent visits
     const concurrentWarning = await checkConcurrentVisit(patientId, dateStr, currentUserId);
     if (concurrentWarning) {
-      const proceed = window.confirm(
-        `${concurrentWarning.physicianName} already has a charge for this patient on this date. Concurrent care is common — continue?`
+      const proceed = await confirm(
+        'Concurrent Care',
+        `${concurrentWarning.physicianName} already has a charge for this patient on this date.\n\nConcurrent care is common — continue?`
       );
       if (!proceed) {
         return;
@@ -1029,6 +1140,23 @@ const App: React.FC = () => {
     );
   }
 
+  // Biometric gate on cold start — Face ID required before accessing app
+  if (needsBiometricOnLaunch) {
+    return (
+      <LockScreen
+        userEmail={authUser.email}
+        userId={authUser.id}
+        orgId={userMode.organizationId || undefined}
+        authProvider={authUser.authProvider}
+        onUnlock={() => {
+          setNeedsBiometricOnLaunch(false);
+          unlockSession(); // reset inactivity timer
+        }}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   // Show lock screen when session is locked (all authenticated users, HIPAA)
   if (isLocked) {
     return (
@@ -1050,7 +1178,7 @@ const App: React.FC = () => {
   const showTabBar = showRoundsTab || showAdminTab;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="flex flex-col bg-gray-50" style={{ height: '100dvh' }}>
       {/* === FIXED HEADER === */}
       <div className="flex-shrink-0">
         {/* Offline Banner */}
@@ -1109,7 +1237,11 @@ const App: React.FC = () => {
             )}
             {/* History */}
             <button
-              onClick={() => setFullScreenView('history')}
+              onClick={() => {
+                // Cache case history before CathLab unmounts (ref goes null)
+                cachedCaseHistoryRef.current = cathCPTRef.current?.getCaseHistory() || cachedCaseHistoryRef.current;
+                setFullScreenView('history');
+              }}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="Case History"
             >
@@ -1226,9 +1358,10 @@ const App: React.FC = () => {
         {fullScreenView === 'history' && (
           <HistoryScreen
             onClose={() => setFullScreenView(null)}
-            caseHistory={cathCPTRef.current?.getCaseHistory() || []}
+            caseHistory={cachedCaseHistoryRef.current}
             onLoadCase={(savedCase) => {
-              cathCPTRef.current?.loadFromHistory(savedCase);
+              pendingHistoryCaseRef.current = savedCase;
+              setActiveTab('cathlab');
               setFullScreenView(null);
               setCathLabBottomTab('addcase');
             }}
@@ -1296,6 +1429,8 @@ const App: React.FC = () => {
               onEditCharge={handleEditCharge}
               onMarkChargeBilled={handleMarkChargeBilled}
               onRemoveFromMyList={handleRemoveFromMyList}
+              onQuickCharge={handleQuickCharge}
+              onCoverPatient={handleCoverPatient}
             />
         )}
         {!fullScreenView && activeTab === 'admin' && (
@@ -1369,6 +1504,7 @@ const App: React.FC = () => {
         onSave={handlePatientSave}
         hospitals={hospitals}
         isCrossCoverage={isCrossCoverageAdd}
+        caseHistory={cachedCaseHistoryRef.current}
       />
 
       <AddChargeDialog
@@ -1377,6 +1513,7 @@ const App: React.FC = () => {
           setShowAddCharge(false);
           setSelectedPatientForCharge(null);
           setEditingCharge(null);
+          setPreselectedCode(undefined);
         }}
         patient={selectedPatientForCharge}
         isFirstEncounter={!charges[selectedPatientForCharge?.id || ''] || Object.keys(charges[selectedPatientForCharge?.id || ''] || {}).length === 0}
@@ -1385,6 +1522,7 @@ const App: React.FC = () => {
         onSave={handleChargeSave}
         editingCharge={editingCharge}
         onUpdate={handleUpdateCharge}
+        preselectedCode={preselectedCode}
       />
 
       <CodeGroupSettings
@@ -1463,6 +1601,9 @@ const App: React.FC = () => {
       {showBiometricPrompt && (
         <BiometricLoginPrompt onComplete={() => setShowBiometricPrompt(false)} />
       )}
+
+      {/* Confirm Dialog (native-style replacement for window.confirm) */}
+      <ConfirmDialog {...confirmDialogProps} />
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />

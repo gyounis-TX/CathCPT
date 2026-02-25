@@ -29,6 +29,10 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, userId, orgId
 
   const isSocialAuth = authProvider === 'apple.com' || authProvider === 'google.com';
 
+  // Stable ref to avoid stale closure in mount effect
+  const onUnlockRef = React.useRef(onUnlock);
+  onUnlockRef.current = onUnlock;
+
   // Check biometric availability on mount
   useEffect(() => {
     const checkBiometric = async () => {
@@ -44,7 +48,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ userEmail, userId, orgId
         const success = await authenticateWithBiometric();
         if (success) {
           logUnlock('biometric');
-          onUnlock();
+          onUnlockRef.current();
         }
       }
     };

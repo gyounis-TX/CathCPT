@@ -39,7 +39,8 @@ export const cptCategories: Record<string, CPTCode[]> = {
     { code: '93571', summary: 'FFR/CFR initial vessel', description: 'Intravascular Doppler velocity and/or pressure derived coronary flow reserve measurement (coronary vessel or graft) during coronary angiography including pharmacologically induced stress, when performed; initial vessel', isAddOn: true, requiresVessel: true },
     { code: '93572', summary: 'FFR/CFR each additional vessel', description: 'Intravascular Doppler velocity and/or pressure derived coronary flow reserve measurement (coronary vessel or graft) during coronary angiography including pharmacologically induced stress, when performed; each additional vessel', isAddOn: true, requiresVessel: true },
     { code: '0523T', summary: 'OCT initial vessel', description: 'Intravascular coronary optical coherence tomography (OCT), initial vessel (List separately in addition to code for primary procedure)', isAddOn: true, requiresVessel: true },
-    { code: '0524T', summary: 'OCT each additional vessel', description: 'Intravascular coronary optical coherence tomography (OCT), each additional vessel (List separately in addition to code for primary procedure)', isAddOn: true, requiresVessel: true }
+    { code: '0524T', summary: 'OCT each additional vessel', description: 'Intravascular coronary optical coherence tomography (OCT), each additional vessel (List separately in addition to code for primary procedure)', isAddOn: true, requiresVessel: true },
+    { code: '93662', summary: 'Intracardiac echo (ICE) (add-on)', description: 'Intracardiac echocardiography during therapeutic/diagnostic intervention, including imaging supervision and interpretation (List separately in addition to code for primary procedure)', isAddOn: true }
   ],
   'TAVR': [
     { code: '33361', summary: 'TAVR, percutaneous femoral', description: 'TAVR, percutaneous femoral artery access' },
