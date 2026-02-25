@@ -23,6 +23,7 @@ const emCodeRanges: [number, number][] = [
 const specificEMCodes = new Set([
   '99221', '99222', '99223',  // Initial hospital
   '99231', '99232', '99233',  // Subsequent hospital
+  '99224', '99225', '99226',  // Observation subsequent
   '99238', '99239',           // Discharge
   '99251', '99252', '99253', '99254', '99255',  // Consults
   '99291', '99292',           // Critical care
@@ -317,6 +318,11 @@ export const addOnCodePrimaries: Record<string, string[]> = {
   '93623': ['93619', '93620', '93653', '93654', '93656'],
   '93655': ['93653', '93654', '93656'],
   '93657': ['93656'],
+  // ICE (intracardiac echo) — used with EP ablation, structural procedures
+  '93662': ['93653', '93654', '93656', '93619', '93620',
+            '93580', '93581', '93582', '93590', '93592',
+            '33361', '33362', '33363', '33364', '33365', '33366',
+            '33418', '33419', '0569T'],
   // Cath add-ons
   '93462': ['93451', '93452', '93453', '93458', '93459', '93460', '93461'],
   '93463': ['93451', '93452', '93453', '93458', '93459', '93460', '93461'],
@@ -342,6 +348,14 @@ export const echoMutualExclusionPairs: [string, string, string][] = [
   ['93306', '93304', 'Complete TTE with Doppler (93306) and follow-up TTE (93304) cannot be billed together'],
   ['93350', '93351', 'Stress echo without Doppler (93350) and stress echo with Doppler (93351) are mutually exclusive'],
   ['93312', '93314', 'Standard TEE (93312) and TEE with probe placement (93314) are mutually exclusive'],
+  // Stress echo includes resting echo images — cannot bill resting TTE separately
+  ['93306', '93350', 'Complete TTE with Doppler (93306) and stress echo (93350) — resting echo images are included in the stress echo. Bill the stress echo code only unless the resting TTE was a distinct, separately indicated study (requires -59 with documentation).'],
+  ['93306', '93351', 'Complete TTE with Doppler (93306) and stress echo with Doppler (93351) — resting echo with Doppler is included in 93351. Bill 93351 only unless the resting TTE was a distinct study (requires -59).'],
+  ['93307', '93350', 'TTE without Doppler (93307) and stress echo (93350) — resting echo is included in stress echo.'],
+  ['93307', '93351', 'TTE without Doppler (93307) and stress echo with Doppler (93351) — resting echo is included in stress echo.'],
+  ['93303', '93350', 'Initial TTE (93303) and stress echo (93350) — resting echo is included in stress echo.'],
+  ['93303', '93351', 'Initial TTE (93303) and stress echo with Doppler (93351) — resting echo is included in stress echo.'],
+  ['93304', '93351', 'Follow-up TTE (93304) and stress echo with Doppler (93351) — resting echo components are included in stress echo.'],
 ];
 
 // ==================== Critical Care Bundled Procedures ====================
@@ -561,6 +575,15 @@ export const emTimeThresholds: Record<string, { minMinutes: number; maxMinutes?:
   '99234': { minMinutes: 45, label: 'Observation same-day, low complexity' },
   '99235': { minMinutes: 70, label: 'Observation same-day, moderate complexity' },
   '99236': { minMinutes: 90, label: 'Observation same-day, high complexity' },
+  // Observation subsequent day visits
+  '99224': { minMinutes: 25, label: 'Observation subsequent, low complexity' },
+  '99225': { minMinutes: 35, label: 'Observation subsequent, moderate complexity' },
+  '99226': { minMinutes: 50, label: 'Observation subsequent, high complexity' },
+  // Prolonged services thresholds
+  '99354': { minMinutes: 60, label: 'Prolonged outpatient, first hour' },
+  '99355': { minMinutes: 30, label: 'Prolonged outpatient, each additional 30 min' },
+  '99356': { minMinutes: 60, label: 'Prolonged inpatient, first hour' },
+  '99357': { minMinutes: 30, label: 'Prolonged inpatient, each additional 30 min' },
 };
 
 // ==================== Consult & Initial Hospital Code Sets ====================
@@ -614,6 +637,7 @@ export const emLevelFamilies: { family: string; codes: string[] }[] = [
   { family: 'Discharge Management', codes: ['99238', '99239'] },
   { family: 'Inpatient Consult', codes: ['99251', '99252', '99253', '99254', '99255'] },
   { family: 'Observation Same-Day', codes: ['99234', '99235', '99236'] },
+  { family: 'Observation Subsequent', codes: ['99224', '99225', '99226'] },
 ];
 
 // ==================== Prior Authorization Required Procedures ====================
@@ -789,6 +813,14 @@ export const ncdRules: NCDRule[] = [
     requiredDiagnosisPrefixes: ['I48'],
     clinicalCriteria: 'Non-valvular AF, CHA₂DS₂-VASc ≥3, documented contraindication to long-term anticoagulation, heart team recommendation.',
     documentationChecklist: 'CHA₂DS₂-VASc score calculation, reason for anticoagulation contraindication, heart team/multidisciplinary note, AF documentation.'
+  },
+  {
+    id: 'ncd-paravalvular-leak',
+    name: 'Paravalvular Leak Closure Coverage',
+    procedures: ['93592'],
+    requiredDiagnosisPrefixes: ['T82.0', 'T82.5', 'I38', 'T82.6'],
+    clinicalCriteria: 'Symptomatic paravalvular regurgitation post valve replacement/repair, high surgical risk for redo operation, documented hemolysis or heart failure from paravalvular leak.',
+    documentationChecklist: 'Prior valve surgery documentation, echo showing paravalvular leak location and severity, symptom documentation (heart failure, hemolysis), surgical risk assessment for redo.'
   },
   {
     id: 'ncd-pfo-closure',
@@ -1103,3 +1135,90 @@ export const atherectomyDeviceDocuirements = [
   'For laser atherectomy: report catheter size and fluence/rate settings',
   'Document lesion characteristics requiring atherectomy (severe calcification, fibrotic plaque, undilatable lesion)',
 ];
+
+// ==================== Observation Subsequent Codes ====================
+
+export const observationSubsequentCodes = new Set(['99224', '99225', '99226']);
+
+export function isObservationSubsequentCode(code: string): boolean {
+  return observationSubsequentCodes.has(code);
+}
+
+// ==================== Temp Pacemaker Bundling ====================
+// Temporary pacemaker placement during cath/EP may be bundled
+
+export const tempPacemakerCodes = new Set(['33210', '33211']);
+
+/** Procedures that inherently include temp pacemaker management during the case */
+export const tempPacerBundledWith = new Set([
+  // TAVR — temp pacer is routinely placed and considered part of the TAVR procedure
+  '33361', '33362', '33363', '33364', '33365', '33366',
+  // EP ablation — temp pacer access is part of the EP procedure
+  '93653', '93654', '93656',
+]);
+
+// ==================== Access Site Code Bundling ====================
+// Vascular access codes bundled into catheterization procedures
+
+export const accessSiteCodes = new Set(['36000', '36140']);
+
+/** Procedures where vascular access is inherent and not separately billable */
+export const accessSiteBundledProcedures = new Set([
+  // Diagnostic cath — access is inherent
+  '93451', '93452', '93453', '93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461',
+  // PCI — access is inherent
+  '92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945',
+  // EP procedures
+  '93653', '93654', '93656', '93619', '93620',
+  // Device implants
+  '33206', '33207', '33208', '33249', '33240', '33274',
+  // Structural
+  '93580', '93581', '93582', '93590', '33361', '33362', '33363', '33364', '33365', '33366',
+]);
+
+// ==================== Medicare Consult Code Restrictions ====================
+
+export const consultPayerAwareness =
+  'Payer alert: Medicare does not reimburse inpatient consultation codes (99251-99255). For Medicare patients, use initial hospital care codes (99221-99223) instead. Most commercial payers and Medicaid DO still pay for consults. Verify the patient\'s insurance before selecting consult vs initial hospital care codes.';
+
+// ==================== Echo + Cath Same-Day Guidance ====================
+// When echo interpretation and cardiac cath are performed same day by same physician
+
+export const echoCathSameDayGuidance = {
+  echoInterpCodes: new Set(['93306', '93307', '93308', '93303', '93304', '93312', '93314', '93315']),
+  cathProcCodes: new Set([
+    '93451', '93452', '93453', '93454', '93455', '93456', '93457', '93458', '93459', '93460', '93461',
+    '92920', '92924', '92928', '92930', '92933', '92937', '92941', '92943', '92945',
+  ]),
+  guidance: 'Echo interpretation and cardiac catheterization/PCI on the same day for the same patient — if the echo was a distinct diagnostic study (not intraprocedural TEE), the E/M associated with the echo should carry modifier -25. The echo itself is separately billable with -26 (professional component) if interpreted at the hospital.',
+};
+
+// ==================== Contrast Echo Indication Codes ====================
+// 93352 (contrast echo) requires documented indication
+
+export const contrastEchoCode = '93352';
+export const contrastEchoIndications = [
+  'Suboptimal endocardial border definition on non-contrast images (≥2 contiguous segments)',
+  'LV opacification for accurate EF measurement when standard images are suboptimal',
+  'Enhancement of Doppler signals when technically inadequate',
+  'Rule out LV thrombus when standard images are inconclusive',
+  'Assessment of myocardial perfusion (stress echo only)',
+];
+
+// ==================== Limited vs Complete Echo Guidance ====================
+
+export const echoCompletenessCodes = {
+  complete: new Set(['93306', '93303']),    // Complete TTE codes
+  limited: new Set(['93308', '93304']),     // Limited/follow-up TTE codes
+  completeGuidance: 'Complete TTE (93306/93303) requires documentation of all standard views and measurements per ASE guidelines. If only targeted views were obtained, a limited study (93308) may be more appropriate.',
+  limitedGuidance: 'Limited/follow-up TTE (93308/93304) is appropriate when: (1) focused assessment of a known condition, (2) targeted views for a specific clinical question, or (3) follow-up of a previously documented finding. If a comprehensive assessment was performed, upgrade to 93306.',
+};
+
+// ==================== EP + TEE Same-Day Rules ====================
+
+export const epTEEGuidance = {
+  epProcedures: new Set(['93653', '93654', '93656']),
+  teeGuided: '93355',   // 3D TEE structural
+  teeDiagnostic: new Set(['93312', '93314', '93315']),
+  guidance: 'TEE during EP ablation: Use 93355 (3D TEE for structural guidance) if TEE was used for intraprocedural guidance during ablation (e.g., AF ablation with TEE for transseptal puncture and LA anatomy). If TEE was a separate diagnostic study (e.g., to rule out LAA thrombus pre-ablation), use 93312/93314 with documentation of the distinct diagnostic indication.',
+};

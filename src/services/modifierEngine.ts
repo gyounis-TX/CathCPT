@@ -73,6 +73,19 @@ import {
   unsuccessfulPCICode,
   atherectomyCodes,
   atherectomyDeviceDocuirements,
+  observationSubsequentCodes,
+  isObservationSubsequentCode,
+  tempPacemakerCodes,
+  tempPacerBundledWith,
+  accessSiteCodes,
+  accessSiteBundledProcedures,
+  echoCathSameDayGuidance,
+  contrastEchoCode,
+  contrastEchoIndications,
+  echoCompletenessCodes,
+  epTEEGuidance,
+  observationCodes,
+  isObservationCode,
 } from '../data/codeDomains';
 import { validateDiagnosisCpt } from '../data/diagnosisCptRules';
 import { StoredCharge, CaseSnapshot } from './chargesService';
@@ -205,6 +218,12 @@ export function validateChargeContext(
   // 21. Atherectomy device documentation — device type and technique
   checkAtherectomyDocumentation(code, warnings);
 
+  // 22. Limited vs complete echo documentation guidance
+  checkEchoCompletenessGuidance(code, warnings);
+
+  // 23. Contrast echo indication validation
+  checkContrastEchoIndication(code, warnings);
+
   return { suggestions, warnings, errors, scrubbed: true };
 }
 
@@ -310,6 +329,15 @@ export function validateChargeCodes(codes: string[]): ValidationResult {
   // 28. ECMO initiation + cannula pairing
   checkECMOCannulaPairing(cleanCodes, warnings);
 
+  // 29. Temp pacemaker bundling — 33210/33211 bundled into TAVR and EP ablation
+  checkTempPacemakerBundling(cleanCodes, warnings);
+
+  // 30. Access site code bundling — 36000/36140 bundled into cath/PCI/EP
+  checkAccessSiteBundling(cleanCodes, errors);
+
+  // 31. Observation + critical care same-day mutual exclusion
+  checkObservationCriticalCareExclusion(cleanCodes, errors);
+
   return { suggestions, warnings, errors, scrubbed: true };
 }
 
@@ -347,6 +375,9 @@ export function validateCrossChargeModifiers(
 
   // Current charge has E/M, other charges have procedures
   if (currentEMCodes.length > 0 && otherProcCodes.length > 0) {
+    // Check if any other procedure has a 90-day global period
+    const otherHas90DayGlobal = otherProcCodes.some(c => (globalPeriodDays[c] || 0) >= 90);
+
     for (const emCode of currentEMCodes) {
       if (isDischargeCode(emCode)) {
         suggestions.push({
@@ -356,6 +387,16 @@ export function validateCrossChargeModifiers(
           confidence: 'required',
           autoApplied: true,
           ruleId: 'cross-charge-discharge-procedure-25'
+        });
+      } else if (otherHas90DayGlobal && (isInitialHospitalCode(emCode) || isConsultCode(emCode))) {
+        // E/M + 90-day global procedure across charges → suggest -57
+        suggestions.push({
+          code: emCode,
+          modifier: '-57',
+          reason: `E/M code ${emCode} billed same day as major procedure (90-day global) on separate charge. Modifier -57 if this E/M resulted in the decision to perform surgery; -25 if a separately identifiable service unrelated to the surgical decision.`,
+          confidence: 'required',
+          autoApplied: false,
+          ruleId: 'cross-charge-em-major-procedure-57'
         });
       } else {
         suggestions.push({
@@ -689,6 +730,26 @@ export function preBillingScrub(
     checkMCSPCIPairing(group, results);
   }
 
+  // Cross-charge: Echo + cath same-day modifier guidance
+  for (const [, group] of groups) {
+    checkEchoCathSameDay(group, results);
+  }
+
+  // Cross-charge: Multiple E/M same day across charges
+  for (const [, group] of groups) {
+    checkMultipleEMSameDay(group, results);
+  }
+
+  // Cross-charge: Echo + EP same-day TEE rules
+  for (const [, group] of groups) {
+    checkEchoPlusEPSameDay(group, results);
+  }
+
+  // Cross-date: Pre-operative day global period check
+  for (const [, pCharges] of patientCharges) {
+    checkPreOperativeDayGlobalPeriod(pCharges, results);
+  }
+
   return results;
 }
 
@@ -755,18 +816,33 @@ function checkEMPlusProcedure(
   const procCodes = codes.filter(isProcedureCode);
 
   if (emCodes.length > 0 && procCodes.length > 0) {
+    // Check if any procedure has a 90-day global period → -57 may be appropriate instead of -25
+    const has90DayGlobal = procCodes.some(c => (globalPeriodDays[c] || 0) >= 90);
+
     for (const emCode of emCodes) {
       // Don't double-suggest if already handled by NCCI
-      const alreadySuggested = suggestions.some(s => s.code === emCode && s.modifier === '-25');
+      const alreadySuggested = suggestions.some(s => s.code === emCode && (s.modifier === '-25' || s.modifier === '-57'));
       if (!alreadySuggested) {
-        suggestions.push({
-          code: emCode,
-          modifier: '-25',
-          reason: `E/M code ${emCode} billed with procedure code(s) ${procCodes.join(', ')} on the same charge. Modifier -25 indicates a separately identifiable E/M service.`,
-          confidence: 'required',
-          autoApplied: true,
-          ruleId: 'em-plus-procedure-25'
-        });
+        if (has90DayGlobal && (isInitialHospitalCode(emCode) || isConsultCode(emCode))) {
+          // E/M + 90-day global procedure: suggest -57 (decision for surgery)
+          suggestions.push({
+            code: emCode,
+            modifier: '-57',
+            reason: `E/M code ${emCode} billed with major procedure (90-day global period). Modifier -57 indicates this E/M resulted in the initial decision to perform surgery. Use -57 if the E/M led to the procedure decision; use -25 if the E/M was a separately identifiable service unrelated to the procedure decision.`,
+            confidence: 'required',
+            autoApplied: false,
+            ruleId: 'em-plus-major-procedure-57'
+          });
+        } else {
+          suggestions.push({
+            code: emCode,
+            modifier: '-25',
+            reason: `E/M code ${emCode} billed with procedure code(s) ${procCodes.join(', ')} on the same charge. Modifier -25 indicates a separately identifiable E/M service.`,
+            confidence: 'required',
+            autoApplied: true,
+            ruleId: 'em-plus-procedure-25'
+          });
+        }
       }
     }
   }
@@ -2103,6 +2179,258 @@ function checkMCSPCIPairing(
         existing.warnings.push(
           `${device} (${mcsCode}) and PCI billed on the same date. ${device} insertion during PCI is separately billable — ensure the ${device} has its own charge record. Document hemodynamic indication for MCS (cardiogenic shock, high-risk PCI, unprotected left main, severely depressed EF).`
         );
+      }
+    }
+  }
+}
+
+// ==================== Within-Charge Checks 29-31 ====================
+
+/** 29. Temp pacemaker bundling — 33210/33211 bundled into TAVR and EP ablation */
+function checkTempPacemakerBundling(codes: string[], warnings: string[]): void {
+  const tempPacerPresent = codes.filter(c => tempPacemakerCodes.has(c));
+  if (tempPacerPresent.length === 0) return;
+
+  const bundledProcs = codes.filter(c => tempPacerBundledWith.has(c));
+  if (bundledProcs.length > 0) {
+    for (const tp of tempPacerPresent) {
+      warnings.push(
+        `Temporary pacemaker (${tp}) may be bundled into ${bundledProcs.join(', ')}. For TAVR, temp pacemaker placement for rapid pacing is considered part of the TAVR procedure and is not separately billable. For EP ablation, temporary pacing during the study is part of the EP procedure. Only bill separately if the temp pacer was placed for a distinct clinical indication unrelated to the primary procedure.`
+      );
+    }
+  }
+}
+
+/** 30. Access site code bundling — 36000/36140 bundled into cath/PCI/EP */
+function checkAccessSiteBundling(codes: string[], errors: string[]): void {
+  const accessCodesPresent = codes.filter(c => accessSiteCodes.has(c));
+  if (accessCodesPresent.length === 0) return;
+
+  const bundledProcs = codes.filter(c => accessSiteBundledProcedures.has(c));
+  if (bundledProcs.length > 0) {
+    for (const ac of accessCodesPresent) {
+      errors.push(
+        `Access site code ${ac} is bundled into ${bundledProcs.join(', ')} — vascular access is included in the catheterization/procedure description and is not separately billable. Remove ${ac} before billing.`
+      );
+    }
+  }
+}
+
+/** 31. Observation + critical care same-day mutual exclusion */
+function checkObservationCriticalCareExclusion(codes: string[], errors: string[]): void {
+  const hasObservation = codes.some(c => observationCodes.has(c));
+  const hasCriticalCare = codes.some(isCriticalCareCode);
+
+  if (hasObservation && hasCriticalCare) {
+    const obsCodes = codes.filter(c => observationCodes.has(c));
+    const ccCodes = codes.filter(isCriticalCareCode);
+    errors.push(
+      `Observation same-day codes (${obsCodes.join(', ')}) and critical care (${ccCodes.join(', ')}) cannot be billed together on the same charge. If the patient required critical care during observation, bill critical care codes only — the observation E/M is included in critical care time.`
+    );
+  }
+}
+
+// ==================== Context-Aware Checks 22-24 ====================
+
+/** 22. Limited vs complete echo documentation guidance */
+function checkEchoCompletenessGuidance(code: string, warnings: string[]): void {
+  if (echoCompletenessCodes.limited.has(code)) {
+    warnings.push(
+      `${echoCompletenessCodes.limitedGuidance}`
+    );
+  }
+}
+
+/** 23. Contrast echo indication validation */
+function checkContrastEchoIndication(code: string, warnings: string[]): void {
+  if (code !== contrastEchoCode) return;
+  warnings.push(
+    `Contrast echo (${code}) requires documented indication: ${contrastEchoIndications.join('; ')}. Without documented indication for contrast use, this add-on may be denied.`
+  );
+}
+
+// ==================== New Cross-Charge Checks ====================
+
+/** Cross-charge: Echo + cardiac cath same-day modifier guidance */
+function checkEchoCathSameDay(
+  sameDayCharges: StoredCharge[],
+  results: Map<string, ValidationResult>
+): void {
+  if (sameDayCharges.length < 2) return;
+
+  const echoCharges: StoredCharge[] = [];
+  const cathCharges: StoredCharge[] = [];
+
+  for (const charge of sameDayCharges) {
+    const code = stripModifier(charge.cptCode);
+    if (echoCathSameDayGuidance.echoInterpCodes.has(code)) echoCharges.push(charge);
+    if (echoCathSameDayGuidance.cathProcCodes.has(code)) cathCharges.push(charge);
+  }
+
+  if (echoCharges.length > 0 && cathCharges.length > 0) {
+    for (const echoCharge of echoCharges) {
+      const existing = results.get(echoCharge.id);
+      if (existing) {
+        const echoCode = stripModifier(echoCharge.cptCode);
+        existing.warnings.push(
+          `Echo interpretation (${echoCode}) and cardiac catheterization/PCI on the same day. ${echoCathSameDayGuidance.guidance}`
+        );
+      }
+    }
+  }
+}
+
+/** Cross-charge: Multiple E/M same day across separate charges */
+function checkMultipleEMSameDay(
+  sameDayCharges: StoredCharge[],
+  results: Map<string, ValidationResult>
+): void {
+  if (sameDayCharges.length < 2) return;
+
+  // Find all E/M charges (excluding add-ons like 99292, 99355, 99357)
+  const emCharges: StoredCharge[] = [];
+  const emAddOnCodes = new Set(['99292', '99355', '99357', '99417']);
+
+  for (const charge of sameDayCharges) {
+    const code = stripModifier(charge.cptCode);
+    if (isEMCode(code) && !emAddOnCodes.has(code) && !isCriticalCareCode(code)) {
+      emCharges.push(charge);
+    }
+  }
+
+  if (emCharges.length < 2) return;
+
+  // Check for incompatible E/M codes across charges
+  const hasInitial = emCharges.some(c => isInitialHospitalCode(stripModifier(c.cptCode)));
+  const hasSubsequent = emCharges.some(c => isSubsequentHospitalCode(stripModifier(c.cptCode)));
+  const hasConsult = emCharges.some(c => isConsultCode(stripModifier(c.cptCode)));
+  const hasDischarge = emCharges.some(c => isDischargeCode(stripModifier(c.cptCode)));
+  const hasObsSameDay = emCharges.some(c => observationCodes.has(stripModifier(c.cptCode)));
+  const hasObsSubsequent = emCharges.some(c => observationSubsequentCodes.has(stripModifier(c.cptCode)));
+
+  // Initial + Subsequent = error
+  if (hasInitial && hasSubsequent) {
+    for (const charge of emCharges) {
+      const code = stripModifier(charge.cptCode);
+      if (isSubsequentHospitalCode(code)) {
+        const existing = results.get(charge.id);
+        if (existing) {
+          existing.errors.push(
+            `Subsequent hospital care (${code}) on separate charge from initial hospital care on the same date. Cannot bill both — use only the initial hospital care code on the first encounter date.`
+          );
+        }
+      }
+    }
+  }
+
+  // Consult + Initial = error
+  if (hasConsult && hasInitial) {
+    for (const charge of emCharges) {
+      const code = stripModifier(charge.cptCode);
+      if (isInitialHospitalCode(code)) {
+        const existing = results.get(charge.id);
+        if (existing) {
+          existing.errors.push(
+            `Initial hospital care (${code}) on separate charge from inpatient consult on the same date. Cannot bill both — use either the consult code OR initial hospital care, not both.`
+          );
+        }
+      }
+    }
+  }
+
+  // Observation same-day + discharge = error (observation includes discharge)
+  if (hasObsSameDay && hasDischarge) {
+    for (const charge of emCharges) {
+      const code = stripModifier(charge.cptCode);
+      if (isDischargeCode(code)) {
+        const existing = results.get(charge.id);
+        if (existing) {
+          existing.errors.push(
+            `Discharge code (${code}) on separate charge from observation same-day code on the same date. Observation same-day codes (99234-99236) already include both admission and discharge — do not bill discharge separately.`
+          );
+        }
+      }
+    }
+  }
+
+  // Observation subsequent + initial = error
+  if (hasObsSubsequent && hasInitial) {
+    for (const charge of emCharges) {
+      const code = stripModifier(charge.cptCode);
+      if (isInitialHospitalCode(code)) {
+        const existing = results.get(charge.id);
+        if (existing) {
+          existing.errors.push(
+            `Initial hospital care (${code}) and observation subsequent code on the same date — these are mutually exclusive. Use observation codes for patients in observation status.`
+          );
+        }
+      }
+    }
+  }
+}
+
+/** Cross-charge: Echo + EP same-day TEE rules */
+function checkEchoPlusEPSameDay(
+  sameDayCharges: StoredCharge[],
+  results: Map<string, ValidationResult>
+): void {
+  if (sameDayCharges.length < 2) return;
+
+  const epCharges: StoredCharge[] = [];
+  const teeCharges: StoredCharge[] = [];
+
+  for (const charge of sameDayCharges) {
+    const code = stripModifier(charge.cptCode);
+    if (epTEEGuidance.epProcedures.has(code)) epCharges.push(charge);
+    if (epTEEGuidance.teeDiagnostic.has(code) || code === epTEEGuidance.teeGuided) teeCharges.push(charge);
+  }
+
+  if (epCharges.length > 0 && teeCharges.length > 0) {
+    for (const teeCharge of teeCharges) {
+      const existing = results.get(teeCharge.id);
+      if (existing) {
+        existing.warnings.push(epTEEGuidance.guidance);
+      }
+    }
+  }
+}
+
+/** Cross-date: Pre-operative day global period check */
+function checkPreOperativeDayGlobalPeriod(
+  patientCharges: StoredCharge[],
+  results: Map<string, ValidationResult>
+): void {
+  // Find procedure charges with 90-day global periods
+  const majorProcedures: { charge: StoredCharge; code: string }[] = [];
+  for (const charge of patientCharges) {
+    const code = stripModifier(charge.cptCode);
+    if ((globalPeriodDays[code] || 0) >= 90) {
+      majorProcedures.push({ charge, code });
+    }
+  }
+
+  if (majorProcedures.length === 0) return;
+
+  // Check for E/M charges on the day BEFORE a 90-day global procedure
+  for (const charge of patientCharges) {
+    const chargeCode = stripModifier(charge.cptCode);
+    if (!isEMCode(chargeCode)) continue;
+
+    const chargeDate = new Date(charge.chargeDate + 'T00:00:00');
+
+    for (const { charge: procCharge, code: procCode } of majorProcedures) {
+      if (procCharge.id === charge.id) continue;
+      const procDate = new Date(procCharge.chargeDate + 'T00:00:00');
+      const daysBefore = Math.floor((procDate.getTime() - chargeDate.getTime()) / 86400000);
+
+      // Day before the procedure (pre-operative day)
+      if (daysBefore === 1) {
+        const existing = results.get(charge.id);
+        if (existing) {
+          existing.warnings.push(
+            `E/M ${chargeCode} billed the day before a 90-day global period procedure (${procCode} on ${procCharge.chargeDate}). Pre-operative E/M on the day before surgery is included in the global surgical package and is not separately billable unless it is for a completely unrelated condition (modifier -24 required with documentation).`
+          );
+        }
       }
     }
   }
