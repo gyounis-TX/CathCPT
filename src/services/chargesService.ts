@@ -12,19 +12,16 @@ const PATIENT_DIAGNOSES_KEY = 'patient_diagnoses';
 // Charge status types
 export type ChargeStatus = 'pending' | 'entered' | 'billed';
 
-// Write lock to serialize read-modify-write operations on CHARGES_KEY
+// Write lock to serialize read-modify-write operations on storage
 let writeQueue: Promise<void> = Promise.resolve();
 
 function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
-  let resolve: (value: T) => void;
-  const result = new Promise<T>((r) => { resolve = r; });
-  writeQueue = writeQueue.then(async () => {
-    resolve(await fn());
-  }).catch(() => {});
-  return result;
+  return new Promise<T>((resolve, reject) => {
+    writeQueue = writeQueue.then(() => fn().then(resolve, reject)).catch(() => fn().then(resolve, reject));
+  });
 }
 
-// Retry helper for Firestore sync — retries on failure, logs prominently if all attempts fail
+// Retry helper for Firestore sync
 async function syncToFirestore(fn: () => Promise<void>, retries = 2): Promise<void> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -33,7 +30,6 @@ async function syncToFirestore(fn: () => Promise<void>, retries = 2): Promise<vo
     } catch (error) {
       if (attempt === retries) {
         logger.error('Firestore sync failed after retries', error);
-        // Don't throw — charge is saved locally, but log prominently
       }
     }
   }
@@ -97,32 +93,29 @@ export const getStoredCharges = async (): Promise<StoredCharge[]> => {
 
 // Save a new charge
 export const saveCharge = async (charge: Omit<StoredCharge, 'id' | 'createdAt' | 'status'>, orgId?: string | null): Promise<StoredCharge> => {
-  return withWriteLock(async () => {
-    const charges = await getStoredCharges();
+  const charges = await getStoredCharges();
 
-    const newCharge: StoredCharge = {
-      ...charge,
-      id: `charge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      createdAt: new Date().toISOString(),
-      status: 'pending'
-    };
+  const newCharge: StoredCharge = {
+    ...charge,
+    id: `charge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    createdAt: new Date().toISOString(),
+    status: 'pending'
+  };
 
-    charges.push(newCharge);
+  charges.push(newCharge);
 
-    try {
-      await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
-    } catch (error) {
-      logger.error('Error saving charge to storage', error);
-      throw error;
-    }
+  try {
+    await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+  } catch (error) {
+    logger.error('Error saving charge', error);
+  }
 
-    // Sync to Firestore
-    if (orgId) {
-      syncToFirestore(() => saveChargeToFirestore(orgId, newCharge));
-    }
+  // Sync to Firestore
+  if (orgId) {
+    saveChargeToFirestore(orgId, newCharge).catch((err) => logger.error('Firestore sync failed', err));
+  }
 
-    return newCharge;
-  });
+  return newCharge;
 };
 
 // Get charges for a specific patient
@@ -178,29 +171,22 @@ export const getChargesByPatientAndDate = async (): Promise<Record<string, Recor
 
 // Update charge status
 export const updateChargeStatus = async (chargeId: string, status: ChargeStatus): Promise<void> => {
-  return withWriteLock(async () => {
-    const charges = await getStoredCharges();
-    const index = charges.findIndex(c => c.id === chargeId);
+  const charges = await getStoredCharges();
+  const index = charges.findIndex(c => c.id === chargeId);
 
-    if (index !== -1) {
-      charges[index].status = status;
-      charges[index].updatedAt = new Date().toISOString();
+  if (index !== -1) {
+    charges[index].status = status;
+    charges[index].updatedAt = new Date().toISOString();
 
-      // Track admin actions
-      if (status === 'entered') {
-        charges[index].enteredAt = new Date().toISOString();
-      } else if (status === 'billed') {
-        charges[index].billedAt = new Date().toISOString();
-      }
-
-      try {
-        await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
-      } catch (error) {
-        logger.error('Error saving charge status to storage', error);
-        throw error;
-      }
+    // Track admin actions
+    if (status === 'entered') {
+      charges[index].enteredAt = new Date().toISOString();
+    } else if (status === 'billed') {
+      charges[index].billedAt = new Date().toISOString();
     }
-  });
+
+    await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+  }
 };
 
 // Check if a charge can be edited (not billed)
@@ -221,62 +207,55 @@ export const updateCharge = async (
   },
   orgId?: string | null
 ): Promise<StoredCharge | null> => {
-  return withWriteLock(async () => {
-    const charges = await getStoredCharges();
-    const index = charges.findIndex(c => c.id === chargeId);
+  const charges = await getStoredCharges();
+  const index = charges.findIndex(c => c.id === chargeId);
 
-    if (index === -1) {
-      throw new Error('Charge not found');
-    }
+  if (index === -1) {
+    throw new Error('Charge not found');
+  }
 
-    const charge = charges[index];
+  const charge = charges[index];
 
-    // Check if charge is billed
-    if (charge.status === 'billed') {
-      throw new Error('Cannot edit a billed charge. Please contact your billing administrator.');
-    }
+  // Check if charge is billed
+  if (charge.status === 'billed') {
+    throw new Error('Cannot edit a billed charge. Please contact your billing administrator.');
+  }
 
-    // Apply updates
-    if (updates.cptCode !== undefined) {
-      charges[index].cptCode = updates.cptCode;
-    }
-    if (updates.cptDescription !== undefined) {
-      charges[index].cptDescription = updates.cptDescription;
-    }
-    if (updates.timeMinutes !== undefined) {
-      charges[index].timeMinutes = updates.timeMinutes;
-    }
-    if (updates.rvu !== undefined) {
-      charges[index].rvu = updates.rvu;
-    }
-    if (updates.diagnoses !== undefined) {
-      charges[index].diagnoses = updates.diagnoses;
-    }
-    if (updates.caseSnapshot !== undefined) {
-      charges[index].caseSnapshot = updates.caseSnapshot;
-    }
+  // Apply updates
+  if (updates.cptCode !== undefined) {
+    charges[index].cptCode = updates.cptCode;
+  }
+  if (updates.cptDescription !== undefined) {
+    charges[index].cptDescription = updates.cptDescription;
+  }
+  if (updates.timeMinutes !== undefined) {
+    charges[index].timeMinutes = updates.timeMinutes;
+  }
+  if (updates.rvu !== undefined) {
+    charges[index].rvu = updates.rvu;
+  }
+  if (updates.diagnoses !== undefined) {
+    charges[index].diagnoses = updates.diagnoses;
+  }
+  if (updates.caseSnapshot !== undefined) {
+    charges[index].caseSnapshot = updates.caseSnapshot;
+  }
 
-    charges[index].updatedAt = new Date().toISOString();
+  charges[index].updatedAt = new Date().toISOString();
 
-    // If charge was previously entered, reset to pending since it was modified
-    if (charges[index].status === 'entered') {
-      charges[index].status = 'pending';
-    }
+  // If charge was previously entered, reset to pending since it was modified
+  if (charges[index].status === 'entered') {
+    charges[index].status = 'pending';
+  }
 
-    try {
-      await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
-    } catch (error) {
-      logger.error('Error saving updated charge to storage', error);
-      throw error;
-    }
+  await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
 
-    // Sync to Firestore
-    if (orgId) {
-      syncToFirestore(() => saveChargeToFirestore(orgId, charges[index]));
-    }
+  // Sync to Firestore
+  if (orgId) {
+    saveChargeToFirestore(orgId, charges[index]).catch((err) => logger.error('Firestore sync failed', err));
+  }
 
-    return charges[index];
-  });
+  return charges[index];
 };
 
 // Get a single charge by ID
@@ -288,89 +267,65 @@ export const getChargeById = async (chargeId: string): Promise<StoredCharge | nu
 // Mark charge as entered by admin
 // If charge not in storage (e.g. mock data), pass fullCharge to persist it first
 export const markChargeEntered = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge, orgId?: string | null): Promise<void> => {
-  return withWriteLock(async () => {
-    const charges = await getStoredCharges();
-    let index = charges.findIndex(c => c.id === chargeId);
+  const charges = await getStoredCharges();
+  let index = charges.findIndex(c => c.id === chargeId);
 
-    // If not found in storage but we have the full charge object, add it
-    if (index === -1 && fullCharge) {
-      charges.push({ ...fullCharge });
-      index = charges.length - 1;
+  // If not found in storage but we have the full charge object, add it
+  if (index === -1 && fullCharge) {
+    charges.push({ ...fullCharge });
+    index = charges.length - 1;
+  }
+
+  if (index !== -1) {
+    charges[index].status = 'entered';
+    charges[index].enteredAt = new Date().toISOString();
+    charges[index].enteredBy = adminName;
+    charges[index].updatedAt = new Date().toISOString();
+    await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+
+    // Sync to Firestore
+    if (orgId) {
+      saveChargeToFirestore(orgId, charges[index]).catch((err) => logger.error('Firestore sync failed', err));
     }
-
-    if (index !== -1) {
-      charges[index].status = 'entered';
-      charges[index].enteredAt = new Date().toISOString();
-      charges[index].enteredBy = adminName;
-      charges[index].updatedAt = new Date().toISOString();
-
-      try {
-        await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
-      } catch (error) {
-        logger.error('Error saving entered charge to storage', error);
-        throw error;
-      }
-
-      // Sync to Firestore
-      if (orgId) {
-        syncToFirestore(() => saveChargeToFirestore(orgId, charges[index]));
-      }
-    }
-  });
+  }
 };
 
 // Mark charge as billed by admin (locks the charge)
 // If charge not in storage (e.g. mock data), pass fullCharge to persist it first
 export const markChargeBilled = async (chargeId: string, adminName?: string, fullCharge?: StoredCharge, orgId?: string | null): Promise<void> => {
-  return withWriteLock(async () => {
-    const charges = await getStoredCharges();
-    let index = charges.findIndex(c => c.id === chargeId);
+  const charges = await getStoredCharges();
+  let index = charges.findIndex(c => c.id === chargeId);
 
-    // If not found in storage but we have the full charge object, add it
-    if (index === -1 && fullCharge) {
-      charges.push({ ...fullCharge });
-      index = charges.length - 1;
+  // If not found in storage but we have the full charge object, add it
+  if (index === -1 && fullCharge) {
+    charges.push({ ...fullCharge });
+    index = charges.length - 1;
+  }
+
+  if (index !== -1) {
+    charges[index].status = 'billed';
+    charges[index].billedAt = new Date().toISOString();
+    charges[index].billedBy = adminName;
+    charges[index].updatedAt = new Date().toISOString();
+    await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
+
+    // Sync to Firestore
+    if (orgId) {
+      saveChargeToFirestore(orgId, charges[index]).catch((err) => logger.error('Firestore sync failed', err));
     }
-
-    if (index !== -1) {
-      charges[index].status = 'billed';
-      charges[index].billedAt = new Date().toISOString();
-      charges[index].billedBy = adminName;
-      charges[index].updatedAt = new Date().toISOString();
-
-      try {
-        await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
-      } catch (error) {
-        logger.error('Error saving billed charge to storage', error);
-        throw error;
-      }
-
-      // Sync to Firestore
-      if (orgId) {
-        syncToFirestore(() => saveChargeToFirestore(orgId, charges[index]));
-      }
-    }
-  });
+  }
 };
 
 // Delete a charge
 export const deleteCharge = async (chargeId: string, orgId?: string | null): Promise<void> => {
-  return withWriteLock(async () => {
-    const charges = await getStoredCharges();
-    const filtered = charges.filter(c => c.id !== chargeId);
+  const charges = await getStoredCharges();
+  const filtered = charges.filter(c => c.id !== chargeId);
+  await window.storage.set(CHARGES_KEY, JSON.stringify(filtered));
 
-    try {
-      await window.storage.set(CHARGES_KEY, JSON.stringify(filtered));
-    } catch (error) {
-      logger.error('Error deleting charge from storage', error);
-      throw error;
-    }
-
-    // Sync to Firestore
-    if (orgId) {
-      syncToFirestore(() => deleteChargeFromFirestore(orgId, chargeId));
-    }
-  });
+  // Sync to Firestore
+  if (orgId) {
+    deleteChargeFromFirestore(orgId, chargeId).catch((err) => logger.error('Firestore sync failed', err));
+  }
 };
 
 // ==================== Patient Diagnoses ====================
@@ -397,8 +352,7 @@ export const saveDiagnoses = async (inpatientId: string, diagnoses: string[]): P
   try {
     await window.storage.set(PATIENT_DIAGNOSES_KEY, JSON.stringify(allDiagnoses));
   } catch (error) {
-    logger.error('Error saving diagnoses to storage', error);
-    throw error;
+    logger.error('Error saving diagnoses', error);
   }
 };
 
@@ -487,33 +441,26 @@ export const findRecentUnlinkedCathPatients = async (withinDays: number = 7): Pr
 
 // Re-key charges from an old cath- ID to a new rounds patient ID
 export const relinkChargesToPatient = async (oldInpatientId: string, newInpatientId: string, orgId?: string | null): Promise<number> => {
-  return withWriteLock(async () => {
-    const charges = await getStoredCharges();
-    let count = 0;
-    const relinked: StoredCharge[] = [];
-    for (const c of charges) {
-      if (c.inpatientId === oldInpatientId) {
-        c.inpatientId = newInpatientId;
-        c.updatedAt = new Date().toISOString();
-        count++;
-        relinked.push(c);
-      }
+  const charges = await getStoredCharges();
+  let count = 0;
+  const relinked: StoredCharge[] = [];
+  for (const c of charges) {
+    if (c.inpatientId === oldInpatientId) {
+      c.inpatientId = newInpatientId;
+      c.updatedAt = new Date().toISOString();
+      count++;
+      relinked.push(c);
     }
-    if (count > 0) {
-      try {
-        await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
-      } catch (error) {
-        logger.error('Error saving relinked charges to storage', error);
-        throw error;
-      }
+  }
+  if (count > 0) {
+    await window.storage.set(CHARGES_KEY, JSON.stringify(charges));
 
-      // Sync relinked charges to Firestore
-      if (orgId) {
-        for (const c of relinked) {
-          syncToFirestore(() => saveChargeToFirestore(orgId, c));
-        }
+    // Sync relinked charges to Firestore
+    if (orgId) {
+      for (const c of relinked) {
+        saveChargeToFirestore(orgId, c).catch((err) => logger.error('Firestore sync failed', err));
       }
     }
-    return count;
-  });
+  }
+  return count;
 };
