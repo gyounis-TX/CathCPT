@@ -1225,16 +1225,6 @@ const App: React.FC = () => {
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            {/* Sign Out button (individual mode only — pro users have logout in blue bar) */}
-            {!isProMode && (
-              <button
-                onClick={handleLogout}
-                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                title="Sign Out"
-              >
-                <LogOut size={18} className="text-gray-600" />
-              </button>
-            )}
             {/* History */}
             <button
               onClick={() => {
