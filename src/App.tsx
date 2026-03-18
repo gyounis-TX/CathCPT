@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Heart, Users, Shield, Settings, LogOut, RefreshCw, History, Lightbulb, HelpCircle, FileText, Stethoscope, List, ClipboardCheck } from 'lucide-react';
 import CardiologyCPTApp, { CardiologyCPTAppHandle, CathLabBottomTab } from './CardiologyCPTApp';
 import { LoginScreen } from './screens/LoginScreen';
@@ -1165,11 +1165,6 @@ const App: React.FC = () => {
   const showAdminTab = isProMode && userMode.role === 'admin';
   const showTabBar = showRoundsTab || showAdminTab;
 
-  const scrollContainerStyle = useMemo(() => ({
-    paddingBottom: activeTab === 'cathlab' && !fullScreenView ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' : undefined,
-    WebkitOverflowScrolling: 'touch' as const,
-  }), [activeTab, fullScreenView]);
-
   return (
     <div className="flex flex-col bg-gray-50" style={{ height: '100dvh' }}>
       {/* === FIXED HEADER === */}
@@ -1345,7 +1340,7 @@ const App: React.FC = () => {
       </div>
 
       {/* === SCROLLABLE CONTENT === */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-none" style={scrollContainerStyle}>
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-none" style={{ paddingBottom: activeTab === 'cathlab' && !fullScreenView ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' : undefined, WebkitOverflowScrolling: 'touch' }}>
         {/* Full-screen views override tab content */}
         {fullScreenView === 'history' && (
           <HistoryScreen

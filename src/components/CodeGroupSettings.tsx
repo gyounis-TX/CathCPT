@@ -154,7 +154,7 @@ export const CodeGroupSettings: React.FC<CodeGroupSettingsProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-      <div className="bg-white w-full sm:w-[480px] sm:rounded-xl max-h-[90vh] flex flex-col mb-16 sm:mb-0">
+      <div className="bg-white w-full sm:w-[480px] sm:rounded-xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Code Categories</h2>
