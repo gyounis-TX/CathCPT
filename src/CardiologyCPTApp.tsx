@@ -2312,7 +2312,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     if (selectedStructuralIndication === 'other' && otherStructuralIndication) {
       body += `  Structural: ${otherStructuralIndication}\n`;
     }
-    body += '\n--- CPT Codes ---\n';
+    body += '\n--- Billing Codes ---\n';
     allCodes.forEach(c => {
       const isPCICode = pciCodeList.includes(c.code);
       const isDiagnosticCath = diagnosticCathCodes.includes(c.code);
@@ -2380,7 +2380,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     }
 
     if (selectedCodes.length === 0 && selectedCodesVessel2.length === 0 && selectedCodesVessel3.length === 0 && !includeSedation) {
-      alert('Please select at least one CPT code or moderate sedation');
+      alert('Please select at least one billing code or moderate sedation');
       return;
     }
 
@@ -2711,7 +2711,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                 {/* Code Group Settings */}
                 <div className="pt-4 border-t border-gray-200">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CPT Code Categories
+                    Billing Code Categories
                   </label>
                   <button
                     onClick={() => { setShowSettings(false); setShowCodeGroupSettings(true); }}
@@ -2723,7 +2723,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                     </div>
                     <ChevronRight size={18} className="text-indigo-600" />
                   </button>
-                  <p className="text-xs text-gray-500 mt-1">Show/hide CPT code groups based on your specialty</p>
+                  <p className="text-xs text-gray-500 mt-1">Show/hide billing code groups based on your specialty</p>
                 </div>
 
                 {/* Dev Mode */}
@@ -3399,7 +3399,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
               {!matchedPatient && patientName.length > 0 && (
                 <div className="mt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date of Birth *
+                    Date of Birth (optional)
                   </label>
                   <input
                     type="tel"
@@ -3990,12 +3990,12 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
           )}
         </div>
 
-        {/* CPT Code Selection */}
+        {/* Billing Code Selection */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
               <List size={22} className="text-blue-500" />
-              Select CPT Codes
+              Select Billing Codes
             </h2>
             <button
               onClick={() => setShowModifierGuide(!showModifierGuide)}
@@ -5436,7 +5436,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                       className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors"
                     >
                       <Plus size={18} />
-                      <span className="font-medium">Add Custom CPT Code</span>
+                      <span className="font-medium">Add Custom Billing Code</span>
                     </button>
 
                     {/* Custom Codes List */}
@@ -5504,7 +5504,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
             <div className="bg-white rounded-xl w-full max-w-md">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {editingCustomCode ? 'Edit Custom Code' : 'Add Custom CPT Code'}
+                  {editingCustomCode ? 'Edit Custom Code' : 'Add Custom Billing Code'}
                 </h3>
                 <button
                   onClick={() => {
@@ -5519,7 +5519,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
               <div className="p-4 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    CPT Code <span className="text-red-500">*</span>
+                    Billing Code <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -6317,8 +6317,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
                   outside of authorized clinical and billing workflows.
                 </p>
               </div>
-              <p>CPT® codes © American Medical Association. All rights reserved.</p>
-              <p className="mt-1">CathCPT uses 2026 CPT codes</p>
+              <p className="mt-1">CathDoc uses 2026 billing codes</p>
               <p className="mt-1 text-xs">Last Updated: February 2026 - v2.4</p>
               <p className="mt-4 text-lg font-bold" style={{ color: '#7C3AED' }}>A product of Lumen Innovations</p>
             </div>
