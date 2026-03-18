@@ -323,7 +323,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const activeCathLabs = localOrgCathLabs.filter(l => l.isActive);
 
   return (
-    <div className="min-h-full bg-gray-50">
+    <div className="min-h-full bg-gray-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
@@ -706,12 +706,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
         )}
 
-        {/* CPT Code Categories */}
+        {/* Billing Code Categories */}
         <button
           onClick={() => { onOpenCodeGroupSettings(); }}
           className="w-full bg-white rounded-xl p-4 border border-gray-200 flex items-center justify-between"
         >
-          <span className="text-sm font-semibold text-gray-700">CPT Code Categories</span>
+          <span className="text-sm font-semibold text-gray-700">Billing Code Categories</span>
           <ChevronRight size={18} className="text-gray-400" />
         </button>
 
@@ -735,8 +735,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               outside of authorized clinical and billing workflows.
             </p>
           </div>
-          <p>CPT® codes © American Medical Association. All rights reserved.</p>
-          <p className="mt-1">CathCPT uses 2026 CPT codes</p>
+          <p className="mt-1">CathDoc uses 2026 billing codes</p>
           <p
             className="mt-1 text-xs text-gray-400 cursor-default"
             onClick={handleVersionTap}
