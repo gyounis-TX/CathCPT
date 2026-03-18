@@ -16,6 +16,7 @@
 - Change label from "Date of Birth" to "Date of Birth (optional)"
 - Keep existing auto-formatting (MM/DD/YYYY display, YYYY-MM-DD storage)
 - If left blank, store as empty string `""`
+- Guard downstream calls: pass `dob || undefined` to `findPatientMatches` so the matching service isn't called with an empty DOB string
 - No type/interface changes — `dob` field remains `string`
 
 ---
@@ -38,24 +39,21 @@
 
 ## 3. Fix UI Shaking on Scroll
 
-**Files:** `src/App.tsx`, `src/CardiologyCPTApp.tsx`, `src/screens/RoundsScreen.tsx`, `src/index.css`
+**Files:** `src/App.tsx`, `src/screens/RoundsScreen.tsx`
 
 **Symptom:** The entire UI occasionally shakes/jitters briefly when scrolling down. No explicit shake animation exists in the codebase.
 
-**Approach (layered):**
+**Root cause (identified via code review):** The `headerVisible` state in `App.tsx` (line 73) is toggled by a scroll event listener (lines 214-228). When it changes, Row 1 of the header enters or leaves the DOM entirely, causing a full layout reflow — the rest of the page shifts up or down by the header row's height, producing visible jitter.
 
-1. **Audit scroll containers** — Identify elements that cause layout reflow during scroll:
-   - Conditionally rendered elements entering/leaving the DOM
-   - Sticky/fixed headers without explicit dimensions
-   - Percentage-based widths recalculating
+**Secondary cause:** The `showHipaaBanner` conditional inside the same header wrapper can also cause layout shifts if it dismisses during active use.
 
-2. **Pin header/nav dimensions** — Add explicit heights to fixed/sticky elements to prevent reflow
+**Fix:**
 
-3. **GPU-promote scroll containers** — Apply `will-change: transform` or `transform: translateZ(0)` to main scrollable areas for compositor-layer isolation
+1. **Primary:** Replace the DOM-removal approach for the collapsing header with a CSS-only collapse. Keep the element in the DOM at all times and animate visibility using `max-height`, `opacity`, or `transform: translateY(-100%)` with `overflow: hidden` so no layout reflow occurs.
 
-4. **Debounce scroll-triggered state updates** — If `onScroll` handlers update state, debounce them or replace with CSS-only solutions
+2. **Secondary:** Apply the same CSS-collapse treatment to the HIPAA banner if it can dismiss during scroll.
 
-**Note:** Exact fixes depend on audit findings. This spec commits to the approach; specific changes determined during implementation.
+3. **Optional:** GPU-promote the main scroll container with `will-change: transform` if jitter persists after the primary fix.
 
 ---
 
