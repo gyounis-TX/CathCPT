@@ -2525,6 +2525,12 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       diagnoses.push(selectedStructuralIndication);
     }
 
+    // Require at least one diagnosis (ICD-10) for medical necessity
+    if (diagnoses.length === 0) {
+      showToast('Please select at least one diagnosis (ICD-10) before submitting', 'warning');
+      return;
+    }
+
     // Get charge date directly from the date picker text
     const chargeDate: string = procedureDateText || formatDateForStorage(new Date());
 
