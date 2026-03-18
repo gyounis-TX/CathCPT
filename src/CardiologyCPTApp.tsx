@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { ChevronDown, ChevronRight, Check, Settings, X, Save, Info, AlertCircle, DollarSign, Maximize2, Shield, Search, Star, FileText, History, Clock, Download, Trash2, BookOpen, Lightbulb, List, Sparkles, Plus, Edit2 } from 'lucide-react';
 import { CaseTemplate, SavedCase, RuleViolation, Inpatient, Hospital, CathLab, PHIMatch } from './types';
 import { builtInTemplates, createCustomTemplate } from './data/templates';
@@ -452,6 +452,9 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   }, [favorites]);
 
   // Real-time billing rules validation
+  // TODO: Object/array dependencies (codeVessels, codeVesselsV2, codeVesselsV3) are recreated
+  // each render, causing this effect to fire unnecessarily. Refactoring the 77 useState calls
+  // into useReducer or a consolidated state object would fix this — tracked as a separate effort.
   useEffect(() => {
     const allCodes = [
       ...selectedCodes.map(c => ({ code: c.code, vessel: codeVessels[c.code] })),
@@ -483,11 +486,15 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     }
   }, [patientName, isProMode]);
 
+  // Ref for handleSubmitCharges — assigned after function definition (see below).
+  // Used by the PHI warning dismissal effect to avoid stale closure issues.
+  const handleSubmitChargesRef = useRef<() => Promise<void>>(async () => {});
+
   // After PHI warning modal dismissal, re-trigger submission if pending
   useEffect(() => {
     if (pendingReportGeneration && !showPHIWarning) {
       setPendingReportGeneration(false);
-      handleSubmitCharges();
+      handleSubmitChargesRef.current();
     }
   }, [pendingReportGeneration, showPHIWarning]);
 
@@ -2495,6 +2502,12 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       }
     }
 
+    // Validate that we have at least one CPT code to submit
+    if (codeStrings.length === 0) {
+      showToast('Please select at least one CPT code', 'warning');
+      return;
+    }
+
     // Calculate RVU
     const rvuCalc = calculateRVUAndReimbursement();
     const totalRVU = parseFloat(rvuCalc.totalWorkRVU) || 0;
@@ -2595,6 +2608,9 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     setShowChargeSubmitted(true);
     setPhiBypassOnce(false);
   };
+
+  // Keep the ref in sync so the PHI-dismissal effect always calls the latest version
+  handleSubmitChargesRef.current = handleSubmitCharges;
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 px-4 pt-4 pb-2">
