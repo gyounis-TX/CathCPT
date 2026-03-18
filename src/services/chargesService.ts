@@ -12,29 +12,6 @@ const PATIENT_DIAGNOSES_KEY = 'patient_diagnoses';
 // Charge status types
 export type ChargeStatus = 'pending' | 'entered' | 'billed';
 
-// Write lock to serialize read-modify-write operations on storage
-let writeQueue: Promise<void> = Promise.resolve();
-
-function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    writeQueue = writeQueue.then(() => fn().then(resolve, reject)).catch(() => fn().then(resolve, reject));
-  });
-}
-
-// Retry helper for Firestore sync
-async function syncToFirestore(fn: () => Promise<void>, retries = 2): Promise<void> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      await fn();
-      return;
-    } catch (error) {
-      if (attempt === retries) {
-        logger.error('Firestore sync failed after retries', error);
-      }
-    }
-  }
-}
-
 // Case snapshot — captures full form state for re-editing cath lab cases
 export interface CaseSnapshot {
   codes: { primary: { code: string; description: string }[]; vessel2: { code: string; description: string }[]; vessel3: { code: string; description: string }[] };
@@ -112,7 +89,7 @@ export const saveCharge = async (charge: Omit<StoredCharge, 'id' | 'createdAt' |
 
   // Sync to Firestore
   if (orgId) {
-    saveChargeToFirestore(orgId, newCharge).catch((err) => logger.error('Firestore sync failed', err));
+    saveChargeToFirestore(orgId, newCharge).catch(() => {});
   }
 
   return newCharge;
@@ -252,7 +229,7 @@ export const updateCharge = async (
 
   // Sync to Firestore
   if (orgId) {
-    saveChargeToFirestore(orgId, charges[index]).catch((err) => logger.error('Firestore sync failed', err));
+    saveChargeToFirestore(orgId, charges[index]).catch(() => {});
   }
 
   return charges[index];
@@ -285,7 +262,7 @@ export const markChargeEntered = async (chargeId: string, adminName?: string, fu
 
     // Sync to Firestore
     if (orgId) {
-      saveChargeToFirestore(orgId, charges[index]).catch((err) => logger.error('Firestore sync failed', err));
+      saveChargeToFirestore(orgId, charges[index]).catch(() => {});
     }
   }
 };
@@ -311,7 +288,7 @@ export const markChargeBilled = async (chargeId: string, adminName?: string, ful
 
     // Sync to Firestore
     if (orgId) {
-      saveChargeToFirestore(orgId, charges[index]).catch((err) => logger.error('Firestore sync failed', err));
+      saveChargeToFirestore(orgId, charges[index]).catch(() => {});
     }
   }
 };
@@ -324,7 +301,7 @@ export const deleteCharge = async (chargeId: string, orgId?: string | null): Pro
 
   // Sync to Firestore
   if (orgId) {
-    deleteChargeFromFirestore(orgId, chargeId).catch((err) => logger.error('Firestore sync failed', err));
+    deleteChargeFromFirestore(orgId, chargeId).catch(() => {});
   }
 };
 
@@ -458,7 +435,7 @@ export const relinkChargesToPatient = async (oldInpatientId: string, newInpatien
     // Sync relinked charges to Firestore
     if (orgId) {
       for (const c of relinked) {
-        saveChargeToFirestore(orgId, c).catch((err) => logger.error('Firestore sync failed', err));
+        saveChargeToFirestore(orgId, c).catch(() => {});
       }
     }
   }
