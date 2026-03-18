@@ -1340,7 +1340,7 @@ const App: React.FC = () => {
       </div>
 
       {/* === SCROLLABLE CONTENT === */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-none" style={{ paddingBottom: activeTab === 'cathlab' && !fullScreenView ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' : undefined, WebkitOverflowScrolling: 'touch' }}>
         {/* Full-screen views override tab content */}
         {fullScreenView === 'history' && (
           <HistoryScreen
@@ -1438,7 +1438,7 @@ const App: React.FC = () => {
 
       {/* Bottom Navigation Bar — Cath Lab only, hidden during full-screen views */}
       {activeTab === 'cathlab' && !fullScreenView && (
-        <div className="flex-shrink-0 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <nav className="flex justify-around items-center h-14" role="tablist" aria-label="Cath Lab sections">
             {([
               { id: 'addcase' as CathLabBottomTab, label: 'Add Case', Icon: FileText },
