@@ -137,6 +137,11 @@ const QUICK_CHARGE_CODES = [
   { code: '99233', rvu: 2.00 },
 ];
 
+// Format sync time for display (pure function, no component state dependency)
+const formatSyncTime = (date: Date): string => {
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
 export const RoundsScreen: React.FC<RoundsScreenProps> = ({
   userMode,
   hospitals,
@@ -447,7 +452,7 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
   };
 
   // Get last charge info for billing gap detection
-  const getLastChargeInfo = (patientId: string): { daysSinceLastCharge: number; lastChargeDate: string | null } => {
+  const getLastChargeInfo = useCallback((patientId: string): { daysSinceLastCharge: number; lastChargeDate: string | null } => {
     const patientCharges = charges[patientId];
     if (!patientCharges) return { daysSinceLastCharge: 0, lastChargeDate: null };
     const dates = Object.keys(patientCharges).sort();
@@ -457,12 +462,7 @@ export const RoundsScreen: React.FC<RoundsScreenProps> = ({
     lastDate.setHours(0, 0, 0, 0);
     const diff = Math.round((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
     return { daysSinceLastCharge: diff, lastChargeDate: last };
-  };
-
-  // Format sync time for display
-  const formatSyncTime = (date: Date): string => {
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  };
+  }, [charges, todayDate]);
 
   // Group patients by hospital (include all hospitals from the list, even empty ones)
   const patientsByHospital = useMemo(() => {
