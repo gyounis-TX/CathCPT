@@ -95,7 +95,7 @@ const App: React.FC = () => {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [cathLabs, setCathLabs] = useState<CathLab[]>([]);
 
-  // Ref for CathCPT header buttons
+  // Ref for CathDoc header buttons
   const cathCPTRef = useRef<CardiologyCPTAppHandle>(null);
 
   // Real-time Firestore listener unsubscribe refs
@@ -1090,20 +1090,29 @@ const App: React.FC = () => {
           <div className="w-16 h-16 rounded-2xl mx-auto mb-4 overflow-hidden animate-pulse">
             <svg viewBox="0 0 100 100" className="w-full h-full">
               <defs>
-                <linearGradient id="loadingBgGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#D4A84B"/>
-                  <stop offset="50%" stopColor="#C49A3D"/>
-                  <stop offset="100%" stopColor="#9A7830"/>
+                <linearGradient id="loadingBgDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#1a1a2e"/>
+                  <stop offset="100%" stopColor="#0d0d1a"/>
+                </linearGradient>
+                <linearGradient id="loadingHeartGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#FF6B35"/>
+                  <stop offset="50%" stopColor="#E8451C"/>
+                  <stop offset="100%" stopColor="#C41E00"/>
                 </linearGradient>
               </defs>
-              <rect width="100" height="100" rx="18" fill="url(#loadingBgGold)"/>
-              <g transform="translate(28, 5) scale(0.52)">
-                <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
+              <rect width="100" height="100" rx="18" fill="url(#loadingBgDark)"/>
+              <g transform="translate(18, 12) scale(0.65)">
+                <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="url(#loadingHeartGlow)" opacity="0.9"/>
+                <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="none" stroke="#FFB347" strokeWidth="1.5" opacity="0.7"/>
+                <path d="M35,35 L50,42 L65,30" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+                <path d="M50,42 L50,60 L40,70" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+                <path d="M50,60 L62,68" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+                <circle cx="50" cy="42" r="2" fill="#FFD700" opacity="0.9"/>
+                <circle cx="50" cy="60" r="1.5" fill="#FFD700" opacity="0.7"/>
               </g>
-              <text x="50" y="72" fontSize="36" fontWeight="900" fill="#F5E6B0" textAnchor="middle" fontFamily="Arial Black, sans-serif">CPT</text>
             </svg>
           </div>
-          <p className="text-lg font-semibold text-gray-700 mb-1">CathCPT</p>
+          <p className="text-lg font-semibold text-gray-700 mb-1">CathDoc</p>
           <p className="text-gray-400 text-sm">{initStep || 'Loading...'}</p>
         </div>
       </div>
@@ -1172,27 +1181,36 @@ const App: React.FC = () => {
             }}
           />
         )}
-        {/* Row 1: CathCPT branding + action buttons (collapses on scroll down) */}
+        {/* Row 1: CathDoc branding + action buttons (collapses on scroll down) */}
         <div className="bg-white px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
           <div className="flex items-center gap-2.5">
-            {/* Small CathCPT icon */}
+            {/* Small CathDoc icon */}
             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full">
                 <defs>
-                  <linearGradient id="headerBgGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#D4A84B"/>
-                    <stop offset="50%" stopColor="#C49A3D"/>
-                    <stop offset="100%" stopColor="#9A7830"/>
+                  <linearGradient id="headerBgDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#1a1a2e"/>
+                    <stop offset="100%" stopColor="#0d0d1a"/>
+                  </linearGradient>
+                  <linearGradient id="headerHeartGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FF6B35"/>
+                    <stop offset="50%" stopColor="#E8451C"/>
+                    <stop offset="100%" stopColor="#C41E00"/>
                   </linearGradient>
                 </defs>
-                <rect width="100" height="100" rx="18" fill="url(#headerBgGold)"/>
-                <g transform="translate(28, 5) scale(0.52)">
-                  <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
+                <rect width="100" height="100" rx="18" fill="url(#headerBgDark)"/>
+                <g transform="translate(18, 12) scale(0.65)">
+                  <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="url(#headerHeartGlow)" opacity="0.9"/>
+                  <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="none" stroke="#FFB347" strokeWidth="1.5" opacity="0.7"/>
+                  <path d="M35,35 L50,42 L65,30" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+                  <path d="M50,42 L50,60 L40,70" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+                  <path d="M50,60 L62,68" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+                  <circle cx="50" cy="42" r="2" fill="#FFD700" opacity="0.9"/>
+                  <circle cx="50" cy="60" r="1.5" fill="#FFD700" opacity="0.7"/>
                 </g>
-                <text x="50" y="72" fontSize="36" fontWeight="900" fill="#F5E6B0" textAnchor="middle" fontFamily="Arial Black, sans-serif">CPT</text>
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-amber-700">CathCPT</h1>
+            <h1 className="text-xl font-bold text-amber-700">CathDoc</h1>
             <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full uppercase tracking-wide ${
               userMode.role === 'admin'
                 ? 'bg-purple-100 text-purple-700'
@@ -1583,10 +1601,32 @@ const App: React.FC = () => {
         style={{ display: 'none' }}
         className="fixed inset-0 bg-white z-[99999] flex flex-col items-center justify-center"
       >
-        <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4">
-          <Heart className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-2xl overflow-hidden mb-4">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <defs>
+              <linearGradient id="overlayBgDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1a1a2e"/>
+                <stop offset="100%" stopColor="#0d0d1a"/>
+              </linearGradient>
+              <linearGradient id="overlayHeartGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FF6B35"/>
+                <stop offset="50%" stopColor="#E8451C"/>
+                <stop offset="100%" stopColor="#C41E00"/>
+              </linearGradient>
+            </defs>
+            <rect width="100" height="100" rx="18" fill="url(#overlayBgDark)"/>
+            <g transform="translate(18, 12) scale(0.65)">
+              <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="url(#overlayHeartGlow)" opacity="0.9"/>
+              <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="none" stroke="#FFB347" strokeWidth="1.5" opacity="0.7"/>
+              <path d="M35,35 L50,42 L65,30" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+              <path d="M50,42 L50,60 L40,70" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+              <path d="M50,60 L62,68" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+              <circle cx="50" cy="42" r="2" fill="#FFD700" opacity="0.9"/>
+              <circle cx="50" cy="60" r="1.5" fill="#FFD700" opacity="0.7"/>
+            </g>
+          </svg>
         </div>
-        <p className="text-lg font-semibold text-gray-700">CathCPT</p>
+        <p className="text-lg font-semibold text-gray-700">CathDoc</p>
       </div>
     </div>
   );
