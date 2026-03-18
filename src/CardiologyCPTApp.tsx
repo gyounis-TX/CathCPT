@@ -188,7 +188,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   const [expandedPCIVessels, setExpandedPCIVessels] = useState({});
   const [expandedIndicationSections, setExpandedIndicationSections] = useState({ cardiac: true, peripheral: false, structural: false });
   const [indicationSearch, setIndicationSearch] = useState('');
-  const [expandedSedation, setExpandedSedation] = useState(false);
+  const [expandedSedation, setExpandedSedation] = useState(true);
 
   // === NEW FEATURE STATE ===
   // Feature 1: Code Search

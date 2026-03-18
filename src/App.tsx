@@ -1443,7 +1443,7 @@ const App: React.FC = () => {
             {([
               { id: 'addcase' as CathLabBottomTab, label: 'Add Case', Icon: FileText },
               { id: 'icd10' as CathLabBottomTab, label: 'ICD-10', Icon: Stethoscope },
-              { id: 'cpt' as CathLabBottomTab, label: 'CPT', Icon: List },
+              { id: 'cpt' as CathLabBottomTab, label: 'Codes', Icon: List },
               { id: 'review' as CathLabBottomTab, label: 'Review', Icon: ClipboardCheck },
             ]).map(({ id, label, Icon }) => {
               const isActive = cathLabBottomTab === id;
