@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.lumeninnovations.cathcpt',
-  appName: 'CathCPT',
+  appId: 'com.younis.cathdoc',
+  appName: 'CathDoc',
   webDir: 'dist',
   server: {
     iosScheme: 'https',

@@ -76,8 +76,9 @@ export default function ModifierSuggestionBanner({
                 <button
                   type="button"
                   onClick={() => onAccept(suggestion)}
-                  className="p-1 rounded hover:bg-green-100 text-green-600"
+                  className="p-1 rounded hover:bg-green-100 text-green-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   title="Accept modifier"
+                  aria-label="Accept modifier"
                 >
                   <Check className="w-4 h-4" />
                 </button>
@@ -86,8 +87,9 @@ export default function ModifierSuggestionBanner({
                 <button
                   type="button"
                   onClick={() => onDismiss(suggestion)}
-                  className="p-1 rounded hover:bg-gray-100 text-gray-400"
+                  className="p-1 rounded hover:bg-gray-100 text-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   title="Dismiss"
+                  aria-label="Dismiss modifier"
                 >
                   <X className="w-4 h-4" />
                 </button>
