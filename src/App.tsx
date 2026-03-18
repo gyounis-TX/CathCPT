@@ -69,9 +69,6 @@ const App: React.FC = () => {
   const [cathLabBottomTab, setCathLabBottomTab] = useState<CathLabBottomTab>('addcase');
   const [badgeCounts, setBadgeCounts] = useState({ icd10: 0, cpt: 0, violations: 0 });
 
-  // Collapsing header state
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const lastScrollYRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Sync state
@@ -210,26 +207,8 @@ const App: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // Collapsing header — hide Row 1 on scroll down, show on scroll up
+  // Reset scroll position on bottom tab change
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      const y = el.scrollTop;
-      if (y > lastScrollYRef.current && y > 60) {
-        setHeaderVisible(false);
-      } else if (y < lastScrollYRef.current) {
-        setHeaderVisible(true);
-      }
-      lastScrollYRef.current = y;
-    };
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Reset header visibility on bottom tab change
-  useEffect(() => {
-    setHeaderVisible(true);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [cathLabBottomTab]);
 
