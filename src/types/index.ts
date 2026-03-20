@@ -382,6 +382,10 @@ export interface Organization {
   practiceCode: string;
   isActive: boolean;
   createdAt: string;
+  chargeNotifications?: {
+    enabled: boolean;
+    recipientUserIds: string[];
+  };
 }
 
 export interface Hospital {

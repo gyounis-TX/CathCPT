@@ -12,7 +12,7 @@ service cloud.firestore {
                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == resource.data.organizationId));
       allow write: if request.auth != null && request.auth.uid == userId;
 
-      // Custom CPT codes
+      // Custom billing codes
       match /customCodes/{codeId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
@@ -174,6 +174,11 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
         // update and delete intentionally omitted — audit entries must be immutable
       }
+    }
+
+    // ── Mail (Cloud Functions only) ─────────────────────────
+    match /mail/{docId} {
+      allow read, write: if false;
     }
   }
 }
