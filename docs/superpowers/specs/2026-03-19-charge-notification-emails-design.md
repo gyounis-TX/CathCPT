@@ -22,7 +22,9 @@ chargeNotifications: {
 }
 ```
 
-Recipients are resolved to email addresses at send time by reading `users/{uid}.email`.
+Update `Organization` interface in `src/types/index.ts` to include this field as optional.
+
+Recipients are resolved to email addresses at send time via Firebase Admin SDK (`getAuth().getUser(uid).email`) to ensure current addresses.
 
 ---
 
@@ -31,28 +33,32 @@ Recipients are resolved to email addresses at send time by reading `users/{uid}.
 **File:** `firebase/functions/index.js`
 **Trigger:** `onDocumentCreated("organizations/{orgId}/charges/{chargeId}")`
 
+`onDocumentCreated` fires only on new document creation, not on `setDoc` overwrites of existing documents. This means status changes, edits, and relinks will not trigger the notification.
+
 **Logic:**
-1. Read the new charge document fields: `cptCode`, `chargeDate`, `submittedByUserName`, `inpatientId`
+1. Read the new charge document fields: `cptCode`, `chargeDate`, `submittedByUserName`, `submittedByUserId`, `inpatientId`
 2. Fetch `organizations/{orgId}` document
 3. Check `chargeNotifications.enabled` — if `false` or missing, return early
 4. Read `chargeNotifications.recipientUserIds` — if empty, return early
-5. Fetch each `users/{uid}` document to get `email` and `displayName`
-6. Validate each recipient has `organizationId` matching the charge's org
-7. Write to `mail` collection (one document per email) to trigger the Firestore Send Email extension
+5. Filter out the submitting physician (`submittedByUserId`) from recipients — don't email someone about their own charge
+6. For each remaining recipient, use Firebase Admin SDK `getAuth().getUser(uid)` to get current email. Skip recipients where lookup fails (log and continue).
+7. Write to `mail` collection using charge ID as the document ID for idempotency (`mail/{chargeId}-{recipientUid}`)
+
+**Null handling:** If `submittedByUserName` is missing, fall back to `"a physician"`.
 
 **Email format:**
 - **From:** `CathDoc <admin@systolicbp.com>` (existing default)
 - **Subject:** `New charge submitted by Dr. {submittedByUserName}`
 - **Body (HTML):**
   - Case ID: `{inpatientId}`
-  - CPT Codes: `{cptCode}`
+  - CPT Codes: `{cptCode}` (this is a joined string of all codes, e.g., `"92928 + 92929-59"`)
   - Procedure Date: `{chargeDate}`
   - Submitted By: `{submittedByUserName}`
   - Footer: "This is an automated notification from CathDoc."
 
 **No PHI:** No patient name, DOB, or MRN included in the email. Only the opaque case ID.
 
-**Only fires on charge creation**, not on updates (status changes, edits).
+**Error handling:** Skip-and-continue per recipient. If one recipient's email lookup fails, log the error and send to the remaining recipients.
 
 ---
 
@@ -64,16 +70,18 @@ Recipients are resolved to email addresses at send time by reading `users/{uid}.
 
 **UI elements:**
 - Section header: "Charge Notifications"
-- Toggle: "Email when physicians submit charges" — controls `chargeNotifications.enabled`
+- Toggle: "Email when physicians submit charges" — writes to Firestore immediately on change (no separate save button, matches pro-mode auto-save pattern)
 - When enabled, shows a list of org members with checkboxes
   - Org members fetched from Firestore `users` collection where `organizationId` matches
   - Each row: checkbox + display name + email
   - Pre-checked if already in `recipientUserIds`
-- Save writes `chargeNotifications` to `organizations/{orgId}` document
+  - Checkbox changes write to Firestore immediately
 
 **New service function needed:**
-- `getOrgMembers(orgId: string): Promise<{id, displayName, email}[]>` — fetches all users in the org
-- `updateChargeNotificationSettings(orgId, settings)` — writes to org document
+- `getOrgMembers(orgId: string): Promise<{id, displayName, email}[]>` — queries `users` collection where `organizationId == orgId`
+- `updateChargeNotificationSettings(orgId, settings)` — writes `chargeNotifications` field to `organizations/{orgId}` document
+
+**Firestore index:** Ensure composite index exists on `users` collection for `organizationId` field.
 
 ---
 
@@ -81,8 +89,13 @@ Recipients are resolved to email addresses at send time by reading `users/{uid}.
 
 - **No PHI in emails** — case ID, CPT codes, procedure date, submitter name only
 - **Firestore rules** — only admins can write `chargeNotifications` field on org document (existing admin rules enforce this)
-- **Mail collection** — only Cloud Function writes to `mail`, not frontend
-- **Recipient validation** — Cloud Function verifies each recipient's `organizationId` matches before sending
+- **Mail collection** — add Firestore rule to block client access:
+  ```
+  match /mail/{docId} {
+    allow read, write: if false; // Only Cloud Functions and extensions
+  }
+  ```
+- **Recipient validation** — Cloud Function uses Admin SDK to verify each recipient exists and belongs to the org
 - **Email credentials** — managed by existing Firestore Send Email extension via SMTP config
 
 ---
