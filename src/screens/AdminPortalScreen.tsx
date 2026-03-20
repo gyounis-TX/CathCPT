@@ -6,10 +6,13 @@ import {
   ClipboardList,
   RefreshCw,
   BarChart3,
-  Activity
+  Activity,
+  Settings,
+  Mail
 } from 'lucide-react';
 import { AdminTab, UserMode, Hospital, Inpatient } from '../types';
 import { StoredCharge } from '../services/chargesService';
+import { getChargeNotificationSettings, updateChargeNotificationSettings, getOrgMembers } from '../services/notificationSettingsService';
 import { getChargeStats } from '../services/adminChargeService';
 import { getReportSchedule, isReportDue } from '../services/reportScheduleService';
 import { ChargeQueueTab } from '../components/admin/ChargeQueueTab';
@@ -56,6 +59,12 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
   });
   const [reportsDue, setReportsDue] = useState(false);
 
+  // Charge notification settings
+  const [chargeNotifEnabled, setChargeNotifEnabled] = useState(false);
+  const [chargeNotifRecipients, setChargeNotifRecipients] = useState<string[]>([]);
+  const [orgMembers, setOrgMembers] = useState<{id: string; displayName: string; email: string}[]>([]);
+  const [chargeNotifLoading, setChargeNotifLoading] = useState(false);
+
   const orgId = userMode.organizationId || 'YOCA';
 
   const loadStats = useCallback(async () => {
@@ -72,6 +81,36 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
     loadStats();
     checkReportSchedule();
   }, [loadStats, checkReportSchedule]);
+
+  // Load charge notification settings
+  useEffect(() => {
+    if (!orgId) return;
+    const load = async () => {
+      setChargeNotifLoading(true);
+      try {
+        const [settings, members] = await Promise.all([
+          getChargeNotificationSettings(orgId),
+          getOrgMembers(orgId),
+        ]);
+        setChargeNotifEnabled(settings.enabled);
+        setChargeNotifRecipients(settings.recipientUserIds);
+        setOrgMembers(members);
+      } catch (err) {
+        console.error('Failed to load charge notification settings', err);
+      } finally {
+        setChargeNotifLoading(false);
+      }
+    };
+    load();
+  }, [orgId]);
+
+  const saveChargeNotifSettings = async (enabled: boolean, recipients: string[]) => {
+    try {
+      await updateChargeNotificationSettings(orgId, { enabled, recipientUserIds: recipients });
+    } catch (err) {
+      console.error('Failed to save charge notification settings', err);
+    }
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -92,6 +131,7 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
     { key: 'physicians', label: 'Practice', icon: <UserCog className="w-4 h-4" /> },
     { key: 'auditLog', label: 'Audit Log', icon: <ClipboardList className="w-4 h-4" /> },
     { key: 'reports', label: 'Reports', icon: <BarChart3 className="w-4 h-4" /> },
+    { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
   return (
@@ -214,6 +254,64 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
             currentUserId={currentUserId}
             currentUserName={currentUserName}
           />
+        )}
+        {activeTab === 'settings' && (
+          <div className="p-4 overflow-y-auto h-full space-y-4">
+            {/* Charge Notifications */}
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Mail size={18} className="text-gray-500" />
+                  <span className="text-sm font-semibold text-gray-700">Charge Notifications</span>
+                </div>
+                <button
+                  onClick={() => {
+                    const next = !chargeNotifEnabled;
+                    setChargeNotifEnabled(next);
+                    saveChargeNotifSettings(next, chargeNotifRecipients);
+                  }}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    chargeNotifEnabled ? 'bg-green-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                    chargeNotifEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mb-2 pl-7">Email selected team members when a physician submits a charge</p>
+              {chargeNotifEnabled && (
+                <div className="mt-3 pl-7 space-y-2">
+                  {chargeNotifLoading ? (
+                    <p className="text-xs text-gray-400">Loading team members...</p>
+                  ) : orgMembers.length === 0 ? (
+                    <p className="text-xs text-gray-400">No team members found</p>
+                  ) : (
+                    orgMembers.map(member => (
+                      <label key={member.id} className="flex items-center gap-3 py-1.5">
+                        <input
+                          type="checkbox"
+                          checked={chargeNotifRecipients.includes(member.id)}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...chargeNotifRecipients, member.id]
+                              : chargeNotifRecipients.filter(id => id !== member.id);
+                            setChargeNotifRecipients(next);
+                            saveChargeNotifSettings(chargeNotifEnabled, next);
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div>
+                          <p className="text-sm text-gray-700">{member.displayName}</p>
+                          <p className="text-[11px] text-gray-400">{member.email}</p>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

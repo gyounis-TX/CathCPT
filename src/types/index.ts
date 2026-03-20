@@ -139,7 +139,7 @@ export interface CallListEntry {
 }
 
 // Admin sub-tab navigation
-export type AdminTab = 'chargeQueue' | 'patientRoster' | 'physicians' | 'auditLog' | 'reports';
+export type AdminTab = 'chargeQueue' | 'patientRoster' | 'physicians' | 'auditLog' | 'reports' | 'settings';
 
 // Audit log entry
 export type AuditAction =

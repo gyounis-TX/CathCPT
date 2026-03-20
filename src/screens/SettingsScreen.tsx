@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Settings, User, MapPin, Fingerprint, Bell, Shield, ChevronRight, Building2, Plus, Trash2, LogOut, Mail } from 'lucide-react';
+import { ArrowLeft, Settings, User, MapPin, Fingerprint, Bell, Shield, ChevronRight, Building2, Plus, Trash2, LogOut } from 'lucide-react';
 import { ConfirmDialog, useConfirmDialog } from '../components/ConfirmDialog';
 import { isBiometricAvailable, getBiometryType, authenticateWithBiometric, getBiometricPreference, setBiometricPreference } from '../services/biometricService';
 import { addHospital as addHospitalToOrg, deactivateHospital as deactivateHospitalFromOrg, addCathLab as addCathLabToOrg, deactivateCathLab as deactivateCathLabFromOrg, getHospitals, getCathLabs } from '../services/practiceConnection';
 import { Hospital, CathLab, Inpatient } from '../types';
 import { StoredCharge } from '../services/chargesService';
-import { getChargeNotificationSettings, updateChargeNotificationSettings, getOrgMembers } from '../services/notificationSettingsService';
 
 interface SettingsScreenProps {
   onClose: () => void;
@@ -67,12 +66,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [showCustomDays, setShowCustomDays] = useState(false);
   const [customDaysInput, setCustomDaysInput] = useState('');
 
-  // Charge notification state (admin only)
-  const [chargeNotifEnabled, setChargeNotifEnabled] = useState(false);
-  const [chargeNotifRecipients, setChargeNotifRecipients] = useState<string[]>([]);
-  const [orgMembers, setOrgMembers] = useState<{id: string; displayName: string; email: string}[]>([]);
-  const [chargeNotifLoading, setChargeNotifLoading] = useState(false);
-
   // Version tap for dev mode
   const [versionTapCount, setVersionTapCount] = useState(0);
 
@@ -84,37 +77,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   useEffect(() => {
     loadSettings();
   }, [hospitals, cathLabs]);
-
-  // Load charge notification settings (admin only)
-  useEffect(() => {
-    if (!isProMode || userRole !== 'admin' || !orgId) return;
-    const load = async () => {
-      setChargeNotifLoading(true);
-      try {
-        const [settings, members] = await Promise.all([
-          getChargeNotificationSettings(orgId),
-          getOrgMembers(orgId),
-        ]);
-        setChargeNotifEnabled(settings.enabled);
-        setChargeNotifRecipients(settings.recipientUserIds);
-        setOrgMembers(members);
-      } catch (err) {
-        console.error('Failed to load charge notification settings', err);
-      } finally {
-        setChargeNotifLoading(false);
-      }
-    };
-    load();
-  }, [isProMode, userRole, orgId]);
-
-  const saveChargeNotifSettings = async (enabled: boolean, recipients: string[]) => {
-    if (!orgId) return;
-    try {
-      await updateChargeNotificationSettings(orgId, { enabled, recipientUserIds: recipients });
-    } catch (err) {
-      console.error('Failed to save charge notification settings', err);
-    }
-  };
 
   const loadSettings = async () => {
     try {
@@ -713,63 +675,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                       Set
                     </button>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Charge Notifications — admin only */}
-        {isProMode && userRole === 'admin' && (
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Mail size={18} className="text-gray-500" />
-                <span className="text-sm font-semibold text-gray-700">Charge Notifications</span>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !chargeNotifEnabled;
-                  setChargeNotifEnabled(next);
-                  saveChargeNotifSettings(next, chargeNotifRecipients);
-                }}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  chargeNotifEnabled ? 'bg-green-500' : 'bg-gray-300'
-                }`}
-              >
-                <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                  chargeNotifEnabled ? 'translate-x-5' : 'translate-x-0'
-                }`} />
-              </button>
-            </div>
-            <p className="text-[11px] text-gray-400 mb-2 pl-7">Email selected team members when a physician submits a charge</p>
-            {chargeNotifEnabled && (
-              <div className="mt-3 pl-7 space-y-2">
-                {chargeNotifLoading ? (
-                  <p className="text-xs text-gray-400">Loading team members...</p>
-                ) : orgMembers.length === 0 ? (
-                  <p className="text-xs text-gray-400">No team members found</p>
-                ) : (
-                  orgMembers.map(member => (
-                    <label key={member.id} className="flex items-center gap-3 py-1.5">
-                      <input
-                        type="checkbox"
-                        checked={chargeNotifRecipients.includes(member.id)}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? [...chargeNotifRecipients, member.id]
-                            : chargeNotifRecipients.filter(id => id !== member.id);
-                          setChargeNotifRecipients(next);
-                          saveChargeNotifSettings(chargeNotifEnabled, next);
-                        }}
-                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div>
-                        <p className="text-sm text-gray-700">{member.displayName}</p>
-                        <p className="text-[11px] text-gray-400">{member.email}</p>
-                      </div>
-                    </label>
-                  ))
                 )}
               </div>
             )}
