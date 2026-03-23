@@ -8,11 +8,13 @@ import {
   BarChart3,
   Activity,
   Settings,
-  Mail
+  Mail,
+  Sparkles
 } from 'lucide-react';
 import { AdminTab, UserMode, Hospital, Inpatient } from '../types';
 import { StoredCharge } from '../services/chargesService';
 import { getChargeNotificationSettings, updateChargeNotificationSettings, getOrgMembers } from '../services/notificationSettingsService';
+import { OpNoteExtractorScreen } from './OpNoteExtractorScreen';
 import { getChargeStats } from '../services/adminChargeService';
 import { getReportSchedule, isReportDue } from '../services/reportScheduleService';
 import { ChargeQueueTab } from '../components/admin/ChargeQueueTab';
@@ -48,6 +50,7 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('chargeQueue');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showOpNoteExtractor, setShowOpNoteExtractor] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState({
     totalPending: 0,
@@ -134,6 +137,22 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
+  if (showOpNoteExtractor) {
+    return (
+      <OpNoteExtractorScreen
+        onClose={() => setShowOpNoteExtractor(false)}
+        orgId={orgId}
+        userId={currentUserId}
+        userName={currentUserName}
+        patients={patients}
+        onChargeCreated={() => {
+          handleChargesUpdated();
+          setShowOpNoteExtractor(false);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
@@ -147,14 +166,23 @@ export const AdminPortalScreen: React.FC<AdminPortalScreenProps> = ({
               <p className="text-[10px] text-blue-300">{currentUserName}</p>
             </div>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-200 bg-blue-800/50 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowOpNoteExtractor(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-200 bg-blue-800/50 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Op Note
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-200 bg-blue-800/50 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Horizontal scrollable tab bar */}
