@@ -1,0 +1,4961 @@
+{
+  "generatedAt": "2026-03-23T22:42:28.597Z",
+  "counts": {
+    "cptCodes": 256,
+    "icd10Codes": 371,
+    "billingRules": 18,
+    "cciEdits": 54,
+    "modifiers": 22
+  },
+  "cptCodes": [
+    {
+      "code": "93451",
+      "summary": "Right heart cath",
+      "description": "Right heart catheterization including oxygen saturation and cardiac output measurements",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93452",
+      "summary": "Left heart cath with LV gram",
+      "description": "Left heart catheterization including left ventriculography, imaging and interpretation",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93453",
+      "summary": "Combined R+L heart cath with LV gram",
+      "description": "Combined right and left heart catheterization including left ventriculography",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93454",
+      "summary": "Coronary angiography only",
+      "description": "Catheter placement in coronary artery(s) for coronary angiography, imaging and interpretation",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93455",
+      "summary": "Coronary angio + bypass grafts",
+      "description": "Catheter placement in coronary artery(s) for angiography with catheter placement in bypass graft(s)",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93456",
+      "summary": "Coronary angio + right heart cath",
+      "description": "Catheter placement in coronary artery(s) for angiography with right heart catheterization",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93457",
+      "summary": "Coronary angio + grafts + right heart",
+      "description": "Catheter placement in coronary artery(s) for angiography with bypass graft(s) and right heart catheterization",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93458",
+      "summary": "Coronary angio + left heart/LV gram",
+      "description": "Catheter placement in coronary artery(s) for angiography with left heart catheterization including left ventriculography",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93459",
+      "summary": "Coronary angio + left heart + grafts",
+      "description": "Catheter placement in coronary artery(s) for angiography with left heart catheterization and bypass graft(s)",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93460",
+      "summary": "Coronary angio + combined R+L heart",
+      "description": "Catheter placement in coronary artery(s) for angiography with combined right and left heart catheterization including left ventriculography",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "93461",
+      "summary": "Coronary angio + combined R+L + grafts",
+      "description": "Catheter placement in coronary artery(s) for angiography with combined right and left heart catheterization and bypass graft(s)",
+      "category": "Diagnostic Cardiac"
+    },
+    {
+      "code": "92920",
+      "description": "Percutaneous transluminal coronary angioplasty; single major artery and/or its branches",
+      "summary": "PTCA single artery",
+      "category": "PCI"
+    },
+    {
+      "code": "92924",
+      "description": "Percutaneous transluminal coronary atherectomy, with coronary angioplasty when performed; single major artery and/or its branches",
+      "summary": "Atherectomy + PTCA",
+      "category": "PCI"
+    },
+    {
+      "code": "92928",
+      "description": "Percutaneous transcatheter placement of intracoronary stent(s), with coronary angioplasty when performed, single major artery and/or its branches; one lesion involving one or more coronary segment",
+      "summary": "Stent, single lesion",
+      "category": "PCI"
+    },
+    {
+      "code": "92930",
+      "description": "Percutaneous transcatheter placement of intracoronary stent(s), with coronary angioplasty when performed, single major artery and/or its branches; two or more distinct coronary lesions with two or more coronary stents deployed in two or more coronary segments, or a bifurcation lesion requiring angioplasty and/or stenting in both the main artery and the side branch",
+      "summary": "Stent, 2+ lesions/bifurcation",
+      "category": "PCI"
+    },
+    {
+      "code": "92933",
+      "description": "Percutaneous transluminal coronary atherectomy, with intracoronary stent, with coronary angioplasty when performed; single major coronary artery and/or its branches",
+      "summary": "Atherectomy + stent",
+      "category": "PCI"
+    },
+    {
+      "code": "92937",
+      "description": "Percutaneous transluminal revascularization of or through coronary artery bypass graft (internal mammary, free arterial, venous), any combination of intracoronary stent, atherectomy and angioplasty, including distal protection when performed; single major coronary artery and/or its branches",
+      "summary": "Bypass graft intervention",
+      "category": "PCI"
+    },
+    {
+      "code": "92941",
+      "description": "Percutaneous transluminal revascularization of acute total/subtotal occlusion during acute myocardial infarction, any combination of intracoronary stent, atherectomy and angioplasty, including aspiration thrombectomy when performed; single major coronary artery and/or its branches or single bypass graft and/or its subtended branches",
+      "summary": "Acute MI revascularization",
+      "category": "PCI"
+    },
+    {
+      "code": "92943",
+      "description": "Percutaneous transluminal revascularization of chronic total occlusion, single coronary artery, coronary artery branch, or coronary artery bypass graft and/or subtended major coronary artery branches of the bypass graft, any combination of intracoronary stent, atherectomy and angioplasty; antegrade approach",
+      "summary": "CTO, antegrade",
+      "category": "PCI"
+    },
+    {
+      "code": "92945",
+      "description": "Percutaneous transluminal revascularization of chronic total occlusion, single coronary artery, coronary artery branch, or coronary artery bypass graft and/or subtended major coronary artery branches of the bypass graft, any combination of intracoronary stent, atherectomy and angioplasty; combined antegrade and retrograde approaches",
+      "summary": "CTO, antegrade + retrograde",
+      "category": "PCI"
+    },
+    {
+      "code": "0913T",
+      "summary": "DCB single vessel (standalone)",
+      "description": "Percutaneous transcatheter therapeutic drug delivery by intracoronary drug-delivery balloon (e.g., drug-coated, drug-eluting), including mechanical dilation by nondrug delivery balloon angioplasty, endoluminal imaging using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) when performed, imaging supervision, interpretation, and report, single major coronary artery or branch",
+      "isNew": true,
+      "requiresVessel": true,
+      "category": "PCI"
+    },
+    {
+      "code": "0914T",
+      "summary": "DCB add-on for separate lesion",
+      "description": "Percutaneous transcatheter therapeutic drug delivery by intracoronary drug-delivery balloon (e.g., drug-coated, drug-eluting) performed on a separate target lesion from the target lesion treated with balloon angioplasty, coronary stent placement or coronary atherectomy, including mechanical dilation by nondrug-delivery balloon angioplasty, endoluminal imaging using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) when performed, imaging supervision, interpretation, and report, single major coronary artery or branch (List separately in addition to code for percutaneous coronary stent or atherectomy intervention)",
+      "isNew": true,
+      "isAddOn": true,
+      "requiresVessel": true,
+      "category": "PCI"
+    },
+    {
+      "code": "92972",
+      "summary": "Coronary lithotripsy (IVL)",
+      "description": "Percutaneous transluminal coronary lithotripsy (List separately in addition to code for primary procedure)",
+      "isAddOn": true,
+      "category": "PCI Add-on Procedures"
+    },
+    {
+      "code": "92973",
+      "summary": "Mechanical thrombectomy",
+      "description": "Percutaneous transluminal coronary mechanical aspiration thrombectomy (List separately in addition to code for primary procedure)",
+      "isAddOn": true,
+      "category": "PCI Add-on Procedures"
+    },
+    {
+      "code": "92974",
+      "summary": "Brachytherapy device placement",
+      "description": "Transcatheter placement of radiation delivery device for subsequent coronary intravascular brachytherapy (List separately in addition to code for primary procedure)",
+      "isAddOn": true,
+      "category": "PCI Add-on Procedures"
+    },
+    {
+      "code": "92978",
+      "summary": "IVUS/OCT initial vessel",
+      "description": "Endoluminal imaging of coronary vessel or graft using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) during diagnostic evaluation and/or therapeutic intervention including imaging supervision, interpretation, and report; initial vessel",
+      "isAddOn": true,
+      "requiresVessel": true,
+      "category": "Intravascular Imaging & Physiology"
+    },
+    {
+      "code": "92979",
+      "summary": "IVUS/OCT each additional vessel",
+      "description": "Endoluminal imaging of coronary vessel or graft using intravascular ultrasound (IVUS) or optical coherence tomography (OCT) during diagnostic evaluation and/or therapeutic intervention including imaging supervision, interpretation, and report; each additional vessel",
+      "isAddOn": true,
+      "requiresVessel": true,
+      "category": "Intravascular Imaging & Physiology"
+    },
+    {
+      "code": "93571",
+      "summary": "FFR/CFR initial vessel",
+      "description": "Intravascular Doppler velocity and/or pressure derived coronary flow reserve measurement (coronary vessel or graft) during coronary angiography including pharmacologically induced stress, when performed; initial vessel",
+      "isAddOn": true,
+      "requiresVessel": true,
+      "category": "Intravascular Imaging & Physiology"
+    },
+    {
+      "code": "93572",
+      "summary": "FFR/CFR each additional vessel",
+      "description": "Intravascular Doppler velocity and/or pressure derived coronary flow reserve measurement (coronary vessel or graft) during coronary angiography including pharmacologically induced stress, when performed; each additional vessel",
+      "isAddOn": true,
+      "requiresVessel": true,
+      "category": "Intravascular Imaging & Physiology"
+    },
+    {
+      "code": "0523T",
+      "summary": "OCT initial vessel",
+      "description": "Intravascular coronary optical coherence tomography (OCT), initial vessel (List separately in addition to code for primary procedure)",
+      "isAddOn": true,
+      "requiresVessel": true,
+      "category": "Intravascular Imaging & Physiology"
+    },
+    {
+      "code": "0524T",
+      "summary": "OCT each additional vessel",
+      "description": "Intravascular coronary optical coherence tomography (OCT), each additional vessel (List separately in addition to code for primary procedure)",
+      "isAddOn": true,
+      "requiresVessel": true,
+      "category": "Intravascular Imaging & Physiology"
+    },
+    {
+      "code": "93662",
+      "summary": "Intracardiac echo (ICE) (add-on)",
+      "description": "Intracardiac echocardiography during therapeutic/diagnostic intervention, including imaging supervision and interpretation (List separately in addition to code for primary procedure)",
+      "isAddOn": true,
+      "category": "Intravascular Imaging & Physiology"
+    },
+    {
+      "code": "33361",
+      "summary": "TAVR, percutaneous femoral",
+      "description": "TAVR, percutaneous femoral artery access",
+      "category": "TAVR"
+    },
+    {
+      "code": "33362",
+      "summary": "TAVR, open femoral",
+      "description": "TAVR, open femoral artery access",
+      "category": "TAVR"
+    },
+    {
+      "code": "33363",
+      "summary": "TAVR, open axillary",
+      "description": "TAVR, open axillary artery access",
+      "category": "TAVR"
+    },
+    {
+      "code": "33364",
+      "summary": "TAVR, open iliac",
+      "description": "TAVR, open iliac artery access",
+      "category": "TAVR"
+    },
+    {
+      "code": "33365",
+      "summary": "TAVR, transaortic",
+      "description": "TAVR, transaortic access",
+      "category": "TAVR"
+    },
+    {
+      "code": "33366",
+      "summary": "TAVR, transapical",
+      "description": "TAVR, transapical access",
+      "category": "TAVR"
+    },
+    {
+      "code": "33367",
+      "summary": "TAVR, CPB support",
+      "description": "TAVR, cardiopulmonary bypass support",
+      "isAddOn": true,
+      "category": "TAVR"
+    },
+    {
+      "code": "33368",
+      "summary": "TAVR, transcarotid",
+      "description": "TAVR, transcarotid access",
+      "category": "TAVR"
+    },
+    {
+      "code": "33369",
+      "summary": "TAVR, transcaval",
+      "description": "TAVR, transcaval access",
+      "category": "TAVR"
+    },
+    {
+      "code": "92986",
+      "summary": "Aortic valvuloplasty (BAV)",
+      "description": "Percutaneous balloon aortic valvuloplasty",
+      "category": "Balloon Valvuloplasty"
+    },
+    {
+      "code": "92987",
+      "summary": "Mitral valvuloplasty (BMV)",
+      "description": "Percutaneous balloon mitral valvuloplasty",
+      "category": "Balloon Valvuloplasty"
+    },
+    {
+      "code": "92990",
+      "summary": "Pulmonary valvuloplasty (BPV)",
+      "description": "Percutaneous balloon pulmonary valvuloplasty",
+      "category": "Balloon Valvuloplasty"
+    },
+    {
+      "code": "33477",
+      "summary": "TPVI (pulmonary valve)",
+      "description": "Transcatheter pulmonary valve implantation, percutaneous approach (e.g., Melody valve)",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "93580",
+      "summary": "ASD closure",
+      "description": "Percutaneous transcatheter closure of congenital atrial septal defect",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "93581",
+      "summary": "VSD closure",
+      "description": "Percutaneous transcatheter closure of ventricular septal defect",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "93582",
+      "summary": "PFO closure",
+      "description": "Percutaneous transcatheter closure of patent foramen ovale",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "93583",
+      "summary": "Septal reduction for HOCM",
+      "description": "Percutaneous transcatheter septal reduction therapy (alcohol septal ablation) for hypertrophic obstructive cardiomyopathy (HOCM)",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "93590",
+      "summary": "Paravalvular leak closure, initial",
+      "description": "Percutaneous transcatheter closure of paravalvular leak, initial occlusion device",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "93591",
+      "summary": "Paravalvular leak closure, add-on",
+      "description": "Percutaneous transcatheter closure of paravalvular leak, each additional device",
+      "isAddOn": true,
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "33340",
+      "summary": "LAA closure (Watchman)",
+      "description": "Percutaneous transcatheter closure of left atrial appendage with endocardial implant (requires Q0 modifier, dual Dx: AF + Z00.6)",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "33418",
+      "summary": "TMVR, initial",
+      "description": "Transcatheter mitral valve repair, percutaneous approach, initial prosthesis",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "33419",
+      "summary": "TMVR, additional",
+      "description": "Transcatheter mitral valve repair, percutaneous approach, additional prosthesis(es) during same session",
+      "isAddOn": true,
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "0569T",
+      "summary": "TTVR, percutaneous",
+      "description": "Transcatheter tricuspid valve repair, percutaneous approach; initial prosthesis",
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "0570T",
+      "summary": "TTVR, additional",
+      "description": "Transcatheter tricuspid valve repair, percutaneous approach; each additional prosthesis during same session",
+      "isAddOn": true,
+      "category": "Structural Heart Interventions"
+    },
+    {
+      "code": "36200",
+      "summary": "Aorta catheter placement",
+      "description": "Introduction of catheter, aorta, translumbar or retrograde brachial/femoral artery approach, for aortography",
+      "category": "Aortoiliac/Abdominal"
+    },
+    {
+      "code": "36245",
+      "summary": "Selective 1st order abdominal/pelvic",
+      "description": "Selective catheter placement, first order abdominal, pelvic, or lower extremity artery branch",
+      "category": "Aortoiliac/Abdominal"
+    },
+    {
+      "code": "36246",
+      "summary": "Selective 2nd order abdominal/pelvic",
+      "description": "Selective catheter placement, second order abdominal, pelvic, or lower extremity artery branch",
+      "category": "Aortoiliac/Abdominal"
+    },
+    {
+      "code": "36247",
+      "summary": "Selective 3rd+ order abdominal/pelvic",
+      "description": "Selective catheter placement, third order and beyond abdominal, pelvic, or lower extremity artery branch",
+      "category": "Aortoiliac/Abdominal"
+    },
+    {
+      "code": "75625",
+      "summary": "Abdominal aortography S&I",
+      "description": "Aortography, abdominal, by serialography, radiological supervision and interpretation",
+      "category": "Aortoiliac/Abdominal"
+    },
+    {
+      "code": "75716",
+      "summary": "Bilateral extremity angiography S&I",
+      "description": "Angiography, extremity, bilateral, radiological supervision and interpretation",
+      "category": "Aortoiliac/Abdominal"
+    },
+    {
+      "code": "75774",
+      "summary": "Additional vessel angiography S&I",
+      "description": "Angiography, selective, each additional vessel studied after basic examination, radiological supervision and interpretation (add-on)",
+      "isAddOn": true,
+      "category": "Aortoiliac/Abdominal"
+    },
+    {
+      "code": "36245",
+      "summary": "Selective 1st order lower extremity",
+      "description": "Selective catheter placement, first order lower extremity artery branch",
+      "category": "Lower Extremity"
+    },
+    {
+      "code": "36246",
+      "summary": "Selective 2nd order lower extremity",
+      "description": "Selective catheter placement, second order lower extremity artery branch",
+      "category": "Lower Extremity"
+    },
+    {
+      "code": "36247",
+      "summary": "Selective 3rd+ order lower extremity",
+      "description": "Selective catheter placement, third order and beyond lower extremity artery branch",
+      "category": "Lower Extremity"
+    },
+    {
+      "code": "75710",
+      "summary": "Unilateral extremity angiography S&I",
+      "description": "Angiography, extremity, unilateral, radiological supervision and interpretation",
+      "category": "Lower Extremity"
+    },
+    {
+      "code": "75716",
+      "summary": "Bilateral extremity angiography S&I",
+      "description": "Angiography, extremity, bilateral, radiological supervision and interpretation",
+      "category": "Lower Extremity"
+    },
+    {
+      "code": "75774",
+      "summary": "Additional vessel angiography S&I",
+      "description": "Angiography, selective, each additional vessel studied after basic examination, radiological supervision and interpretation (add-on)",
+      "isAddOn": true,
+      "category": "Lower Extremity"
+    },
+    {
+      "code": "36215",
+      "summary": "Selective 1st order upper extremity",
+      "description": "Selective catheter placement, first order arterial branch within the thoracic or brachiocephalic tree",
+      "category": "Upper Extremity"
+    },
+    {
+      "code": "36216",
+      "summary": "Selective 2nd order upper extremity",
+      "description": "Selective catheter placement, second order arterial branch within the thoracic or brachiocephalic tree",
+      "category": "Upper Extremity"
+    },
+    {
+      "code": "36217",
+      "summary": "Selective 3rd+ order upper extremity",
+      "description": "Selective catheter placement, third order and beyond arterial branch within the thoracic or brachiocephalic tree",
+      "category": "Upper Extremity"
+    },
+    {
+      "code": "75710",
+      "summary": "Unilateral extremity angiography S&I",
+      "description": "Angiography, extremity, unilateral, radiological supervision and interpretation",
+      "category": "Upper Extremity"
+    },
+    {
+      "code": "75774",
+      "summary": "Additional vessel angiography S&I",
+      "description": "Angiography, selective, each additional vessel studied after basic examination, radiological supervision and interpretation (add-on)",
+      "isAddOn": true,
+      "category": "Upper Extremity"
+    },
+    {
+      "code": "36245",
+      "summary": "Selective 1st order renal",
+      "description": "Selective catheter placement, first order renal artery branch",
+      "category": "Renal"
+    },
+    {
+      "code": "36246",
+      "summary": "Selective 2nd order renal",
+      "description": "Selective catheter placement, second order renal artery branch",
+      "category": "Renal"
+    },
+    {
+      "code": "36247",
+      "summary": "Selective 3rd+ order renal",
+      "description": "Selective catheter placement, third order and beyond renal artery branch",
+      "category": "Renal"
+    },
+    {
+      "code": "75722",
+      "summary": "Unilateral renal angiography S&I",
+      "description": "Angiography, renal, unilateral, selective (including flush aortography), radiological supervision and interpretation",
+      "category": "Renal"
+    },
+    {
+      "code": "75724",
+      "summary": "Bilateral renal angiography S&I",
+      "description": "Angiography, renal, bilateral, selective (including flush aortography), radiological supervision and interpretation",
+      "category": "Renal"
+    },
+    {
+      "code": "37246",
+      "summary": "Renal artery PTA, initial",
+      "description": "Transluminal balloon angioplasty (except dialysis circuit), open or percutaneous, including all imaging and radiological supervision and interpretation necessary to perform the angioplasty within the same renal artery; initial renal artery",
+      "category": "Renal Intervention"
+    },
+    {
+      "code": "37247",
+      "summary": "Renal artery PTA, additional (add-on)",
+      "description": "Transluminal balloon angioplasty (except dialysis circuit), open or percutaneous, including all imaging and radiological supervision and interpretation; each additional renal artery",
+      "isAddOn": true,
+      "category": "Renal Intervention"
+    },
+    {
+      "code": "37248",
+      "summary": "Renal artery stent, initial",
+      "description": "Transluminal stent placement (except dialysis circuit), open or percutaneous, including imaging guidance, renal artery; initial artery",
+      "category": "Renal Intervention"
+    },
+    {
+      "code": "37249",
+      "summary": "Renal artery stent, additional (add-on)",
+      "description": "Transluminal stent placement (except dialysis circuit), open or percutaneous, including imaging guidance, renal artery; each additional renal artery",
+      "isAddOn": true,
+      "category": "Renal Intervention"
+    },
+    {
+      "code": "0338T",
+      "summary": "Renal denervation, unilateral",
+      "description": "Transcatheter renal sympathetic denervation, percutaneous approach including transluminal access, unilateral",
+      "category": "Renal Intervention"
+    },
+    {
+      "code": "0339T",
+      "summary": "Renal denervation, bilateral",
+      "description": "Transcatheter renal sympathetic denervation, percutaneous approach including transluminal access, bilateral",
+      "category": "Renal Intervention"
+    },
+    {
+      "code": "36245",
+      "summary": "Selective 1st order mesenteric",
+      "description": "Selective catheter placement, first order mesenteric (celiac, SMA, IMA) artery",
+      "category": "Mesenteric"
+    },
+    {
+      "code": "36246",
+      "summary": "Selective 2nd order mesenteric",
+      "description": "Selective catheter placement, second order mesenteric artery branch",
+      "category": "Mesenteric"
+    },
+    {
+      "code": "36247",
+      "summary": "Selective 3rd+ order mesenteric",
+      "description": "Selective catheter placement, third order and beyond mesenteric artery branch",
+      "category": "Mesenteric"
+    },
+    {
+      "code": "75726",
+      "summary": "Visceral angiography S&I",
+      "description": "Angiography, visceral, selective or supraselective (celiac, superior/inferior mesenteric), radiological supervision and interpretation",
+      "category": "Mesenteric"
+    },
+    {
+      "code": "75774",
+      "summary": "Additional vessel angiography S&I",
+      "description": "Angiography, selective, each additional vessel studied after basic examination, radiological supervision and interpretation (add-on)",
+      "isAddOn": true,
+      "category": "Mesenteric"
+    },
+    {
+      "code": "37220",
+      "summary": "Visceral artery PTA, initial",
+      "description": "Revascularization, endovascular, open or percutaneous, iliac artery, unilateral, initial vessel; with transluminal angioplasty (also applies to visceral arteries)",
+      "category": "Mesenteric Intervention"
+    },
+    {
+      "code": "37221",
+      "summary": "Visceral artery stent, initial",
+      "description": "Revascularization, endovascular, open or percutaneous; with transluminal stent placement(s), includes angioplasty within the same vessel, when performed",
+      "category": "Mesenteric Intervention"
+    },
+    {
+      "code": "37236",
+      "summary": "Mesenteric stent, initial",
+      "description": "Transcatheter placement of an intravascular stent(s) (except lower extremity, cervical carotid, extracranial vertebral or intrathoracic carotid, intracranial, or coronary), open or percutaneous, including radiological supervision and interpretation and including angioplasty within the same vessel, when performed; initial artery",
+      "category": "Mesenteric Intervention"
+    },
+    {
+      "code": "37237",
+      "summary": "Mesenteric stent, additional (add-on)",
+      "description": "Transcatheter placement of an intravascular stent(s), each additional artery",
+      "isAddOn": true,
+      "category": "Mesenteric Intervention"
+    },
+    {
+      "code": "36245",
+      "summary": "Selective 1st order pelvic",
+      "description": "Selective catheter placement, first order pelvic artery branch (internal iliac)",
+      "category": "Pelvic"
+    },
+    {
+      "code": "36246",
+      "summary": "Selective 2nd order pelvic",
+      "description": "Selective catheter placement, second order pelvic artery branch",
+      "category": "Pelvic"
+    },
+    {
+      "code": "36247",
+      "summary": "Selective 3rd+ order pelvic",
+      "description": "Selective catheter placement, third order and beyond pelvic artery branch",
+      "category": "Pelvic"
+    },
+    {
+      "code": "75736",
+      "summary": "Pelvic angiography S&I",
+      "description": "Angiography, pelvic, selective or supraselective, radiological supervision and interpretation",
+      "category": "Pelvic"
+    },
+    {
+      "code": "75774",
+      "summary": "Additional vessel angiography S&I",
+      "description": "Angiography, selective, each additional vessel studied after basic examination, radiological supervision and interpretation (add-on)",
+      "isAddOn": true,
+      "category": "Pelvic"
+    },
+    {
+      "code": "37254",
+      "summary": "Iliac, simple, PTA",
+      "description": "Iliac artery, straightforward lesion, angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37255",
+      "summary": "Iliac, simple, stent",
+      "description": "Iliac artery, straightforward lesion, stent with/without angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37256",
+      "summary": "Iliac, simple, atherectomy",
+      "description": "Iliac artery, straightforward lesion, atherectomy with/without angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37257",
+      "summary": "Iliac, simple, stent + atherectomy",
+      "description": "Iliac artery, straightforward lesion, stent and atherectomy with/without angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37258",
+      "summary": "Iliac, complex, PTA",
+      "description": "Iliac artery, complex lesion, angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37259",
+      "summary": "Iliac, complex, stent",
+      "description": "Iliac artery, complex lesion, stent with/without angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37260",
+      "summary": "Iliac, complex, atherectomy",
+      "description": "Iliac artery, complex lesion, atherectomy with/without angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37261",
+      "summary": "Iliac, complex, stent + atherectomy",
+      "description": "Iliac artery, complex lesion, stent and atherectomy with/without angioplasty",
+      "category": "Iliac"
+    },
+    {
+      "code": "37262",
+      "summary": "Iliac, IVL (add-on)",
+      "description": "Iliac artery, intravascular lithotripsy (add-on)",
+      "isAddOn": true,
+      "category": "Iliac"
+    },
+    {
+      "code": "37263",
+      "summary": "Fem/pop, simple, PTA",
+      "description": "Femoral/popliteal artery, straightforward lesion, angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37264",
+      "summary": "Fem/pop, simple, stent",
+      "description": "Femoral/popliteal artery, straightforward lesion, stent with/without angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37265",
+      "summary": "Fem/pop, simple, atherectomy",
+      "description": "Femoral/popliteal artery, straightforward lesion, atherectomy with/without angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37266",
+      "summary": "Fem/pop, simple, stent + atherectomy",
+      "description": "Femoral/popliteal artery, straightforward lesion, stent and atherectomy with/without angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37267",
+      "summary": "Fem/pop, complex, PTA",
+      "description": "Femoral/popliteal artery, complex lesion, angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37268",
+      "summary": "Fem/pop, complex, stent",
+      "description": "Femoral/popliteal artery, complex lesion, stent with/without angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37269",
+      "summary": "Fem/pop, complex, atherectomy",
+      "description": "Femoral/popliteal artery, complex lesion, atherectomy with/without angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37270",
+      "summary": "Fem/pop, complex, stent + atherectomy",
+      "description": "Femoral/popliteal artery, complex lesion, stent and atherectomy with/without angioplasty",
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37271",
+      "summary": "Fem/pop, add'l vessel, simple, PTA",
+      "description": "Femoral/popliteal artery, each additional vessel, straightforward lesion, angioplasty (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37272",
+      "summary": "Fem/pop, add'l vessel, simple, stent",
+      "description": "Femoral/popliteal artery, each additional vessel, straightforward lesion, stent (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37273",
+      "summary": "Fem/pop, add'l vessel, simple, atherectomy",
+      "description": "Femoral/popliteal artery, each additional vessel, straightforward lesion, atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37274",
+      "summary": "Fem/pop, add'l vessel, simple, stent + atherectomy",
+      "description": "Femoral/popliteal artery, each additional vessel, straightforward lesion, stent and atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37275",
+      "summary": "Fem/pop, add'l vessel, complex, PTA",
+      "description": "Femoral/popliteal artery, each additional vessel, complex lesion, angioplasty (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37276",
+      "summary": "Fem/pop, add'l vessel, complex, stent",
+      "description": "Femoral/popliteal artery, each additional vessel, complex lesion, stent (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37277",
+      "summary": "Fem/pop, add'l vessel, complex, atherectomy",
+      "description": "Femoral/popliteal artery, each additional vessel, complex lesion, atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37278",
+      "summary": "Fem/pop, add'l vessel, complex, stent + atherectomy",
+      "description": "Femoral/popliteal artery, each additional vessel, complex lesion, stent and atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37279",
+      "summary": "Fem/pop, IVL (add-on)",
+      "description": "Femoral/popliteal artery, intravascular lithotripsy (add-on)",
+      "isAddOn": true,
+      "category": "Femoral/Popliteal"
+    },
+    {
+      "code": "37280",
+      "summary": "Tibial/peroneal, simple, PTA",
+      "description": "Tibial/peroneal artery, straightforward lesion, angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37281",
+      "summary": "Tibial/peroneal, simple, stent",
+      "description": "Tibial/peroneal artery, straightforward lesion, stent with/without angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37282",
+      "summary": "Tibial/peroneal, simple, atherectomy",
+      "description": "Tibial/peroneal artery, straightforward lesion, atherectomy with/without angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37283",
+      "summary": "Tibial/peroneal, simple, stent + atherectomy",
+      "description": "Tibial/peroneal artery, straightforward lesion, stent and atherectomy with/without angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37284",
+      "summary": "Tibial/peroneal, complex, PTA",
+      "description": "Tibial/peroneal artery, complex lesion, angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37285",
+      "summary": "Tibial/peroneal, complex, stent",
+      "description": "Tibial/peroneal artery, complex lesion, stent with/without angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37286",
+      "summary": "Tibial/peroneal, complex, atherectomy",
+      "description": "Tibial/peroneal artery, complex lesion, atherectomy with/without angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37287",
+      "summary": "Tibial/peroneal, complex, stent + atherectomy",
+      "description": "Tibial/peroneal artery, complex lesion, stent and atherectomy with/without angioplasty",
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37288",
+      "summary": "Tibial/peroneal, add'l, simple, PTA",
+      "description": "Tibial/peroneal artery, each additional vessel, straightforward lesion, angioplasty (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37289",
+      "summary": "Tibial/peroneal, add'l, simple, stent",
+      "description": "Tibial/peroneal artery, each additional vessel, straightforward lesion, stent (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37290",
+      "summary": "Tibial/peroneal, add'l, simple, atherectomy",
+      "description": "Tibial/peroneal artery, each additional vessel, straightforward lesion, atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37291",
+      "summary": "Tibial/peroneal, add'l, simple, stent + atherectomy",
+      "description": "Tibial/peroneal artery, each additional vessel, straightforward lesion, stent and atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37292",
+      "summary": "Tibial/peroneal, add'l, complex, PTA",
+      "description": "Tibial/peroneal artery, each additional vessel, complex lesion, angioplasty (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37293",
+      "summary": "Tibial/peroneal, add'l, complex, stent",
+      "description": "Tibial/peroneal artery, each additional vessel, complex lesion, stent (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37294",
+      "summary": "Tibial/peroneal, add'l, complex, atherectomy",
+      "description": "Tibial/peroneal artery, each additional vessel, complex lesion, atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37295",
+      "summary": "Tibial/peroneal, add'l, complex, stent + atherectomy",
+      "description": "Tibial/peroneal artery, each additional vessel, complex lesion, stent and atherectomy (add-on)",
+      "isAddOn": true,
+      "category": "Tibial/Peroneal"
+    },
+    {
+      "code": "37296",
+      "summary": "Inframalleolar, simple, PTA",
+      "description": "Inframalleolar artery (foot), straightforward lesion, angioplasty",
+      "isNew": true,
+      "category": "Inframalleolar"
+    },
+    {
+      "code": "37297",
+      "summary": "Inframalleolar, complex, PTA",
+      "description": "Inframalleolar artery (foot), complex lesion, angioplasty",
+      "isNew": true,
+      "category": "Inframalleolar"
+    },
+    {
+      "code": "37298",
+      "summary": "Inframalleolar, add'l, simple, PTA",
+      "description": "Inframalleolar artery (foot), each additional vessel, straightforward lesion, angioplasty (add-on)",
+      "isNew": true,
+      "isAddOn": true,
+      "category": "Inframalleolar"
+    },
+    {
+      "code": "37299",
+      "summary": "Inframalleolar, add'l, complex, PTA",
+      "description": "Inframalleolar artery (foot), each additional vessel, complex lesion, angioplasty (add-on)",
+      "isNew": true,
+      "isAddOn": true,
+      "category": "Inframalleolar"
+    },
+    {
+      "code": "36010",
+      "summary": "Venous catheter, 1st order",
+      "description": "Introduction of catheter, superior or inferior vena cava",
+      "category": "Venography"
+    },
+    {
+      "code": "36011",
+      "summary": "Venous catheter, 1st order selective",
+      "description": "Selective catheter placement, venous system; first order branch (e.g., renal vein, jugular vein)",
+      "category": "Venography"
+    },
+    {
+      "code": "36012",
+      "summary": "Venous catheter, 2nd order selective",
+      "description": "Selective catheter placement, venous system; second order, or more selective, branch (e.g., left adrenal vein, petrosal sinus)",
+      "category": "Venography"
+    },
+    {
+      "code": "75820",
+      "summary": "Venography, extremity, unilateral S&I",
+      "description": "Venography, extremity, unilateral, radiological supervision and interpretation",
+      "category": "Venography"
+    },
+    {
+      "code": "75822",
+      "summary": "Venography, extremity, bilateral S&I",
+      "description": "Venography, extremity, bilateral, radiological supervision and interpretation",
+      "category": "Venography"
+    },
+    {
+      "code": "75825",
+      "summary": "Venography, caval, inferior S&I",
+      "description": "Venography, caval, inferior, with serialography, radiological supervision and interpretation",
+      "category": "Venography"
+    },
+    {
+      "code": "75827",
+      "summary": "Venography, caval, superior S&I",
+      "description": "Venography, caval, superior, with serialography, radiological supervision and interpretation",
+      "category": "Venography"
+    },
+    {
+      "code": "37191",
+      "summary": "IVC filter insertion",
+      "description": "Insertion of intravascular vena cava filter, endovascular approach including vascular access, fluoroscopic guidance, radiological supervision and interpretation",
+      "category": "IVC Filter"
+    },
+    {
+      "code": "37192",
+      "summary": "IVC filter repositioning",
+      "description": "Repositioning of intravascular vena cava filter, endovascular approach including vascular access, fluoroscopic guidance, radiological supervision and interpretation",
+      "category": "IVC Filter"
+    },
+    {
+      "code": "37193",
+      "summary": "IVC filter removal",
+      "description": "Retrieval (removal) of intravascular vena cava filter, endovascular approach including vascular access, fluoroscopic guidance, radiological supervision and interpretation",
+      "category": "IVC Filter"
+    },
+    {
+      "code": "37238",
+      "summary": "Venous stent, initial",
+      "description": "Transcatheter placement of an intravascular stent(s), open or percutaneous, including radiological supervision and interpretation and including angioplasty within the same vessel, when performed; initial vein",
+      "category": "Venous Stenting"
+    },
+    {
+      "code": "37239",
+      "summary": "Venous stent, additional",
+      "description": "Transcatheter placement of an intravascular stent(s), open or percutaneous, including radiological supervision and interpretation and including angioplasty within the same vessel, when performed; each additional vein",
+      "isAddOn": true,
+      "category": "Venous Stenting"
+    },
+    {
+      "code": "37248",
+      "summary": "Venous angioplasty, initial",
+      "description": "Transluminal balloon angioplasty, open or percutaneous, including all imaging and radiological supervision and interpretation necessary to perform the angioplasty; initial vein",
+      "category": "Venous Stenting"
+    },
+    {
+      "code": "37249",
+      "summary": "Venous angioplasty, additional",
+      "description": "Transluminal balloon angioplasty, open or percutaneous, including all imaging and radiological supervision and interpretation necessary to perform the angioplasty; each additional vein",
+      "isAddOn": true,
+      "category": "Venous Stenting"
+    },
+    {
+      "code": "37187",
+      "summary": "Venous mechanical thrombectomy, initial",
+      "description": "Percutaneous transluminal mechanical thrombectomy, vein(s), including intraprocedural pharmacological thrombolytic injections and fluoroscopic guidance; initial vessel",
+      "category": "Venous Thrombectomy"
+    },
+    {
+      "code": "37188",
+      "summary": "Venous mechanical thrombectomy, additional",
+      "description": "Percutaneous transluminal mechanical thrombectomy, vein(s), including intraprocedural pharmacological thrombolytic injections and fluoroscopic guidance; each additional vein treated in a different vein",
+      "isAddOn": true,
+      "category": "Venous Thrombectomy"
+    },
+    {
+      "code": "75726",
+      "summary": "IMA angiography, bilateral",
+      "description": "Angiography, internal mammary artery (IMA), bilateral",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93505",
+      "summary": "Endomyocardial biopsy",
+      "description": "Endomyocardial biopsy (single or multiple samples)",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93462",
+      "summary": "Transseptal puncture",
+      "description": "Transseptal left heart catheterization through intact septum",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93463",
+      "summary": "Pharmacologic challenge",
+      "description": "Pharmacologic agent administration with hemodynamic measurements",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93464",
+      "summary": "Exercise hemodynamics",
+      "description": "Physiologic exercise study with hemodynamic measurements",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93566",
+      "summary": "RV/RA angiography (add-on)",
+      "description": "Injection for selective right ventricular or right atrial angiography (add-on)",
+      "isAddOn": true,
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93567",
+      "summary": "Supravalvular aortography (add-on)",
+      "description": "Injection for supravalvular aortography (add-on)",
+      "isAddOn": true,
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93568",
+      "summary": "Pulmonary angiography (add-on)",
+      "description": "Injection for pulmonary angiography (add-on)",
+      "isAddOn": true,
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "33016",
+      "summary": "Pericardiocentesis",
+      "description": "Pericardiocentesis, needle or catheter technique",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "33017",
+      "summary": "Pericardial drain placement",
+      "description": "Pericardial drainage with catheter placement, fluoroscopy and/or ultrasound guidance",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "92950",
+      "summary": "CPR",
+      "description": "Cardiopulmonary resuscitation (CPR)",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "36000",
+      "summary": "Venous access, separate",
+      "description": "Introduction of needle or catheter, vein (separate venous access)",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "36140",
+      "summary": "Arterial access, separate",
+      "description": "Introduction of needle or catheter, upper or lower extremity artery (separate arterial access)",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "93503",
+      "summary": "Swan-Ganz insertion",
+      "description": "Swan-Ganz catheter insertion for hemodynamic monitoring",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "33210",
+      "summary": "Temp pacer, single chamber",
+      "description": "Insertion of temporary transvenous single chamber pacing electrode",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "33211",
+      "summary": "Temp pacer, dual chamber",
+      "description": "Insertion of temporary transvenous dual chamber pacing electrodes",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "92998",
+      "summary": "PCI, unsuccessful attempt",
+      "description": "Percutaneous PCI - attempted but unsuccessful (report with modifier 52 or 53)",
+      "category": "Adjunctive Procedures"
+    },
+    {
+      "code": "33990",
+      "summary": "pVAD insertion, arterial (Impella)",
+      "description": "Insertion of percutaneous ventricular assist device (e.g., Impella), arterial access",
+      "category": "MCS"
+    },
+    {
+      "code": "33991",
+      "summary": "pVAD insertion, arterial + venous",
+      "description": "Insertion of percutaneous VAD, both arterial and venous access, with transseptal puncture",
+      "category": "MCS"
+    },
+    {
+      "code": "33995",
+      "summary": "pVAD repositioning",
+      "description": "Repositioning of percutaneous ventricular assist device",
+      "category": "MCS"
+    },
+    {
+      "code": "33992",
+      "summary": "pVAD removal, arterial",
+      "description": "Removal of percutaneous ventricular assist device, arterial access",
+      "category": "MCS"
+    },
+    {
+      "code": "33993",
+      "summary": "pVAD removal, arterial + venous",
+      "description": "Removal of percutaneous VAD, both arterial and venous access",
+      "category": "MCS"
+    },
+    {
+      "code": "33946",
+      "summary": "ECMO initiation, VV",
+      "description": "Extracorporeal membrane oxygenation (ECMO)/ECLS initiation, veno-venous",
+      "category": "MCS"
+    },
+    {
+      "code": "33947",
+      "summary": "ECMO initiation, VA",
+      "description": "ECMO/ECLS initiation, veno-arterial",
+      "category": "MCS"
+    },
+    {
+      "code": "33948",
+      "summary": "ECMO initiation, AV",
+      "description": "ECMO/ECLS initiation, arterial-venous",
+      "category": "MCS"
+    },
+    {
+      "code": "33949",
+      "summary": "ECMO cannula, perc, ≤5 yrs",
+      "description": "ECMO/ECLS insertion of peripheral cannula(e), percutaneous, birth through 5 years",
+      "category": "MCS"
+    },
+    {
+      "code": "33951",
+      "summary": "ECMO cannula, perc, ≥6 yrs",
+      "description": "ECMO/ECLS insertion of peripheral cannula(e), percutaneous, 6 years and older",
+      "category": "MCS"
+    },
+    {
+      "code": "33952",
+      "summary": "ECMO cannula, open, ≥6 yrs",
+      "description": "ECMO/ECLS insertion of peripheral cannula(e), open, 6 years and older",
+      "category": "MCS"
+    },
+    {
+      "code": "33989",
+      "summary": "IABP insertion",
+      "description": "Insertion of intra-aortic balloon pump (IABP)",
+      "category": "MCS"
+    },
+    {
+      "code": "37211",
+      "summary": "Transcatheter thrombolysis, arterial, initial",
+      "description": "Transcatheter therapy, arterial infusion for thrombolysis other than coronary, any method, including radiological supervision and interpretation, initial treatment day",
+      "category": "Thrombolysis"
+    },
+    {
+      "code": "37212",
+      "summary": "Transcatheter thrombolysis, venous, initial",
+      "description": "Transcatheter therapy, venous infusion for thrombolysis, any method, including radiological supervision and interpretation, initial treatment day",
+      "category": "Thrombolysis"
+    },
+    {
+      "code": "37213",
+      "summary": "Transcatheter thrombolysis, arterial, continued",
+      "description": "Transcatheter therapy, arterial or venous infusion for thrombolysis other than coronary, any method, including radiological supervision and interpretation, continued treatment on subsequent day during course of thrombolytic therapy, including follow-up catheter contrast injection, position change, or exchange, when performed",
+      "category": "Thrombolysis"
+    },
+    {
+      "code": "37214",
+      "summary": "Transcatheter thrombolysis, cessation",
+      "description": "Transcatheter therapy, arterial or venous infusion for thrombolysis other than coronary, any method, including radiological supervision and interpretation, cessation of thrombolysis including removal of catheter and vessel closure by any method",
+      "category": "Thrombolysis"
+    },
+    {
+      "code": "37184",
+      "summary": "Arterial mechanical thrombectomy, initial",
+      "description": "Primary percutaneous transluminal mechanical thrombectomy, noncoronary, non-intracranial, arterial or arterial bypass graft, including fluoroscopic guidance and intraprocedural pharmacological thrombolytic injection(s); initial vessel",
+      "category": "Arterial Thrombectomy"
+    },
+    {
+      "code": "37185",
+      "summary": "Arterial mechanical thrombectomy, add-on",
+      "description": "Primary percutaneous transluminal mechanical thrombectomy, noncoronary, non-intracranial, arterial or arterial bypass graft, including fluoroscopic guidance and intraprocedural pharmacological thrombolytic injection(s); second and all subsequent vessel(s) within the same vascular family",
+      "isAddOn": true,
+      "category": "Arterial Thrombectomy"
+    },
+    {
+      "code": "37186",
+      "summary": "Secondary arterial thrombectomy",
+      "description": "Secondary percutaneous transluminal thrombectomy (e.g., nonprimary mechanical, snare basket, suction technique), noncoronary, non-intracranial, arterial or arterial bypass graft, including fluoroscopic guidance and intraprocedural pharmacological thrombolytic injections, provided in conjunction with another percutaneous intervention other than primary mechanical thrombectomy",
+      "isAddOn": true,
+      "category": "Arterial Thrombectomy"
+    },
+    {
+      "code": "37197",
+      "summary": "Foreign body retrieval, vascular",
+      "description": "Transcatheter retrieval, percutaneous, of intravascular foreign body (e.g., fractured venous or arterial catheter), includes radiological supervision and interpretation, and imaging guidance (fluoroscopy), when performed",
+      "category": "Retrieval"
+    },
+    {
+      "code": "36221",
+      "summary": "Non-selective thoracic aorta",
+      "description": "Non-selective catheter placement, thoracic aorta, with angiography of the extracranial carotid, vertebral, and/or intracranial vessels, unilateral or bilateral, and all associated radiological supervision and interpretation",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "36222",
+      "summary": "Selective common carotid/innominate",
+      "description": "Selective catheter placement, common carotid or innominate artery, unilateral, any approach, with angiography of the ipsilateral extracranial carotid circulation and all associated radiological supervision and interpretation",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "36223",
+      "summary": "Selective common carotid with intracranial",
+      "description": "Selective catheter placement, common carotid or innominate artery, unilateral, any approach, with angiography of the ipsilateral intracranial carotid circulation and all associated radiological supervision and interpretation",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "36224",
+      "summary": "Selective internal carotid",
+      "description": "Selective catheter placement, internal carotid artery, unilateral, with angiography of the ipsilateral intracranial carotid circulation and all associated radiological supervision and interpretation",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "36225",
+      "summary": "Selective subclavian with vertebral angio",
+      "description": "Selective catheter placement, subclavian, innominate, or vertebral artery, unilateral, with angiography of the ipsilateral vertebral circulation and all associated radiological supervision and interpretation",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "36226",
+      "summary": "Selective vertebral artery",
+      "description": "Selective catheter placement, vertebral artery, unilateral, with angiography of the ipsilateral vertebral circulation and all associated radiological supervision and interpretation",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "36227",
+      "summary": "Selective external carotid (add-on)",
+      "description": "Selective catheter placement, external carotid artery, unilateral, with angiography of the ipsilateral external carotid circulation and all associated radiological supervision and interpretation",
+      "isAddOn": true,
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "36228",
+      "summary": "Selective intracranial branch (add-on)",
+      "description": "Selective catheter placement, each intracranial branch of the internal carotid or vertebral arteries, unilateral, with angiography of the selected vessel circulation and all associated radiological supervision and interpretation",
+      "isAddOn": true,
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "75676",
+      "summary": "Carotid angiography, unilateral S&I",
+      "description": "Angiography, carotid, cervical, unilateral, radiological supervision and interpretation (if separate from catheter codes)",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "75680",
+      "summary": "Carotid angiography, bilateral S&I",
+      "description": "Angiography, carotid, cervical, bilateral, radiological supervision and interpretation",
+      "category": "Carotid/Cerebrovascular"
+    },
+    {
+      "code": "37215",
+      "summary": "Carotid stent with embolic protection",
+      "description": "Transcatheter placement of intravascular stent(s), cervical carotid artery, open or percutaneous, including angioplasty, when performed, and radiological supervision and interpretation; with distal embolic protection",
+      "category": "Carotid Stenting"
+    },
+    {
+      "code": "37216",
+      "summary": "Carotid stent without embolic protection",
+      "description": "Transcatheter placement of intravascular stent(s), cervical carotid artery, open or percutaneous, including angioplasty, when performed, and radiological supervision and interpretation; without distal embolic protection",
+      "category": "Carotid Stenting"
+    },
+    {
+      "code": "37217",
+      "summary": "Intrathoracic carotid/innominate stent, retrograde",
+      "description": "Transcatheter placement of intravascular stent(s), intrathoracic common carotid artery or innominate artery by retrograde treatment, open ipsilateral cervical carotid artery exposure, including angioplasty, when performed, and radiological supervision and interpretation",
+      "category": "Carotid Stenting"
+    },
+    {
+      "code": "37218",
+      "summary": "Intrathoracic carotid/innominate stent, antegrade",
+      "description": "Transcatheter placement of intravascular stent(s), intrathoracic common carotid artery or innominate artery, open or percutaneous antegrade approach, including angioplasty, when performed, and radiological supervision and interpretation",
+      "category": "Carotid Stenting"
+    },
+    {
+      "code": "36200",
+      "summary": "Aorta catheter placement",
+      "description": "Introduction of catheter, aorta, translumbar or retrograde brachial/femoral artery approach, for aortography",
+      "category": "Thoracic Aortography"
+    },
+    {
+      "code": "75600",
+      "summary": "Thoracic aortography S&I",
+      "description": "Aortography, thoracic, without serialography, radiological supervision and interpretation",
+      "category": "Thoracic Aortography"
+    },
+    {
+      "code": "75605",
+      "summary": "Thoracic aortography with arch S&I",
+      "description": "Aortography, thoracic, by serialography, radiological supervision and interpretation",
+      "category": "Thoracic Aortography"
+    },
+    {
+      "code": "75625",
+      "summary": "Abdominal aortography S&I",
+      "description": "Aortography, abdominal, by serialography, radiological supervision and interpretation",
+      "category": "Thoracic Aortography"
+    },
+    {
+      "code": "75630",
+      "summary": "Aortography with runoff S&I",
+      "description": "Aortography, abdominal plus bilateral iliofemoral lower extremity, catheter, by serialography, radiological supervision and interpretation",
+      "category": "Thoracic Aortography"
+    },
+    {
+      "code": "34701",
+      "summary": "EVAR, aorto-aortic tube",
+      "description": "Endovascular repair of infrarenal aorta by deployment of an aorto-aortic tube endograft including pre-procedure sizing and device selection, all nonselective catheterization(s), all associated radiological supervision and interpretation, all endograft extension(s) placed in the aorta from the level of the renal arteries to the aortic bifurcation, and all angioplasty/stenting performed from the level of the renal arteries to the aortic bifurcation",
+      "category": "EVAR"
+    },
+    {
+      "code": "34702",
+      "summary": "EVAR, aorto-uni-iliac",
+      "description": "Endovascular repair of infrarenal aorta and/or iliac artery(ies) by deployment of an aorto-uni-iliac endograft including pre-procedure sizing and device selection, all nonselective catheterization(s), all associated radiological supervision and interpretation, all endograft extension(s) placed in the aorta from the level of the renal arteries to the iliac bifurcation, and all angioplasty/stenting performed from the level of the renal arteries to the iliac bifurcation",
+      "category": "EVAR"
+    },
+    {
+      "code": "34703",
+      "summary": "EVAR, aorto-bi-iliac",
+      "description": "Endovascular repair of infrarenal aorta and/or iliac artery(ies) by deployment of an aorto-bi-iliac endograft including pre-procedure sizing and device selection, all nonselective catheterization(s), all associated radiological supervision and interpretation, all endograft extension(s) placed in the aorta from the level of the renal arteries to the iliac bifurcation, and all angioplasty/stenting performed from the level of the renal arteries to the iliac bifurcation",
+      "category": "EVAR"
+    },
+    {
+      "code": "34704",
+      "summary": "EVAR, iliac tube endograft",
+      "description": "Endovascular repair of iliac artery by deployment of ilio-iliac tube endograft including pre-procedure sizing and device selection, all nonselective catheterization(s), all associated radiological supervision and interpretation, and all endograft extension(s) proximally to the aortic bifurcation or distally to the iliac bifurcation, and treatment zone angioplasty/stenting, when performed, unilateral",
+      "category": "EVAR"
+    },
+    {
+      "code": "34705",
+      "summary": "EVAR, iliac bifurcation endograft, initial",
+      "description": "Endovascular repair of iliac artery bifurcation by deployment of iliac branched endograft including pre-procedure sizing and device selection, all ipsilateral selective catheterization(s), all associated radiological supervision and interpretation, and all endograft extension(s) proximally to the aortic bifurcation and distally in the internal iliac, external iliac, and common femoral artery(ies), and treatment zone angioplasty/stenting when performed; initial iliac artery",
+      "category": "EVAR"
+    },
+    {
+      "code": "34706",
+      "summary": "EVAR, iliac bifurcation, add-on",
+      "description": "Endovascular repair of iliac artery bifurcation by deployment of iliac branched endograft; each additional iliac artery",
+      "isAddOn": true,
+      "category": "EVAR"
+    },
+    {
+      "code": "34707",
+      "summary": "Extension prosthesis, renal/mesenteric, initial (add-on)",
+      "description": "Placement of extension prosthesis(es), renal or mesenteric artery, initial vessel",
+      "isAddOn": true,
+      "category": "EVAR"
+    },
+    {
+      "code": "34708",
+      "summary": "Extension prosthesis, renal/mesenteric, add-on",
+      "description": "Placement of extension prosthesis(es), renal or mesenteric artery; each additional renal or mesenteric artery",
+      "isAddOn": true,
+      "category": "EVAR"
+    },
+    {
+      "code": "34709",
+      "summary": "EVAR extension, aorta (add-on)",
+      "description": "Placement of extension prosthesis(es) distal to the common iliac artery(ies) or proximal to the renal artery(ies) for endovascular repair of infrarenal abdominal aortic or iliac aneurysm, false aneurysm, dissection, penetrating ulcer, including pre-procedure sizing and device selection, all nonselective catheterization(s), all associated radiological supervision and interpretation, and treatment zone angioplasty/stenting, when performed, per vessel treated",
+      "isAddOn": true,
+      "category": "EVAR"
+    },
+    {
+      "code": "34710",
+      "summary": "Endograft extension, delayed, initial",
+      "description": "Delayed placement of distal or proximal extension prosthesis for endovascular repair of infrarenal abdominal aortic or iliac aneurysm, false aneurysm, dissection, endoleak, or endograft migration, including pre-procedure sizing and device selection, all nonselective catheterization(s), all associated radiological supervision and interpretation, and treatment zone angioplasty/stenting, when performed; initial vessel",
+      "category": "EVAR"
+    },
+    {
+      "code": "34711",
+      "summary": "Endograft extension, delayed, add-on",
+      "description": "Delayed placement of distal or proximal extension prosthesis for endovascular repair of infrarenal abdominal aortic or iliac aneurysm, false aneurysm, dissection, endoleak, or endograft migration; each additional vessel",
+      "isAddOn": true,
+      "category": "EVAR"
+    },
+    {
+      "code": "34712",
+      "summary": "Endograft fixation device (add-on)",
+      "description": "Transcatheter delivery of enhanced fixation device(s) to the endograft",
+      "isAddOn": true,
+      "category": "EVAR"
+    },
+    {
+      "code": "34713",
+      "summary": "Percutaneous femoral access/closure",
+      "description": "Percutaneous access and closure of femoral artery for delivery of endovascular prosthesis, unilateral",
+      "category": "EVAR"
+    },
+    {
+      "code": "34714",
+      "summary": "Open femoral conduit",
+      "description": "Open femoral artery exposure with creation of conduit for delivery of aortic or iliac endovascular prosthesis",
+      "category": "EVAR"
+    },
+    {
+      "code": "34808",
+      "summary": "Iliac artery occlusion device",
+      "description": "Endovascular placement of iliac artery occlusion device (for treatment of endoleak, one or more)",
+      "category": "EVAR"
+    },
+    {
+      "code": "34812",
+      "summary": "Open femoral exposure, unilateral",
+      "description": "Open femoral artery exposure for delivery of endovascular prosthesis, unilateral",
+      "category": "EVAR"
+    },
+    {
+      "code": "34820",
+      "summary": "Open iliac exposure, unilateral",
+      "description": "Open iliac artery exposure for delivery of endovascular prosthesis or iliac occlusion during endovascular therapy, unilateral",
+      "category": "EVAR"
+    },
+    {
+      "code": "34833",
+      "summary": "Open iliac conduit creation",
+      "description": "Open iliac artery exposure with creation of conduit for delivery of aortic endovascular prosthesis",
+      "category": "EVAR"
+    },
+    {
+      "code": "34834",
+      "summary": "Open brachial exposure, unilateral",
+      "description": "Open brachial artery exposure for delivery of endovascular prosthesis, unilateral",
+      "category": "EVAR"
+    },
+    {
+      "code": "36010",
+      "summary": "IVC catheter placement",
+      "description": "Introduction of catheter, superior or inferior vena cava",
+      "category": "EVAR"
+    },
+    {
+      "code": "37241",
+      "summary": "Venous embolization (sac)",
+      "description": "Vascular embolization or occlusion, inclusive of all radiological supervision and interpretation, intraprocedural roadmapping, and imaging guidance necessary to complete the intervention; venous, other than hemorrhage (for sac embolization)",
+      "category": "EVAR"
+    },
+    {
+      "code": "37242",
+      "summary": "Arterial embolization (endoleak)",
+      "description": "Vascular embolization or occlusion, arterial, other than hemorrhage or tumor (for endoleak coiling)",
+      "category": "EVAR"
+    },
+    {
+      "code": "34717",
+      "summary": "Juxta-renal AAA repair",
+      "description": "Endovascular repair of juxta-renal abdominal aortic aneurysm and/or dissection, including visceral artery endoprostheses, when performed",
+      "category": "EVAR"
+    },
+    {
+      "code": "34718",
+      "summary": "Iliac artery endoprosthesis",
+      "description": "Endovascular repair of iliac artery, with placement of endoprosthesis",
+      "category": "EVAR"
+    },
+    {
+      "code": "0254T",
+      "summary": "Iliac bifurcation endograft, initial",
+      "description": "Endovascular repair of iliac artery bifurcation using bifurcated endoprosthesis from aortic or iliac artery",
+      "category": "EVAR"
+    },
+    {
+      "code": "0255T",
+      "summary": "Iliac bifurcation endograft, add-on",
+      "description": "Endovascular repair of iliac artery bifurcation using bifurcated endoprosthesis; each additional ipsilateral iliac artery bifurcation",
+      "isAddOn": true,
+      "category": "EVAR"
+    },
+    {
+      "code": "33880",
+      "summary": "TEVAR, with left subclavian coverage",
+      "description": "Endovascular repair of descending thoracic aorta; involving coverage of left subclavian artery origin, initial endoprosthesis plus descending thoracic aortic extension(s), if required, to level of celiac artery origin",
+      "category": "TEVAR"
+    },
+    {
+      "code": "33881",
+      "summary": "TEVAR, without left subclavian coverage",
+      "description": "Endovascular repair of descending thoracic aorta; not involving coverage of left subclavian artery origin, initial endoprosthesis plus descending thoracic aortic extension(s), if required, to level of celiac artery origin",
+      "category": "TEVAR"
+    },
+    {
+      "code": "33883",
+      "summary": "TEVAR proximal extension (add-on)",
+      "description": "Placement of proximal extension prosthesis for endovascular repair of descending thoracic aorta; initial extension",
+      "isAddOn": true,
+      "category": "TEVAR"
+    },
+    {
+      "code": "33884",
+      "summary": "TEVAR proximal extension, each add-on",
+      "description": "Placement of proximal extension prosthesis for endovascular repair of descending thoracic aorta; each additional proximal extension",
+      "isAddOn": true,
+      "category": "TEVAR"
+    },
+    {
+      "code": "33886",
+      "summary": "TEVAR distal extension (add-on)",
+      "description": "Placement of distal extension prosthesis(s) (delayed) after endovascular repair of descending thoracic aorta",
+      "isAddOn": true,
+      "category": "TEVAR"
+    },
+    {
+      "code": "33889",
+      "summary": "Subclavian transposition/bypass (add-on)",
+      "description": "Open subclavian to carotid artery transposition performed in conjunction with endovascular repair of descending thoracic aorta, by neck incision, unilateral",
+      "isAddOn": true,
+      "category": "TEVAR"
+    },
+    {
+      "code": "33891",
+      "summary": "Carotid-carotid bypass (add-on)",
+      "description": "Bypass graft, with other than vein, transcervical retropharyngeal carotid-carotid, performed in conjunction with endovascular repair of descending thoracic aorta, by neck incision",
+      "isAddOn": true,
+      "category": "TEVAR"
+    },
+    {
+      "code": "37226",
+      "summary": "Brachiocephalic angioplasty, initial",
+      "description": "Revascularization, endovascular, open or percutaneous, tibial, peroneal artery, unilateral, initial vessel; with transluminal angioplasty",
+      "category": "Subclavian/Innominate"
+    },
+    {
+      "code": "37227",
+      "summary": "Brachiocephalic stent, initial",
+      "description": "Revascularization, endovascular, open or percutaneous, femoral, popliteal artery(s), unilateral; with transluminal stent placement(s), includes angioplasty within the same vessel, when performed",
+      "category": "Subclavian/Innominate"
+    },
+    {
+      "code": "37236",
+      "summary": "Arterial stent, initial vessel",
+      "description": "Transcatheter placement of an intravascular stent(s) (except lower extremity, cervical carotid, extracranial vertebral or intrathoracic carotid, intracranial, or coronary), open or percutaneous, including radiological supervision and interpretation and including angioplasty within the same vessel, when performed; initial artery",
+      "category": "Subclavian/Innominate"
+    },
+    {
+      "code": "37237",
+      "summary": "Arterial stent, each additional (add-on)",
+      "description": "Transcatheter placement of an intravascular stent(s) (except lower extremity, cervical carotid, extracranial vertebral or intrathoracic carotid, intracranial, or coronary), open or percutaneous, including radiological supervision and interpretation and including angioplasty within the same vessel, when performed; each additional artery",
+      "isAddOn": true,
+      "category": "Subclavian/Innominate"
+    },
+    {
+      "code": "37246",
+      "summary": "Arterial angioplasty, initial vessel",
+      "description": "Transluminal balloon angioplasty (except dialysis circuit), open or percutaneous, including all imaging and radiological supervision and interpretation necessary to perform the angioplasty within the same artery; initial artery",
+      "category": "Subclavian/Innominate"
+    },
+    {
+      "code": "37247",
+      "summary": "Arterial angioplasty, each additional (add-on)",
+      "description": "Transluminal balloon angioplasty (except dialysis circuit), open or percutaneous, including all imaging and radiological supervision and interpretation necessary to perform the angioplasty within the same artery; each additional artery",
+      "isAddOn": true,
+      "category": "Subclavian/Innominate"
+    }
+  ],
+  "icd10Codes": [
+    {
+      "code": "I21.01",
+      "description": "ST elevation myocardial infarction involving left anterior descending coronary artery",
+      "shortLabel": "STEMI LAD",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.02",
+      "description": "ST elevation myocardial infarction involving left circumflex coronary artery",
+      "shortLabel": "STEMI LCx",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.09",
+      "description": "ST elevation myocardial infarction involving other coronary artery of anterior wall",
+      "shortLabel": "STEMI anterior other",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.11",
+      "description": "ST elevation myocardial infarction involving right coronary artery",
+      "shortLabel": "STEMI RCA",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.19",
+      "description": "ST elevation myocardial infarction involving other coronary artery of inferior wall",
+      "shortLabel": "STEMI inferior other",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.21",
+      "description": "ST elevation myocardial infarction involving left main coronary artery",
+      "shortLabel": "STEMI left main",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.29",
+      "description": "ST elevation myocardial infarction involving other sites",
+      "shortLabel": "STEMI other",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.3",
+      "description": "ST elevation myocardial infarction of unspecified site",
+      "shortLabel": "STEMI unspecified",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.4",
+      "description": "Non-ST elevation (NSTEMI) myocardial infarction",
+      "shortLabel": "NSTEMI",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.9",
+      "description": "Acute myocardial infarction, unspecified",
+      "shortLabel": "AMI unspecified",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I21.A1",
+      "description": "Myocardial infarction type 2",
+      "shortLabel": "MI type 2",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I22.0",
+      "description": "Subsequent ST elevation myocardial infarction of anterior wall",
+      "shortLabel": "Subsequent STEMI ant",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I22.1",
+      "description": "Subsequent ST elevation myocardial infarction of inferior wall",
+      "shortLabel": "Subsequent STEMI inf",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I24.0",
+      "description": "Acute coronary thrombosis not resulting in myocardial infarction",
+      "shortLabel": "Acute coronary thrombosis",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.10",
+      "description": "Atherosclerotic heart disease of native coronary artery without angina pectoris",
+      "shortLabel": "CAD native",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.110",
+      "description": "Atherosclerotic heart disease of native coronary artery with unstable angina pectoris",
+      "shortLabel": "Unstable angina",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.111",
+      "description": "Atherosclerotic heart disease of native coronary artery with angina pectoris with documented spasm",
+      "shortLabel": "Vasospastic angina",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.118",
+      "description": "Atherosclerotic heart disease of native coronary artery with other forms of angina pectoris",
+      "shortLabel": "Stable angina",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.2",
+      "description": "Old myocardial infarction",
+      "shortLabel": "Old MI",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.5",
+      "description": "Ischemic cardiomyopathy",
+      "shortLabel": "Ischemic CM",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.700",
+      "description": "Atherosclerosis of coronary artery bypass graft(s), unspecified, with unstable angina pectoris",
+      "shortLabel": "Graft disease unstable",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I25.810",
+      "description": "Atherosclerosis of coronary artery bypass graft(s) without angina pectoris",
+      "shortLabel": "Graft disease",
+      "category": "primary",
+      "subcategory": "coronary"
+    },
+    {
+      "code": "I50.1",
+      "description": "Left ventricular failure, unspecified",
+      "shortLabel": "LV failure",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.20",
+      "description": "Unspecified systolic (congestive) heart failure",
+      "shortLabel": "Systolic HF unspec",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.21",
+      "description": "Acute systolic (congestive) heart failure",
+      "shortLabel": "Systolic HF acute",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.22",
+      "description": "Chronic systolic (congestive) heart failure",
+      "shortLabel": "Systolic HF chronic",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.23",
+      "description": "Acute on chronic systolic (congestive) heart failure",
+      "shortLabel": "Systolic HF acute/chronic",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.30",
+      "description": "Unspecified diastolic (congestive) heart failure",
+      "shortLabel": "Diastolic HF unspec",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.31",
+      "description": "Acute diastolic (congestive) heart failure",
+      "shortLabel": "Diastolic HF acute",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.32",
+      "description": "Chronic diastolic (congestive) heart failure",
+      "shortLabel": "Diastolic HF chronic",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.33",
+      "description": "Acute on chronic diastolic (congestive) heart failure",
+      "shortLabel": "Diastolic HF acute/chronic",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.40",
+      "description": "Unspecified combined systolic and diastolic heart failure",
+      "shortLabel": "Combined HF unspec",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.41",
+      "description": "Acute combined systolic and diastolic heart failure",
+      "shortLabel": "Combined HF acute",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.42",
+      "description": "Chronic combined systolic and diastolic heart failure",
+      "shortLabel": "Combined HF chronic",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.43",
+      "description": "Acute on chronic combined systolic and diastolic heart failure",
+      "shortLabel": "Combined HF acute/chronic",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.810",
+      "description": "Right heart failure, unspecified",
+      "shortLabel": "Right HF",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I50.9",
+      "description": "Heart failure, unspecified",
+      "shortLabel": "HF unspecified",
+      "category": "primary",
+      "subcategory": "heartFailure"
+    },
+    {
+      "code": "I48.0",
+      "description": "Paroxysmal atrial fibrillation",
+      "shortLabel": "AFib paroxysmal",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.11",
+      "description": "Longstanding persistent atrial fibrillation",
+      "shortLabel": "AFib longstanding",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.19",
+      "description": "Other persistent atrial fibrillation",
+      "shortLabel": "AFib persistent",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.20",
+      "description": "Chronic atrial fibrillation, unspecified",
+      "shortLabel": "AFib chronic",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.21",
+      "description": "Permanent atrial fibrillation",
+      "shortLabel": "AFib permanent",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.91",
+      "description": "Unspecified atrial fibrillation",
+      "shortLabel": "AFib unspecified",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.3",
+      "description": "Typical atrial flutter",
+      "shortLabel": "AFlutter typical",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.4",
+      "description": "Atypical atrial flutter",
+      "shortLabel": "AFlutter atypical",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I48.92",
+      "description": "Unspecified atrial flutter",
+      "shortLabel": "AFlutter unspecified",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I47.1",
+      "description": "Supraventricular tachycardia",
+      "shortLabel": "SVT",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I47.2",
+      "description": "Ventricular tachycardia",
+      "shortLabel": "VT",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I47.20",
+      "description": "Ventricular tachycardia, unspecified",
+      "shortLabel": "VT unspecified",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I49.01",
+      "description": "Ventricular fibrillation",
+      "shortLabel": "VFib",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I49.5",
+      "description": "Sick sinus syndrome",
+      "shortLabel": "Sick sinus",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "R00.1",
+      "description": "Bradycardia, unspecified",
+      "shortLabel": "Bradycardia",
+      "category": "primary",
+      "subcategory": "arrhythmia"
+    },
+    {
+      "code": "I44.0",
+      "description": "Atrioventricular block, first degree",
+      "shortLabel": "1st degree block",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.1",
+      "description": "Atrioventricular block, second degree",
+      "shortLabel": "2nd degree block",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.10",
+      "description": "Atrioventricular block, second degree, Mobitz type I",
+      "shortLabel": "Mobitz I",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.11",
+      "description": "Atrioventricular block, second degree, Mobitz type II",
+      "shortLabel": "Mobitz II",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.2",
+      "description": "Atrioventricular block, complete",
+      "shortLabel": "3rd degree block",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.30",
+      "description": "Unspecified atrioventricular block",
+      "shortLabel": "AV block unspec",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I45.0",
+      "description": "Right fascicular block",
+      "shortLabel": "RBBB",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I45.10",
+      "description": "Unspecified right bundle-branch block",
+      "shortLabel": "RBBB unspec",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.4",
+      "description": "Left anterior fascicular block",
+      "shortLabel": "LAFB",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.5",
+      "description": "Left posterior fascicular block",
+      "shortLabel": "LPFB",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.60",
+      "description": "Unspecified fascicular block",
+      "shortLabel": "Bifascicular block",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I44.7",
+      "description": "Left bundle-branch block, unspecified",
+      "shortLabel": "LBBB",
+      "category": "primary",
+      "subcategory": "heartBlock"
+    },
+    {
+      "code": "I35.0",
+      "description": "Nonrheumatic aortic (valve) stenosis",
+      "shortLabel": "Aortic stenosis",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I35.1",
+      "description": "Nonrheumatic aortic (valve) insufficiency",
+      "shortLabel": "Aortic regurg",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I35.2",
+      "description": "Nonrheumatic aortic (valve) stenosis with insufficiency",
+      "shortLabel": "Mixed aortic disease",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I34.0",
+      "description": "Nonrheumatic mitral (valve) insufficiency",
+      "shortLabel": "Mitral regurg",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I34.2",
+      "description": "Nonrheumatic mitral (valve) stenosis",
+      "shortLabel": "Mitral stenosis",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I05.0",
+      "description": "Rheumatic mitral stenosis",
+      "shortLabel": "Rheumatic MS",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I34.1",
+      "description": "Nonrheumatic mitral (valve) prolapse",
+      "shortLabel": "MVP",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I36.1",
+      "description": "Nonrheumatic tricuspid (valve) insufficiency",
+      "shortLabel": "Tricuspid regurg",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I36.0",
+      "description": "Nonrheumatic tricuspid (valve) stenosis",
+      "shortLabel": "Tricuspid stenosis",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I37.0",
+      "description": "Nonrheumatic pulmonary valve stenosis",
+      "shortLabel": "Pulmonic stenosis",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I37.1",
+      "description": "Nonrheumatic pulmonary valve insufficiency",
+      "shortLabel": "Pulmonic regurg",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I38",
+      "description": "Endocarditis, valve unspecified",
+      "shortLabel": "Endocarditis unspec",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I08.0",
+      "description": "Rheumatic disorders of both mitral and aortic valves",
+      "shortLabel": "Mitral + aortic disease",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I35.8",
+      "description": "Other nonrheumatic aortic valve disorders",
+      "shortLabel": "Bicuspid aortic valve",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I34.8",
+      "description": "Other nonrheumatic mitral valve disorders",
+      "shortLabel": "Mitral annular calc",
+      "category": "primary",
+      "subcategory": "valvular"
+    },
+    {
+      "code": "I42.0",
+      "description": "Dilated cardiomyopathy",
+      "shortLabel": "Dilated CM",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I42.1",
+      "description": "Obstructive hypertrophic cardiomyopathy",
+      "shortLabel": "HOCM",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I42.2",
+      "description": "Other hypertrophic cardiomyopathy",
+      "shortLabel": "HCM non-obstructive",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I42.5",
+      "description": "Other restrictive cardiomyopathy",
+      "shortLabel": "Restrictive CM",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I42.7",
+      "description": "Cardiomyopathy due to drug and external agent",
+      "shortLabel": "Toxic CM",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I42.8",
+      "description": "Other cardiomyopathies",
+      "shortLabel": "Other CM",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I42.9",
+      "description": "Cardiomyopathy, unspecified",
+      "shortLabel": "CM unspecified",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I51.81",
+      "description": "Takotsubo syndrome",
+      "shortLabel": "Takotsubo",
+      "category": "primary",
+      "subcategory": "cardiomyopathy"
+    },
+    {
+      "code": "I30.0",
+      "description": "Acute nonspecific idiopathic pericarditis",
+      "shortLabel": "Acute pericarditis",
+      "category": "primary",
+      "subcategory": "pericardial"
+    },
+    {
+      "code": "I30.9",
+      "description": "Acute pericarditis, unspecified",
+      "shortLabel": "Pericarditis unspec",
+      "category": "primary",
+      "subcategory": "pericardial"
+    },
+    {
+      "code": "I31.3",
+      "description": "Pericardial effusion (noninflammatory)",
+      "shortLabel": "Pericardial effusion",
+      "category": "primary",
+      "subcategory": "pericardial"
+    },
+    {
+      "code": "I31.4",
+      "description": "Cardiac tamponade",
+      "shortLabel": "Tamponade",
+      "category": "primary",
+      "subcategory": "pericardial"
+    },
+    {
+      "code": "I31.1",
+      "description": "Chronic constrictive pericarditis",
+      "shortLabel": "Constrictive pericarditis",
+      "category": "primary",
+      "subcategory": "pericardial"
+    },
+    {
+      "code": "I33.0",
+      "description": "Acute and subacute infective endocarditis",
+      "shortLabel": "Infective endocarditis",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I40.9",
+      "description": "Acute myocarditis, unspecified",
+      "shortLabel": "Myocarditis",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I27.0",
+      "description": "Primary pulmonary hypertension",
+      "shortLabel": "Primary pulm HTN",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I27.20",
+      "description": "Pulmonary hypertension, unspecified",
+      "shortLabel": "Pulm HTN unspec",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I27.21",
+      "description": "Secondary pulmonary arterial hypertension",
+      "shortLabel": "Secondary pulm HTN",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I27.82",
+      "description": "Chronic pulmonary embolism",
+      "shortLabel": "Chronic PE",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I46.9",
+      "description": "Cardiac arrest, cause unspecified",
+      "shortLabel": "Cardiac arrest",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I46.2",
+      "description": "Cardiac arrest due to underlying cardiac condition",
+      "shortLabel": "Cardiac arrest (cardiac)",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "R57.0",
+      "description": "Cardiogenic shock",
+      "shortLabel": "Cardiogenic shock",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I71.00",
+      "description": "Dissection of unspecified site of aorta",
+      "shortLabel": "Aortic dissection",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I71.01",
+      "description": "Dissection of thoracic aorta",
+      "shortLabel": "Thoracic dissection",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I26.99",
+      "description": "Other pulmonary embolism without acute cor pulmonale",
+      "shortLabel": "Acute PE",
+      "category": "primary",
+      "subcategory": "otherCardiac"
+    },
+    {
+      "code": "I10",
+      "description": "Essential (primary) hypertension",
+      "shortLabel": "HTN",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I11.0",
+      "description": "Hypertensive heart disease with heart failure",
+      "shortLabel": "HTN heart disease w/ HF",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I11.9",
+      "description": "Hypertensive heart disease without heart failure",
+      "shortLabel": "HTN heart disease",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I12.0",
+      "description": "Hypertensive chronic kidney disease with stage 5 CKD or ESRD",
+      "shortLabel": "HTN + CKD 5/ESRD",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I12.9",
+      "description": "Hypertensive chronic kidney disease with stage 1-4 CKD",
+      "shortLabel": "HTN + CKD",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I13.0",
+      "description": "Hypertensive heart and chronic kidney disease with heart failure and stage 1-4 CKD",
+      "shortLabel": "HTN + HF + CKD",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I13.10",
+      "description": "Hypertensive heart and CKD without HF, with stage 1-4 CKD",
+      "shortLabel": "HTN heart + CKD",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I13.2",
+      "description": "Hypertensive heart and CKD with HF and stage 5 CKD or ESRD",
+      "shortLabel": "HTN + HF + ESRD",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I15.0",
+      "description": "Renovascular hypertension",
+      "shortLabel": "Renovascular HTN",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I15.8",
+      "description": "Other secondary hypertension",
+      "shortLabel": "Secondary HTN",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I16.0",
+      "description": "Hypertensive urgency",
+      "shortLabel": "HTN urgency",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I16.1",
+      "description": "Hypertensive emergency",
+      "shortLabel": "HTN emergency",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "I16.9",
+      "description": "Hypertensive crisis, unspecified",
+      "shortLabel": "HTN crisis",
+      "category": "comorbid",
+      "subcategory": "hypertension"
+    },
+    {
+      "code": "E11.9",
+      "description": "Type 2 diabetes mellitus without complications",
+      "shortLabel": "DM2",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.65",
+      "description": "Type 2 diabetes mellitus with hyperglycemia",
+      "shortLabel": "DM2 hyperglycemia",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.21",
+      "description": "Type 2 diabetes mellitus with diabetic nephropathy",
+      "shortLabel": "DM2 nephropathy",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.22",
+      "description": "Type 2 diabetes mellitus with diabetic chronic kidney disease",
+      "shortLabel": "DM2 + CKD",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.40",
+      "description": "Type 2 diabetes mellitus with diabetic neuropathy, unspecified",
+      "shortLabel": "DM2 neuropathy",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.42",
+      "description": "Type 2 diabetes mellitus with diabetic polyneuropathy",
+      "shortLabel": "DM2 polyneuropathy",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.311",
+      "description": "Type 2 diabetes mellitus with unspecified diabetic retinopathy with macular edema",
+      "shortLabel": "DM2 retinopathy",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.51",
+      "description": "Type 2 diabetes mellitus with diabetic peripheral angiopathy without gangrene",
+      "shortLabel": "DM2 PVD",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.59",
+      "description": "Type 2 diabetes mellitus with other circulatory complications",
+      "shortLabel": "DM2 circulatory",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.69",
+      "description": "Type 2 diabetes mellitus with other specified complication",
+      "shortLabel": "DM2 other complication",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E11.8",
+      "description": "Type 2 diabetes mellitus with unspecified complications",
+      "shortLabel": "DM2 unspec complications",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E10.9",
+      "description": "Type 1 diabetes mellitus without complications",
+      "shortLabel": "DM1",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E10.65",
+      "description": "Type 1 diabetes mellitus with hyperglycemia",
+      "shortLabel": "DM1 hyperglycemia",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E10.21",
+      "description": "Type 1 diabetes mellitus with diabetic nephropathy",
+      "shortLabel": "DM1 nephropathy",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E10.22",
+      "description": "Type 1 diabetes mellitus with diabetic chronic kidney disease",
+      "shortLabel": "DM1 + CKD",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E10.40",
+      "description": "Type 1 diabetes mellitus with diabetic neuropathy, unspecified",
+      "shortLabel": "DM1 neuropathy",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E13.9",
+      "description": "Other specified diabetes mellitus without complications",
+      "shortLabel": "Other DM",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E08.9",
+      "description": "Diabetes mellitus due to underlying condition without complications",
+      "shortLabel": "Secondary DM",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "R73.03",
+      "description": "Prediabetes",
+      "shortLabel": "Prediabetes",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "Z79.4",
+      "description": "Long term (current) use of insulin",
+      "shortLabel": "Insulin use",
+      "category": "comorbid",
+      "subcategory": "diabetes"
+    },
+    {
+      "code": "E78.00",
+      "description": "Pure hypercholesterolemia, unspecified",
+      "shortLabel": "Hypercholesterolemia",
+      "category": "comorbid",
+      "subcategory": "hyperlipidemia"
+    },
+    {
+      "code": "E78.01",
+      "description": "Familial hypercholesterolemia",
+      "shortLabel": "Familial HLD",
+      "category": "comorbid",
+      "subcategory": "hyperlipidemia"
+    },
+    {
+      "code": "E78.1",
+      "description": "Pure hyperglyceridemia",
+      "shortLabel": "Hypertriglyceridemia",
+      "category": "comorbid",
+      "subcategory": "hyperlipidemia"
+    },
+    {
+      "code": "E78.2",
+      "description": "Mixed hyperlipidemia",
+      "shortLabel": "Mixed HLD",
+      "category": "comorbid",
+      "subcategory": "hyperlipidemia"
+    },
+    {
+      "code": "E78.5",
+      "description": "Hyperlipidemia, unspecified",
+      "shortLabel": "HLD unspecified",
+      "category": "comorbid",
+      "subcategory": "hyperlipidemia"
+    },
+    {
+      "code": "E78.41",
+      "description": "Elevated lipoprotein(a)",
+      "shortLabel": "Elevated Lp(a)",
+      "category": "comorbid",
+      "subcategory": "hyperlipidemia"
+    },
+    {
+      "code": "Z79.899",
+      "description": "Other long term (current) drug therapy",
+      "shortLabel": "Statin use",
+      "category": "comorbid",
+      "subcategory": "hyperlipidemia"
+    },
+    {
+      "code": "N18.1",
+      "description": "Chronic kidney disease, stage 1",
+      "shortLabel": "CKD 1",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.2",
+      "description": "Chronic kidney disease, stage 2 (mild)",
+      "shortLabel": "CKD 2",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.30",
+      "description": "Chronic kidney disease, stage 3 unspecified",
+      "shortLabel": "CKD 3",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.31",
+      "description": "Chronic kidney disease, stage 3a",
+      "shortLabel": "CKD 3a",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.32",
+      "description": "Chronic kidney disease, stage 3b",
+      "shortLabel": "CKD 3b",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.4",
+      "description": "Chronic kidney disease, stage 4 (severe)",
+      "shortLabel": "CKD 4",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.5",
+      "description": "Chronic kidney disease, stage 5",
+      "shortLabel": "CKD 5",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.6",
+      "description": "End stage renal disease",
+      "shortLabel": "ESRD",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N18.9",
+      "description": "Chronic kidney disease, unspecified",
+      "shortLabel": "CKD unspecified",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "Z99.2",
+      "description": "Dependence on renal dialysis",
+      "shortLabel": "Dialysis status",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N17.9",
+      "description": "Acute kidney failure, unspecified",
+      "shortLabel": "AKI",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N17.0",
+      "description": "Acute kidney failure with tubular necrosis",
+      "shortLabel": "AKI tubular necrosis",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "N17.8",
+      "description": "Other acute kidney failure",
+      "shortLabel": "AKI other",
+      "category": "comorbid",
+      "subcategory": "ckd"
+    },
+    {
+      "code": "J44.0",
+      "description": "COPD with (acute) lower respiratory infection",
+      "shortLabel": "COPD + infection",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J44.1",
+      "description": "COPD with acute exacerbation",
+      "shortLabel": "COPD exacerbation",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J44.9",
+      "description": "COPD, unspecified",
+      "shortLabel": "COPD",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J45.20",
+      "description": "Mild intermittent asthma, uncomplicated",
+      "shortLabel": "Asthma mild",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J45.40",
+      "description": "Moderate persistent asthma, uncomplicated",
+      "shortLabel": "Asthma moderate",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J45.50",
+      "description": "Severe persistent asthma, uncomplicated",
+      "shortLabel": "Asthma severe",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "I26.02",
+      "description": "Saddle embolus of pulmonary artery with acute cor pulmonale",
+      "shortLabel": "Saddle PE",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "I26.09",
+      "description": "Other pulmonary embolism with acute cor pulmonale",
+      "shortLabel": "PE with cor pulmonale",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "I26.90",
+      "description": "Septic pulmonary embolism without acute cor pulmonale",
+      "shortLabel": "Septic PE",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "I26.92",
+      "description": "Saddle embolus of pulmonary artery without acute cor pulmonale",
+      "shortLabel": "Saddle PE (no cor pulmonale)",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "I26.99",
+      "description": "Other pulmonary embolism without acute cor pulmonale",
+      "shortLabel": "PE acute",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J90",
+      "description": "Pleural effusion, not elsewhere classified",
+      "shortLabel": "Pleural effusion",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J91.0",
+      "description": "Malignant pleural effusion",
+      "shortLabel": "Malignant effusion",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J84.10",
+      "description": "Pulmonary fibrosis, unspecified",
+      "shortLabel": "Pulm fibrosis",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J96.00",
+      "description": "Acute respiratory failure, unspecified whether with hypoxia or hypercapnia",
+      "shortLabel": "Resp failure acute",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J96.01",
+      "description": "Acute respiratory failure with hypoxia",
+      "shortLabel": "Resp failure hypoxic",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J96.02",
+      "description": "Acute respiratory failure with hypercapnia",
+      "shortLabel": "Resp failure hypercapnic",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J96.10",
+      "description": "Chronic respiratory failure, unspecified",
+      "shortLabel": "Chronic resp failure",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J96.20",
+      "description": "Acute and chronic respiratory failure, unspecified",
+      "shortLabel": "Acute on chronic resp fail",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J80",
+      "description": "Acute respiratory distress syndrome",
+      "shortLabel": "ARDS",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J18.9",
+      "description": "Pneumonia, unspecified organism",
+      "shortLabel": "Pneumonia",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J95.821",
+      "description": "Acute postprocedural respiratory failure",
+      "shortLabel": "Postop resp failure",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "Z99.11",
+      "description": "Dependence on respirator [ventilator] status",
+      "shortLabel": "Ventilator status",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "J95.04",
+      "description": "Mendelson syndrome (aspiration pneumonitis)",
+      "shortLabel": "Aspiration pneumonitis",
+      "category": "comorbid",
+      "subcategory": "pulmonary"
+    },
+    {
+      "code": "I63.9",
+      "description": "Cerebral infarction, unspecified",
+      "shortLabel": "Ischemic stroke",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I63.50",
+      "description": "Cerebral infarction due to unspecified occlusion or stenosis of unspecified cerebral artery",
+      "shortLabel": "Stroke occlusion",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I61.9",
+      "description": "Nontraumatic intracerebral hemorrhage, unspecified",
+      "shortLabel": "Hemorrhagic stroke",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "G45.9",
+      "description": "Transient cerebral ischemic attack, unspecified",
+      "shortLabel": "TIA",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I65.21",
+      "description": "Occlusion and stenosis of right carotid artery",
+      "shortLabel": "R carotid stenosis",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I65.22",
+      "description": "Occlusion and stenosis of left carotid artery",
+      "shortLabel": "L carotid stenosis",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I65.23",
+      "description": "Occlusion and stenosis of bilateral carotid arteries",
+      "shortLabel": "Bilateral carotid stenosis",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I67.1",
+      "description": "Cerebral aneurysm, nonruptured",
+      "shortLabel": "Cerebral aneurysm",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I60.9",
+      "description": "Nontraumatic subarachnoid hemorrhage, unspecified",
+      "shortLabel": "SAH",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I69.30",
+      "description": "Unspecified sequelae of cerebral infarction",
+      "shortLabel": "Prior stroke sequelae",
+      "category": "comorbid",
+      "subcategory": "cerebrovascular"
+    },
+    {
+      "code": "I70.201",
+      "description": "Unspecified atherosclerosis of native arteries of extremities, right leg",
+      "shortLabel": "PAD right leg",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.202",
+      "description": "Unspecified atherosclerosis of native arteries of extremities, left leg",
+      "shortLabel": "PAD left leg",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.209",
+      "description": "Unspecified atherosclerosis of native arteries of extremities, unspecified extremity",
+      "shortLabel": "PAD unspec",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.211",
+      "description": "Atherosclerosis of native arteries of extremities with intermittent claudication, right leg",
+      "shortLabel": "Claudication right",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.212",
+      "description": "Atherosclerosis of native arteries of extremities with intermittent claudication, left leg",
+      "shortLabel": "Claudication left",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.25",
+      "description": "Atherosclerosis of native arteries of other extremities with ulceration",
+      "shortLabel": "PAD with ulceration",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.261",
+      "description": "Atherosclerosis of native arteries of extremities with gangrene, right leg",
+      "shortLabel": "CLI right",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.262",
+      "description": "Atherosclerosis of native arteries of extremities with gangrene, left leg",
+      "shortLabel": "CLI left",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I71.4",
+      "description": "Abdominal aortic aneurysm, without rupture",
+      "shortLabel": "AAA",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I71.3",
+      "description": "Abdominal aortic aneurysm, ruptured",
+      "shortLabel": "AAA ruptured",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I71.2",
+      "description": "Thoracic aortic aneurysm, without rupture",
+      "shortLabel": "Thoracic aneurysm",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I70.0",
+      "description": "Atherosclerosis of aorta",
+      "shortLabel": "Aortic atherosclerosis",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I74.3",
+      "description": "Embolism and thrombosis of arteries of the lower extremities",
+      "shortLabel": "Arterial embolism leg",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I73.9",
+      "description": "Peripheral vascular disease, unspecified",
+      "shortLabel": "PVD unspecified",
+      "category": "comorbid",
+      "subcategory": "peripheralVascular"
+    },
+    {
+      "code": "I82.401",
+      "description": "Acute embolism and thrombosis of unspecified deep veins of right lower extremity",
+      "shortLabel": "DVT right leg",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "I82.402",
+      "description": "Acute embolism and thrombosis of unspecified deep veins of left lower extremity",
+      "shortLabel": "DVT left leg",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "I82.409",
+      "description": "Acute embolism and thrombosis of unspecified deep veins of unspecified lower extremity",
+      "shortLabel": "DVT leg unspec",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "I82.601",
+      "description": "Acute embolism and thrombosis of unspecified veins of right upper extremity",
+      "shortLabel": "DVT right arm",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "I82.602",
+      "description": "Acute embolism and thrombosis of unspecified veins of left upper extremity",
+      "shortLabel": "DVT left arm",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "I82.501",
+      "description": "Chronic embolism and thrombosis of unspecified deep veins of right lower extremity",
+      "shortLabel": "Chronic DVT right",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "I82.502",
+      "description": "Chronic embolism and thrombosis of unspecified deep veins of left lower extremity",
+      "shortLabel": "Chronic DVT left",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "Z79.01",
+      "description": "Long term (current) use of anticoagulants",
+      "shortLabel": "Anticoagulant use",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "D68.9",
+      "description": "Coagulation defect, unspecified",
+      "shortLabel": "Coagulopathy",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "D68.59",
+      "description": "Other primary thrombophilia",
+      "shortLabel": "Thrombophilia",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "D75.82",
+      "description": "Heparin induced thrombocytopenia (HIT)",
+      "shortLabel": "HIT",
+      "category": "comorbid",
+      "subcategory": "venous"
+    },
+    {
+      "code": "D50.9",
+      "description": "Iron deficiency anemia, unspecified",
+      "shortLabel": "Anemia iron def",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "D63.1",
+      "description": "Anemia in chronic kidney disease",
+      "shortLabel": "Anemia CKD",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "D64.9",
+      "description": "Anemia, unspecified",
+      "shortLabel": "Anemia unspecified",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "D62",
+      "description": "Acute posthemorrhagic anemia",
+      "shortLabel": "Anemia acute blood loss",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "D69.6",
+      "description": "Thrombocytopenia, unspecified",
+      "shortLabel": "Thrombocytopenia",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "D69.59",
+      "description": "Other secondary thrombocytopenia",
+      "shortLabel": "Thrombocytopenia secondary",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "D61.818",
+      "description": "Other pancytopenia",
+      "shortLabel": "Pancytopenia",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "Z79.02",
+      "description": "Long term (current) use of antithrombotics/antiplatelets",
+      "shortLabel": "Antiplatelet use",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "D68.32",
+      "description": "Hemorrhagic disorder due to extrinsic circulating anticoagulants",
+      "shortLabel": "Anticoag-related bleeding",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "R71.0",
+      "description": "Precipitous drop in hematocrit",
+      "shortLabel": "Hematocrit drop",
+      "category": "comorbid",
+      "subcategory": "hematologic"
+    },
+    {
+      "code": "E03.9",
+      "description": "Hypothyroidism, unspecified",
+      "shortLabel": "Hypothyroid",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E05.90",
+      "description": "Thyrotoxicosis, unspecified without thyrotoxic crisis or storm",
+      "shortLabel": "Hyperthyroid",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E05.91",
+      "description": "Thyrotoxicosis, unspecified with thyrotoxic crisis or storm",
+      "shortLabel": "Thyroid storm",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E66.01",
+      "description": "Morbid (severe) obesity due to excess calories",
+      "shortLabel": "Morbid obesity",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E66.09",
+      "description": "Other obesity due to excess calories",
+      "shortLabel": "Obesity",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E66.9",
+      "description": "Obesity, unspecified",
+      "shortLabel": "Obesity unspecified",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "Z68.41",
+      "description": "Body mass index [BMI] 40.0-44.9, adult",
+      "shortLabel": "BMI 40-44.9",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "Z68.45",
+      "description": "Body mass index [BMI] 70 or greater, adult",
+      "shortLabel": "BMI 70+",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E88.81",
+      "description": "Metabolic syndrome",
+      "shortLabel": "Metabolic syndrome",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "M10.9",
+      "description": "Gout, unspecified",
+      "shortLabel": "Gout",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E21.0",
+      "description": "Primary hyperparathyroidism",
+      "shortLabel": "Hyperparathyroidism",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E27.1",
+      "description": "Primary adrenocortical insufficiency",
+      "shortLabel": "Adrenal insufficiency",
+      "category": "comorbid",
+      "subcategory": "endocrine"
+    },
+    {
+      "code": "E87.6",
+      "description": "Hypokalemia",
+      "shortLabel": "Hypokalemia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E87.5",
+      "description": "Hyperkalemia",
+      "shortLabel": "Hyperkalemia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E87.1",
+      "description": "Hypo-osmolality and hyponatremia",
+      "shortLabel": "Hyponatremia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E87.0",
+      "description": "Hyperosmolality and hypernatremia",
+      "shortLabel": "Hypernatremia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E83.42",
+      "description": "Hypomagnesemia",
+      "shortLabel": "Hypomagnesemia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E83.51",
+      "description": "Hypocalcemia",
+      "shortLabel": "Hypocalcemia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E83.52",
+      "description": "Hypercalcemia",
+      "shortLabel": "Hypercalcemia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E87.2",
+      "description": "Acidosis",
+      "shortLabel": "Metabolic acidosis",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E87.3",
+      "description": "Alkalosis",
+      "shortLabel": "Metabolic alkalosis",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E87.4",
+      "description": "Mixed disorder of acid-base balance",
+      "shortLabel": "Mixed acid-base disorder",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E83.39",
+      "description": "Other disorders of phosphorus metabolism",
+      "shortLabel": "Hypophosphatemia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E86.0",
+      "description": "Dehydration",
+      "shortLabel": "Dehydration",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E86.1",
+      "description": "Hypovolemia",
+      "shortLabel": "Hypovolemia",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "E87.70",
+      "description": "Fluid overload, unspecified",
+      "shortLabel": "Fluid overload",
+      "category": "comorbid",
+      "subcategory": "electrolyte"
+    },
+    {
+      "code": "K92.0",
+      "description": "Hematemesis",
+      "shortLabel": "Hematemesis",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K92.1",
+      "description": "Melena",
+      "shortLabel": "Melena",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K92.2",
+      "description": "Gastrointestinal hemorrhage, unspecified",
+      "shortLabel": "GI bleed",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K21.0",
+      "description": "Gastro-esophageal reflux disease with esophagitis",
+      "shortLabel": "GERD",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K74.60",
+      "description": "Unspecified cirrhosis of liver",
+      "shortLabel": "Cirrhosis",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K76.0",
+      "description": "Fatty (change of) liver, not elsewhere classified",
+      "shortLabel": "Fatty liver",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K76.9",
+      "description": "Liver disease, unspecified",
+      "shortLabel": "Liver disease",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K85.9",
+      "description": "Acute pancreatitis, unspecified",
+      "shortLabel": "Pancreatitis",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K25.9",
+      "description": "Gastric ulcer, unspecified",
+      "shortLabel": "Gastric ulcer",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K26.9",
+      "description": "Duodenal ulcer, unspecified",
+      "shortLabel": "Duodenal ulcer",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K56.60",
+      "description": "Unspecified intestinal obstruction",
+      "shortLabel": "Bowel obstruction",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K65.9",
+      "description": "Peritonitis, unspecified",
+      "shortLabel": "Peritonitis",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "R18.8",
+      "description": "Other ascites",
+      "shortLabel": "Ascites",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "K72.00",
+      "description": "Acute and subacute hepatic failure without coma",
+      "shortLabel": "Hepatic failure",
+      "category": "comorbid",
+      "subcategory": "gi"
+    },
+    {
+      "code": "N39.0",
+      "description": "Urinary tract infection, site not specified",
+      "shortLabel": "UTI",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "N04.9",
+      "description": "Nephrotic syndrome with unspecified morphologic changes",
+      "shortLabel": "Nephrotic syndrome",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "R80.9",
+      "description": "Proteinuria, unspecified",
+      "shortLabel": "Proteinuria",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "R31.9",
+      "description": "Hematuria, unspecified",
+      "shortLabel": "Hematuria",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "R33.9",
+      "description": "Retention of urine, unspecified",
+      "shortLabel": "Urinary retention",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "N13.30",
+      "description": "Unspecified hydronephrosis",
+      "shortLabel": "Hydronephrosis",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "E87.79",
+      "description": "Other fluid overload",
+      "shortLabel": "Volume overload",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "N14.1",
+      "description": "Nephropathy induced by other drugs, medicaments and biological substances",
+      "shortLabel": "Contrast nephropathy",
+      "category": "comorbid",
+      "subcategory": "renal"
+    },
+    {
+      "code": "A41.9",
+      "description": "Sepsis, unspecified organism",
+      "shortLabel": "Sepsis",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "A41.01",
+      "description": "Sepsis due to Methicillin susceptible Staphylococcus aureus",
+      "shortLabel": "MSSA sepsis",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "A41.02",
+      "description": "Sepsis due to Methicillin resistant Staphylococcus aureus",
+      "shortLabel": "MRSA sepsis",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "R65.20",
+      "description": "Severe sepsis without septic shock",
+      "shortLabel": "Severe sepsis",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "R65.21",
+      "description": "Severe sepsis with septic shock",
+      "shortLabel": "Septic shock",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "A49.9",
+      "description": "Bacterial infection, unspecified",
+      "shortLabel": "Bacteremia",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "J18.1",
+      "description": "Lobar pneumonia, unspecified organism",
+      "shortLabel": "Lobar pneumonia",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "J15.9",
+      "description": "Unspecified bacterial pneumonia",
+      "shortLabel": "Bacterial pneumonia",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "U07.1",
+      "description": "COVID-19",
+      "shortLabel": "COVID-19",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "B96.20",
+      "description": "Unspecified Escherichia coli as cause of diseases classified elsewhere",
+      "shortLabel": "E. coli infection",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "A04.72",
+      "description": "Enterocolitis due to Clostridioides difficile, not specified as recurrent",
+      "shortLabel": "C. diff",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "L03.90",
+      "description": "Cellulitis, unspecified",
+      "shortLabel": "Cellulitis",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "T81.49XA",
+      "description": "Infection following a procedure, other surgical site, initial encounter",
+      "shortLabel": "Postop infection",
+      "category": "comorbid",
+      "subcategory": "infectious"
+    },
+    {
+      "code": "R55",
+      "description": "Syncope and collapse",
+      "shortLabel": "Syncope",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "R56.9",
+      "description": "Unspecified convulsions",
+      "shortLabel": "Seizure",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "G47.33",
+      "description": "Obstructive sleep apnea (adult) (pediatric)",
+      "shortLabel": "Sleep apnea",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "G47.30",
+      "description": "Sleep apnea, unspecified",
+      "shortLabel": "Sleep apnea unspec",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "F03.90",
+      "description": "Unspecified dementia without behavioral disturbance",
+      "shortLabel": "Dementia",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "R41.0",
+      "description": "Disorientation, unspecified",
+      "shortLabel": "Delirium",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "F05",
+      "description": "Delirium due to known physiological condition",
+      "shortLabel": "Delirium (known cause)",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "G62.9",
+      "description": "Polyneuropathy, unspecified",
+      "shortLabel": "Neuropathy",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "G20",
+      "description": "Parkinson disease",
+      "shortLabel": "Parkinson disease",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "G40.909",
+      "description": "Epilepsy, unspecified, not intractable, without status epilepticus",
+      "shortLabel": "Epilepsy",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "R40.20",
+      "description": "Unspecified coma",
+      "shortLabel": "Coma",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "G93.1",
+      "description": "Anoxic brain damage, not elsewhere classified",
+      "shortLabel": "Anoxic brain injury",
+      "category": "comorbid",
+      "subcategory": "neurologic"
+    },
+    {
+      "code": "F32.9",
+      "description": "Major depressive disorder, single episode, unspecified",
+      "shortLabel": "Depression",
+      "category": "comorbid",
+      "subcategory": "psychiatric"
+    },
+    {
+      "code": "F33.9",
+      "description": "Major depressive disorder, recurrent, unspecified",
+      "shortLabel": "Depression recurrent",
+      "category": "comorbid",
+      "subcategory": "psychiatric"
+    },
+    {
+      "code": "F41.1",
+      "description": "Generalized anxiety disorder",
+      "shortLabel": "Anxiety",
+      "category": "comorbid",
+      "subcategory": "psychiatric"
+    },
+    {
+      "code": "F41.9",
+      "description": "Anxiety disorder, unspecified",
+      "shortLabel": "Anxiety unspecified",
+      "category": "comorbid",
+      "subcategory": "psychiatric"
+    },
+    {
+      "code": "G47.00",
+      "description": "Insomnia, unspecified",
+      "shortLabel": "Insomnia",
+      "category": "comorbid",
+      "subcategory": "psychiatric"
+    },
+    {
+      "code": "F10.20",
+      "description": "Alcohol dependence, uncomplicated",
+      "shortLabel": "Alcohol dependence",
+      "category": "comorbid",
+      "subcategory": "psychiatric"
+    },
+    {
+      "code": "F10.239",
+      "description": "Alcohol dependence with withdrawal, unspecified",
+      "shortLabel": "Alcohol withdrawal",
+      "category": "comorbid",
+      "subcategory": "psychiatric"
+    },
+    {
+      "code": "M17.9",
+      "description": "Osteoarthritis of knee, unspecified",
+      "shortLabel": "Knee OA",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "M19.90",
+      "description": "Unspecified osteoarthritis, unspecified site",
+      "shortLabel": "Osteoarthritis",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "M54.5",
+      "description": "Low back pain",
+      "shortLabel": "Back pain",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "M81.0",
+      "description": "Age-related osteoporosis without current pathological fracture",
+      "shortLabel": "Osteoporosis",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "R29.6",
+      "description": "Repeated falls",
+      "shortLabel": "Fall risk",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "W19.XXXA",
+      "description": "Unspecified fall, initial encounter",
+      "shortLabel": "Fall",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "M62.81",
+      "description": "Muscle weakness (generalized)",
+      "shortLabel": "Muscle weakness",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "Z87.31",
+      "description": "Personal history of (healed) nontraumatic fracture",
+      "shortLabel": "Prior fracture",
+      "category": "comorbid",
+      "subcategory": "musculoskeletal"
+    },
+    {
+      "code": "F17.210",
+      "description": "Nicotine dependence, cigarettes, uncomplicated",
+      "shortLabel": "Current smoker",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "F17.200",
+      "description": "Nicotine dependence, unspecified, uncomplicated",
+      "shortLabel": "Nicotine dependence",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "Z87.891",
+      "description": "Personal history of nicotine dependence",
+      "shortLabel": "Former smoker",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "Z72.0",
+      "description": "Tobacco use",
+      "shortLabel": "Tobacco use",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "F10.10",
+      "description": "Alcohol abuse, uncomplicated",
+      "shortLabel": "Alcohol use",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "F11.10",
+      "description": "Opioid abuse, uncomplicated",
+      "shortLabel": "Opioid use",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "F14.10",
+      "description": "Cocaine abuse, uncomplicated",
+      "shortLabel": "Cocaine use",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "F15.10",
+      "description": "Other stimulant abuse, uncomplicated",
+      "shortLabel": "Stimulant use",
+      "category": "comorbid",
+      "subcategory": "tobacco"
+    },
+    {
+      "code": "T81.4XXA",
+      "description": "Infection following a procedure, initial encounter",
+      "shortLabel": "Postop wound infection",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "T81.31XA",
+      "description": "Disruption of external operation wound, not elsewhere classified, initial encounter",
+      "shortLabel": "Wound dehiscence",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "T81.89XA",
+      "description": "Other complications of procedures, not elsewhere classified, initial encounter",
+      "shortLabel": "Surgical complication",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "L89.90",
+      "description": "Pressure ulcer of unspecified site, unspecified stage",
+      "shortLabel": "Pressure ulcer",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "T81.10XA",
+      "description": "Postprocedural shock unspecified, initial encounter",
+      "shortLabel": "Postop shock",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "T81.11XA",
+      "description": "Postprocedural cardiogenic shock, initial encounter",
+      "shortLabel": "Postop cardiogenic shock",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "T81.12XA",
+      "description": "Postprocedural septic shock, initial encounter",
+      "shortLabel": "Postop septic shock",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "T81.0XXA",
+      "description": "Postprocedural hemorrhage, initial encounter",
+      "shortLabel": "Postop hemorrhage",
+      "category": "comorbid",
+      "subcategory": "surgical"
+    },
+    {
+      "code": "E46",
+      "description": "Unspecified protein-calorie malnutrition",
+      "shortLabel": "Malnutrition",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "E44.0",
+      "description": "Moderate protein-calorie malnutrition",
+      "shortLabel": "Moderate malnutrition",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "E43",
+      "description": "Unspecified severe protein-calorie malnutrition",
+      "shortLabel": "Severe malnutrition",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R54",
+      "description": "Age-related physical debility",
+      "shortLabel": "Frailty",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "Z68.30",
+      "description": "Body mass index [BMI] 30.0-30.9, adult",
+      "shortLabel": "BMI 30+",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "Z68.35",
+      "description": "Body mass index [BMI] 35.0-35.9, adult",
+      "shortLabel": "BMI 35+",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "Z13.6",
+      "description": "Encounter for screening for cardiovascular disorders",
+      "shortLabel": "CV screening",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R00.0",
+      "description": "Tachycardia, unspecified",
+      "shortLabel": "Tachycardia",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R06.00",
+      "description": "Dyspnea, unspecified",
+      "shortLabel": "Dyspnea",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R07.9",
+      "description": "Chest pain, unspecified",
+      "shortLabel": "Chest pain",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R42",
+      "description": "Dizziness and giddiness",
+      "shortLabel": "Dizziness",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R09.02",
+      "description": "Hypoxemia",
+      "shortLabel": "Hypoxemia",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R57.1",
+      "description": "Hypovolemic shock",
+      "shortLabel": "Hypovolemic shock",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "R57.9",
+      "description": "Shock, unspecified",
+      "shortLabel": "Shock unspecified",
+      "category": "comorbid",
+      "subcategory": "other"
+    },
+    {
+      "code": "Z95.1",
+      "description": "Presence of aortocoronary bypass graft",
+      "shortLabel": "Prior CABG",
+      "category": "postProcedure",
+      "subcategory": "ppCoronary"
+    },
+    {
+      "code": "Z95.5",
+      "description": "Presence of coronary angioplasty implant and graft",
+      "shortLabel": "Prior PCI/stent",
+      "category": "postProcedure",
+      "subcategory": "ppCoronary"
+    },
+    {
+      "code": "Z95.8",
+      "description": "Presence of other cardiac and vascular implants and grafts",
+      "shortLabel": "Cardiac implant",
+      "category": "postProcedure",
+      "subcategory": "ppCoronary"
+    },
+    {
+      "code": "T82.855A",
+      "description": "Stenosis of coronary artery stent, initial encounter",
+      "shortLabel": "In-stent restenosis",
+      "category": "postProcedure",
+      "subcategory": "ppCoronary"
+    },
+    {
+      "code": "T82.857A",
+      "description": "Stenosis of cardiac vascular graft, initial encounter",
+      "shortLabel": "Graft stenosis",
+      "category": "postProcedure",
+      "subcategory": "ppCoronary"
+    },
+    {
+      "code": "T82.897A",
+      "description": "Other specified complication of cardiac prosthetic devices, implants and grafts, initial encounter",
+      "shortLabel": "Stent complication",
+      "category": "postProcedure",
+      "subcategory": "ppCoronary"
+    },
+    {
+      "code": "Z95.0",
+      "description": "Presence of cardiac pacemaker",
+      "shortLabel": "Pacemaker",
+      "category": "postProcedure",
+      "subcategory": "ppDevices"
+    },
+    {
+      "code": "Z95.810",
+      "description": "Presence of automatic (implantable) cardiac defibrillator",
+      "shortLabel": "ICD",
+      "category": "postProcedure",
+      "subcategory": "ppDevices"
+    },
+    {
+      "code": "Z95.811",
+      "description": "Presence of heart assist device",
+      "shortLabel": "LVAD",
+      "category": "postProcedure",
+      "subcategory": "ppDevices"
+    },
+    {
+      "code": "Z95.818",
+      "description": "Presence of other cardiac implants and grafts",
+      "shortLabel": "CRT-D",
+      "category": "postProcedure",
+      "subcategory": "ppDevices"
+    },
+    {
+      "code": "Z95.812",
+      "description": "Presence of fully implantable artificial heart",
+      "shortLabel": "Artificial heart",
+      "category": "postProcedure",
+      "subcategory": "ppDevices"
+    },
+    {
+      "code": "Z96.89",
+      "description": "Presence of other specified functional implants",
+      "shortLabel": "Loop recorder",
+      "category": "postProcedure",
+      "subcategory": "ppDevices"
+    },
+    {
+      "code": "Z95.2",
+      "description": "Presence of prosthetic heart valve",
+      "shortLabel": "Prosthetic valve",
+      "category": "postProcedure",
+      "subcategory": "ppValvular"
+    },
+    {
+      "code": "Z95.3",
+      "description": "Presence of xenogenic heart valve",
+      "shortLabel": "Bio valve",
+      "category": "postProcedure",
+      "subcategory": "ppValvular"
+    },
+    {
+      "code": "Z95.4",
+      "description": "Presence of other heart-valve replacement",
+      "shortLabel": "Other valve replacement",
+      "category": "postProcedure",
+      "subcategory": "ppValvular"
+    },
+    {
+      "code": "T82.01XA",
+      "description": "Breakdown (mechanical) of heart valve prosthesis, initial encounter",
+      "shortLabel": "Valve prosthesis malfunction",
+      "category": "postProcedure",
+      "subcategory": "ppValvular"
+    },
+    {
+      "code": "T82.09XA",
+      "description": "Other mechanical complication of heart valve prosthesis, initial encounter",
+      "shortLabel": "Valve prosthesis complication",
+      "category": "postProcedure",
+      "subcategory": "ppValvular"
+    },
+    {
+      "code": "T82.6XXA",
+      "description": "Infection and inflammatory reaction due to cardiac valve prosthesis, initial encounter",
+      "shortLabel": "Prosthetic valve endocarditis",
+      "category": "postProcedure",
+      "subcategory": "ppValvular"
+    },
+    {
+      "code": "Z95.820",
+      "description": "Peripheral vascular angioplasty status with implants and grafts",
+      "shortLabel": "Vascular stent",
+      "category": "postProcedure",
+      "subcategory": "ppVascular"
+    },
+    {
+      "code": "Z95.828",
+      "description": "Presence of other vascular implants and grafts",
+      "shortLabel": "Vascular graft",
+      "category": "postProcedure",
+      "subcategory": "ppVascular"
+    },
+    {
+      "code": "T82.318A",
+      "description": "Breakdown (mechanical) of other vascular grafts, initial encounter",
+      "shortLabel": "Graft failure",
+      "category": "postProcedure",
+      "subcategory": "ppVascular"
+    },
+    {
+      "code": "T82.398A",
+      "description": "Other mechanical complication of other vascular grafts, initial encounter",
+      "shortLabel": "Graft complication",
+      "category": "postProcedure",
+      "subcategory": "ppVascular"
+    },
+    {
+      "code": "T82.110A",
+      "description": "Breakdown (mechanical) of cardiac electrode, initial encounter",
+      "shortLabel": "Lead malfunction",
+      "category": "postProcedure",
+      "subcategory": "ppDeviceComplications"
+    },
+    {
+      "code": "T82.111A",
+      "description": "Breakdown (mechanical) of cardiac pulse generator (battery), initial encounter",
+      "shortLabel": "Generator malfunction",
+      "category": "postProcedure",
+      "subcategory": "ppDeviceComplications"
+    },
+    {
+      "code": "T82.120A",
+      "description": "Displacement of cardiac electrode, initial encounter",
+      "shortLabel": "Lead displacement",
+      "category": "postProcedure",
+      "subcategory": "ppDeviceComplications"
+    },
+    {
+      "code": "T82.190A",
+      "description": "Other mechanical complication of cardiac electrode, initial encounter",
+      "shortLabel": "Lead complication other",
+      "category": "postProcedure",
+      "subcategory": "ppDeviceComplications"
+    },
+    {
+      "code": "T82.7XXA",
+      "description": "Infection and inflammatory reaction due to other cardiac and vascular devices, implants and grafts, initial encounter",
+      "shortLabel": "Device infection",
+      "category": "postProcedure",
+      "subcategory": "ppDeviceComplications"
+    }
+  ],
+  "billingRules": [
+    {
+      "id": "ptca-stent-same-vessel",
+      "name": "PTCA + Stent Same Vessel",
+      "description": "Cannot bill PTCA (92920) and stent placement (92928) on the same vessel",
+      "severity": "error",
+      "learnMoreContent": "When a stent is placed, the angioplasty is bundled into the stent code. Report only 92928 for the vessel where a stent was deployed."
+    },
+    {
+      "id": "ptca-atherectomy-same-vessel",
+      "name": "PTCA + Atherectomy Same Vessel",
+      "description": "Cannot bill PTCA (92920) and atherectomy (92924) on the same vessel",
+      "severity": "error",
+      "learnMoreContent": "When atherectomy is performed, the angioplasty is bundled. Report only 92924 for the vessel where atherectomy was performed."
+    },
+    {
+      "id": "atherectomy-stent-same-vessel",
+      "name": "Atherectomy + Stent Same Vessel",
+      "description": "Use 92933 instead of 92924 + 92928 on the same vessel",
+      "severity": "error",
+      "learnMoreContent": "When both atherectomy and stent are performed on the same vessel, use the combined code 92933 (Atherectomy + Stent)."
+    },
+    {
+      "id": "cto-codes-exclusive",
+      "name": "CTO Codes Mutually Exclusive",
+      "description": "92943 (CTO antegrade) and 92945 (CTO combined) are mutually exclusive",
+      "severity": "error",
+      "learnMoreContent": "Only one CTO code can be billed per session. Use 92943 for antegrade-only approach, 92945 for combined antegrade/retrograde."
+    },
+    {
+      "id": "ivl-requires-pci",
+      "name": "IVL Requires Base PCI",
+      "description": "92972 (Coronary lithotripsy) requires a base PCI code",
+      "severity": "error",
+      "learnMoreContent": "92972 is an add-on code that must be reported with a base PCI procedure code."
+    },
+    {
+      "id": "thrombectomy-requires-pci",
+      "name": "Thrombectomy Requires Base PCI",
+      "description": "92973 (Mechanical thrombectomy) requires a base PCI code",
+      "severity": "error",
+      "learnMoreContent": "92973 is an add-on code that must be reported with a base PCI procedure code."
+    },
+    {
+      "id": "ivus-additional-requires-initial",
+      "name": "Additional IVUS Requires Initial",
+      "description": "92979 (IVUS additional) requires 92978 (IVUS initial)",
+      "severity": "error",
+      "learnMoreContent": "The additional vessel IVUS code (92979) can only be billed when the initial vessel IVUS (92978) is also performed."
+    },
+    {
+      "id": "ffr-additional-requires-initial",
+      "name": "Additional FFR Requires Initial",
+      "description": "93572 (FFR additional) requires 93571 (FFR initial)",
+      "severity": "error",
+      "learnMoreContent": "The additional vessel FFR code (93572) can only be billed when the initial vessel FFR (93571) is also performed."
+    },
+    {
+      "id": "dcb-addon-requires-base",
+      "name": "DCB Add-on Requires Base PCI",
+      "description": "0914T (DCB add-on) requires a base PCI code",
+      "severity": "error",
+      "learnMoreContent": "0914T is an add-on code for drug-coated balloon treatment on a separate target lesion from the primary PCI procedure."
+    },
+    {
+      "id": "dcb-ivus-bundled",
+      "name": "IVUS Bundled with DCB",
+      "description": "IVUS/OCT is bundled in DCB codes and should not be billed separately",
+      "severity": "error",
+      "learnMoreContent": "Drug-coated balloon codes (0913T, 0914T) include IVUS/OCT imaging. Do not bill imaging codes separately."
+    },
+    {
+      "id": "missing-vessel-modifier",
+      "name": "Missing Vessel Modifier",
+      "description": "PCI codes require vessel/modifier selection for Medicare billing",
+      "severity": "error",
+      "learnMoreContent": "All PCI base codes require a vessel modifier (LC, LD, RC, LM, RI) to identify which coronary artery was treated."
+    },
+    {
+      "id": "right-heart-cath-overlap",
+      "name": "Right Heart Cath Overlap",
+      "description": "93451 (R heart cath) cannot be billed with codes that include R heart cath",
+      "severity": "error",
+      "learnMoreContent": "93451 is a standalone right heart catheterization code. It cannot be billed with combined codes that already include right heart catheterization."
+    },
+    {
+      "id": "left-heart-cath-overlap",
+      "name": "Left Heart Cath Overlap",
+      "description": "93452 (L heart cath) cannot be billed with codes that include L heart cath",
+      "severity": "error",
+      "learnMoreContent": "93452 is a standalone left heart catheterization code. It cannot be billed with combined codes that already include left heart catheterization."
+    },
+    {
+      "id": "combined-heart-cath-overlap",
+      "name": "Combined Heart Cath Overlap",
+      "description": "93453 (combined L+R) cannot be billed with standalone L or R heart cath codes",
+      "severity": "error",
+      "learnMoreContent": "93453 includes both left and right heart catheterization. Do not bill standalone codes separately."
+    },
+    {
+      "id": "coronary-angio-exclusive",
+      "name": "Coronary Angiography Codes Mutually Exclusive",
+      "description": "Only one coronary angiography code (93454-93461) can be billed per session",
+      "severity": "error",
+      "learnMoreContent": "Coronary angiography codes 93454-93461 are mutually exclusive. Select the single code that best represents all components performed."
+    },
+    {
+      "id": "coronary-angio-with-standalone-cath",
+      "name": "Coronary Angio with Standalone Cath",
+      "description": "Cannot bill standalone heart cath codes with coronary angio codes that include the same component",
+      "severity": "error",
+      "learnMoreContent": "Coronary angiography codes 93455-93461 include heart catheterization components. Do not bill standalone cath codes for the same components."
+    },
+    {
+      "id": "diagnostic-pci-modifier",
+      "name": "Diagnostic Cath + PCI Modifier",
+      "description": "Diagnostic cath with PCI same day may need modifier -59",
+      "severity": "warning",
+      "learnMoreContent": "When diagnostic catheterization is performed with PCI on the same day, modifier -59 should be added to the diagnostic cath code if the criteria for separate billing are met."
+    },
+    {
+      "id": "duplicate-pci-same-vessel",
+      "name": "Duplicate PCI Same Vessel",
+      "description": "Multiple PCI codes assigned to the same vessel",
+      "severity": "warning",
+      "learnMoreContent": "Generally, only one PCI code should be billed per major coronary artery. Multiple codes may be appropriate for separate lesions in different segments."
+    }
+  ],
+  "cciEdits": [
+    {
+      "column1": "93458",
+      "column2": "93454",
+      "modifierException": false,
+      "description": "Left heart cath bundles coronary angiography supervision",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93459",
+      "column2": "93454",
+      "modifierException": false,
+      "description": "Combined heart cath bundles coronary angiography supervision",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93459",
+      "column2": "93455",
+      "modifierException": false,
+      "description": "Combined heart cath bundles right heart cath imaging",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93459",
+      "column2": "93456",
+      "modifierException": false,
+      "description": "Combined heart cath bundles right heart cath with angiography",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93459",
+      "column2": "93457",
+      "modifierException": false,
+      "description": "Combined heart cath bundles right heart cath",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93459",
+      "column2": "93458",
+      "modifierException": false,
+      "description": "Combined heart cath bundles left heart cath",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "92928",
+      "column2": "92920",
+      "modifierException": false,
+      "description": "PCI with stent bundles PTCA",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "92933",
+      "column2": "92920",
+      "modifierException": false,
+      "description": "PCI with stent + atherectomy bundles PTCA",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "92937",
+      "column2": "92920",
+      "modifierException": false,
+      "description": "PCI with stent in bypass graft bundles PTCA",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "92928",
+      "column2": "92924",
+      "modifierException": true,
+      "description": "PCI with stent bundles PTCA with atherectomy (different vessel allowed)",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "92941",
+      "column2": "92920",
+      "modifierException": false,
+      "description": "Acute MI PCI bundles PTCA",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "92941",
+      "column2": "92928",
+      "modifierException": true,
+      "description": "Acute MI PCI bundles standard PCI with stent (different vessel)",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93458",
+      "column2": "93452",
+      "modifierException": false,
+      "description": "Left heart cath with coronary angiography bundles left heart cath alone",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93460",
+      "column2": "93452",
+      "modifierException": false,
+      "description": "Cath with injection bundles left heart cath",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93460",
+      "column2": "93453",
+      "modifierException": false,
+      "description": "Cath with injection bundles combined heart cath",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93461",
+      "column2": "93452",
+      "modifierException": false,
+      "description": "Cath with injection (R+L) bundles left heart cath",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93461",
+      "column2": "93453",
+      "modifierException": false,
+      "description": "Cath with injection (R+L) bundles combined heart cath",
+      "category": "cath_pci"
+    },
+    {
+      "column1": "93306",
+      "column2": "93320",
+      "modifierException": false,
+      "description": "Complete TTE with Doppler bundles separate Doppler echo",
+      "category": "echo"
+    },
+    {
+      "column1": "93306",
+      "column2": "93321",
+      "modifierException": false,
+      "description": "Complete TTE with Doppler bundles Doppler follow-up",
+      "category": "echo"
+    },
+    {
+      "column1": "93306",
+      "column2": "93325",
+      "modifierException": false,
+      "description": "Complete TTE with Doppler bundles Doppler color flow",
+      "category": "echo"
+    },
+    {
+      "column1": "93312",
+      "column2": "93320",
+      "modifierException": false,
+      "description": "TEE bundles separate Doppler echo",
+      "category": "echo"
+    },
+    {
+      "column1": "93312",
+      "column2": "93325",
+      "modifierException": false,
+      "description": "TEE bundles Doppler color flow",
+      "category": "echo"
+    },
+    {
+      "column1": "93314",
+      "column2": "93312",
+      "modifierException": false,
+      "description": "TEE with 3D bundles standard TEE",
+      "category": "echo"
+    },
+    {
+      "column1": "93351",
+      "column2": "93350",
+      "modifierException": false,
+      "description": "Stress echo with Doppler bundles stress echo without Doppler",
+      "category": "echo"
+    },
+    {
+      "column1": "93351",
+      "column2": "93320",
+      "modifierException": false,
+      "description": "Stress echo with Doppler bundles separate Doppler",
+      "category": "echo"
+    },
+    {
+      "column1": "93351",
+      "column2": "93325",
+      "modifierException": false,
+      "description": "Stress echo with Doppler bundles Doppler color flow",
+      "category": "echo"
+    },
+    {
+      "column1": "93303",
+      "column2": "93304",
+      "modifierException": false,
+      "description": "Initial TTE bundles follow-up TTE",
+      "category": "echo"
+    },
+    {
+      "column1": "93306",
+      "column2": "93304",
+      "modifierException": false,
+      "description": "Complete TTE Doppler bundles follow-up TTE",
+      "category": "echo"
+    },
+    {
+      "column1": "93620",
+      "column2": "93600",
+      "modifierException": false,
+      "description": "Comprehensive EP study bundles bundle of His recording",
+      "category": "ep"
+    },
+    {
+      "column1": "93620",
+      "column2": "93602",
+      "modifierException": false,
+      "description": "Comprehensive EP study bundles intra-atrial recording",
+      "category": "ep"
+    },
+    {
+      "column1": "93620",
+      "column2": "93603",
+      "modifierException": false,
+      "description": "Comprehensive EP study bundles right ventricular recording",
+      "category": "ep"
+    },
+    {
+      "column1": "93620",
+      "column2": "93610",
+      "modifierException": false,
+      "description": "Comprehensive EP study bundles intra-atrial pacing",
+      "category": "ep"
+    },
+    {
+      "column1": "93620",
+      "column2": "93612",
+      "modifierException": false,
+      "description": "Comprehensive EP study bundles intraventricular pacing",
+      "category": "ep"
+    },
+    {
+      "column1": "93653",
+      "column2": "93620",
+      "modifierException": false,
+      "description": "SVT ablation bundles comprehensive EP study",
+      "category": "ep"
+    },
+    {
+      "column1": "93654",
+      "column2": "93620",
+      "modifierException": false,
+      "description": "VT ablation bundles comprehensive EP study",
+      "category": "ep"
+    },
+    {
+      "column1": "93656",
+      "column2": "93620",
+      "modifierException": false,
+      "description": "AFib ablation bundles comprehensive EP study",
+      "category": "ep"
+    },
+    {
+      "column1": "93656",
+      "column2": "93621",
+      "modifierException": false,
+      "description": "AFib ablation bundles LA pacing and recording",
+      "category": "ep"
+    },
+    {
+      "column1": "93656",
+      "column2": "93622",
+      "modifierException": false,
+      "description": "AFib ablation bundles LV pacing and recording",
+      "category": "ep"
+    },
+    {
+      "column1": "93653",
+      "column2": "93600",
+      "modifierException": false,
+      "description": "SVT ablation bundles bundle of His recording",
+      "category": "ep"
+    },
+    {
+      "column1": "93654",
+      "column2": "93600",
+      "modifierException": false,
+      "description": "VT ablation bundles bundle of His recording",
+      "category": "ep"
+    },
+    {
+      "column1": "99291",
+      "column2": "99232",
+      "modifierException": true,
+      "description": "Critical care bundles subsequent hospital care (separate service with -25)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "99291",
+      "column2": "99233",
+      "modifierException": true,
+      "description": "Critical care bundles subsequent hospital care (separate service with -25)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "99291",
+      "column2": "99231",
+      "modifierException": true,
+      "description": "Critical care bundles subsequent hospital care (separate service with -25)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "99291",
+      "column2": "93458",
+      "modifierException": true,
+      "description": "Critical care bundles left heart cath (separate service)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "99291",
+      "column2": "93459",
+      "modifierException": true,
+      "description": "Critical care bundles combined heart cath (separate service)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "99291",
+      "column2": "92928",
+      "modifierException": true,
+      "description": "Critical care bundles PCI with stent (separate service)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "99291",
+      "column2": "33967",
+      "modifierException": true,
+      "description": "Critical care bundles IABP insertion (separate service)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "99291",
+      "column2": "33990",
+      "modifierException": true,
+      "description": "Critical care bundles Impella insertion (separate service)",
+      "category": "em_procedure"
+    },
+    {
+      "column1": "37228",
+      "column2": "37226",
+      "modifierException": true,
+      "description": "Fem/pop stent + atherectomy bundles iliac stent (different territory)",
+      "category": "peripheral"
+    },
+    {
+      "column1": "37229",
+      "column2": "37226",
+      "modifierException": true,
+      "description": "Fem/pop stent + atherectomy bundles iliac stent",
+      "category": "peripheral"
+    },
+    {
+      "column1": "37230",
+      "column2": "37228",
+      "modifierException": true,
+      "description": "Tibial stent bundles fem/pop stent (different territory)",
+      "category": "peripheral"
+    },
+    {
+      "column1": "36247",
+      "column2": "36245",
+      "modifierException": true,
+      "description": "Third order selective catheterization bundles first order (same vessel)",
+      "category": "peripheral"
+    },
+    {
+      "column1": "36247",
+      "column2": "36246",
+      "modifierException": true,
+      "description": "Third order selective catheterization bundles second order (same vessel)",
+      "category": "peripheral"
+    },
+    {
+      "column1": "36248",
+      "column2": "36246",
+      "modifierException": true,
+      "description": "Additional second+ order catheterization bundles second order (same vessel)",
+      "category": "peripheral"
+    }
+  ],
+  "modifiers": [
+    {
+      "code": "-25",
+      "name": "Significant, Separately Identifiable E/M",
+      "description": "E/M service performed on the same day as a procedure or other service, significant and separately identifiable",
+      "autoApply": true,
+      "requiresReview": false,
+      "incompatibleWith": []
+    },
+    {
+      "code": "-26",
+      "name": "Professional Component",
+      "description": "Professional component only (reading/interpretation) — physician billing for interpretation without technical component",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-TC"
+      ]
+    },
+    {
+      "code": "-TC",
+      "name": "Technical Component",
+      "description": "Technical component only — facility billing for equipment and technician, no professional interpretation",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-26"
+      ]
+    },
+    {
+      "code": "-59",
+      "name": "Distinct Procedural Service",
+      "description": "Distinct procedural service performed on the same day — used for NCCI unbundling when procedures are truly separate",
+      "autoApply": true,
+      "requiresReview": false,
+      "incompatibleWith": [
+        "-XS",
+        "-XE",
+        "-XU"
+      ]
+    },
+    {
+      "code": "-XS",
+      "name": "Separate Structure",
+      "description": "Separate structure — services performed on different anatomical structures (e.g., left vs right heart cath)",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-59",
+        "-XE",
+        "-XU"
+      ]
+    },
+    {
+      "code": "-XE",
+      "name": "Separate Encounter",
+      "description": "Separate encounter — services performed during different encounters on the same date (e.g., morning echo + afternoon stress echo)",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-59",
+        "-XS",
+        "-XU"
+      ]
+    },
+    {
+      "code": "-XU",
+      "name": "Unusual Non-Overlapping Service",
+      "description": "Unusual non-overlapping service — services that do not overlap but are not typically reported together",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-59",
+        "-XS",
+        "-XE"
+      ]
+    },
+    {
+      "code": "-76",
+      "name": "Repeat Procedure, Same Physician",
+      "description": "Repeat procedure by the same physician on the same day — must document medical necessity for repeat",
+      "autoApply": true,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-77"
+      ]
+    },
+    {
+      "code": "-77",
+      "name": "Repeat Procedure, Different Physician",
+      "description": "Repeat procedure by a different physician on the same day",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-76"
+      ]
+    },
+    {
+      "code": "-50",
+      "name": "Bilateral Procedure",
+      "description": "Bilateral procedure — same procedure performed on both sides (e.g., bilateral lower extremity angiography)",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-LT",
+        "-RT"
+      ]
+    },
+    {
+      "code": "-LT",
+      "name": "Left Side",
+      "description": "Procedure performed on the left side",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-50",
+        "-RT"
+      ]
+    },
+    {
+      "code": "-RT",
+      "name": "Right Side",
+      "description": "Procedure performed on the right side",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-50",
+        "-LT"
+      ]
+    },
+    {
+      "code": "-22",
+      "name": "Increased Procedural Service",
+      "description": "Increased procedural service — work required substantially exceeded usual. Requires operative report documentation.",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": []
+    },
+    {
+      "code": "-51",
+      "name": "Multiple Procedures",
+      "description": "Multiple procedures performed during same session — payment reduction applies to secondary/subsequent procedures",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": []
+    },
+    {
+      "code": "-52",
+      "name": "Reduced Services",
+      "description": "Procedure partially completed or reduced in scope — requires documentation of what was performed and why it was reduced",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-53"
+      ]
+    },
+    {
+      "code": "-53",
+      "name": "Discontinued Procedure",
+      "description": "Procedure started but discontinued due to threat to patient wellbeing — requires documentation of reason for discontinuation",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-52"
+      ]
+    },
+    {
+      "code": "-57",
+      "name": "Decision for Surgery",
+      "description": "E/M service that resulted in the initial decision to perform a major procedure (90-day global). Use instead of -25 when the E/M led to the surgical decision.",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-25"
+      ]
+    },
+    {
+      "code": "-24",
+      "name": "Unrelated E/M During Postop",
+      "description": "E/M service performed during a postoperative global period for a reason unrelated to the original procedure",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": []
+    },
+    {
+      "code": "-78",
+      "name": "Unplanned Return to OR/Cath Lab",
+      "description": "Unplanned return to the operating room or cath lab during the postoperative period for a procedure related to the original",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-79"
+      ]
+    },
+    {
+      "code": "-79",
+      "name": "Unrelated Procedure During Postop",
+      "description": "Procedure performed during the postoperative period that is unrelated to the original procedure",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-78"
+      ]
+    },
+    {
+      "code": "-62",
+      "name": "Two Surgeons",
+      "description": "Two surgeons performing distinct parts of the same procedure — each surgeon bills with -62. Requires operative notes from both.",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-80"
+      ]
+    },
+    {
+      "code": "-80",
+      "name": "Assistant Surgeon",
+      "description": "Surgical assistant — bills the same procedure code as the primary surgeon with -80. Reimbursed at 16% of full fee.",
+      "autoApply": false,
+      "requiresReview": true,
+      "incompatibleWith": [
+        "-62"
+      ]
+    }
+  ]
+}
