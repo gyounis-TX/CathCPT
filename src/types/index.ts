@@ -169,7 +169,8 @@ export type AuditAction =
   | 'user_login_failed'
   | 'session_locked'
   | 'session_unlocked'
-  | 'data_exported';
+  | 'data_exported'
+  | 'op_note_charge_submitted';
 
 export interface AuditLogEntry {
   id: string;
