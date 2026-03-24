@@ -3,6 +3,7 @@ import { ArrowLeft, FileText, Sparkles, Check, AlertTriangle, Loader2 } from 'lu
 import { extractCodesFromOpNote, ExtractionResult } from '../services/opNoteService';
 import { saveCharge } from '../services/chargesService';
 import { logAuditEvent } from '../services/auditService';
+import { rvuData } from '../data/rvuData';
 import { Inpatient } from '../types';
 
 interface OpNoteExtractorScreenProps {
@@ -45,7 +46,14 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
     setSubmitSuccess(false);
 
     try {
-      const extracted = await extractCodesFromOpNote(opNoteText);
+      const raw = await extractCodesFromOpNote(opNoteText);
+      console.log('Extraction result:', JSON.stringify(raw, null, 2));
+      const extracted: ExtractionResult = {
+        cptCodes: raw.cptCodes || [],
+        icd10Codes: raw.icd10Codes || raw.icd10codes || [],
+        sedation: raw.sedation || { included: false, units: 0 },
+        summary: raw.summary || 'Extraction complete',
+      };
       setResult(extracted);
       setCheckedCpts(new Set(extracted.cptCodes.map(c => c.code)));
       setCheckedIcds(new Set(extracted.icd10Codes.map(c => c.code)));
@@ -96,6 +104,12 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
       const cptDescription = selectedCpts.map(c => c.description).join(' + ');
       const diagnoses = selectedIcds.map(c => c.code);
 
+      let totalRvu = 0;
+      selectedCpts.forEach(c => {
+        const r = rvuData[c.code];
+        if (r) totalRvu += r.workRVU;
+      });
+
       await saveCharge({
         inpatientId: resolvedPatientId,
         chargeDate,
@@ -104,7 +118,7 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
         diagnoses,
         submittedByUserId: userId,
         submittedByUserName: userName,
-        rvu: 0,
+        rvu: totalRvu,
       }, orgId);
 
       logAuditEvent(orgId, {
@@ -191,9 +205,38 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
         {/* Results */}
         {result && !submitSuccess && (
           <>
-            {/* Summary */}
+            {/* Summary + RVU */}
             <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-              <p className="text-sm font-medium text-indigo-800">{result.summary}</p>
+              <p className="text-sm font-medium text-indigo-800 mb-3">{result.summary}</p>
+              {(() => {
+                const checkedCodes = result.cptCodes.filter(c => checkedCpts.has(c.code));
+                let totalWorkRVU = 0;
+                let totalFee = 0;
+                checkedCodes.forEach(c => {
+                  const rvu = rvuData[c.code];
+                  if (rvu) { totalWorkRVU += rvu.workRVU; totalFee += rvu.fee; }
+                });
+                if (result.sedation.included) {
+                  const sedRvu = rvuData['99152'];
+                  if (sedRvu) { totalWorkRVU += sedRvu.workRVU; totalFee += sedRvu.fee; }
+                  if (result.sedation.units > 0) {
+                    const addSed = rvuData['99153'];
+                    if (addSed) { totalWorkRVU += addSed.workRVU * result.sedation.units; totalFee += addSed.fee * result.sedation.units; }
+                  }
+                }
+                return (
+                  <div className="flex gap-4">
+                    <div className="bg-white/60 rounded-lg px-3 py-2">
+                      <p className="text-lg font-bold text-indigo-700">{totalWorkRVU.toFixed(2)}</p>
+                      <p className="text-[10px] text-indigo-500 font-medium">Total Work RVU</p>
+                    </div>
+                    <div className="bg-white/60 rounded-lg px-3 py-2">
+                      <p className="text-lg font-bold text-green-700">${totalFee.toLocaleString()}</p>
+                      <p className="text-[10px] text-green-600 font-medium">Est. Reimbursement</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* CPT Codes */}
