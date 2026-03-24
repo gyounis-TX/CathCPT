@@ -42,10 +42,12 @@ async function loadCodeLibrary() {
 
   // 1. Try bundled file first
   try {
-    const { default: bundled } = await import("./code-library.json", {
-      assert: { type: "json" },
-    });
-    codeLibraryCache = bundled;
+    const { readFileSync } = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const { dirname, join } = await import("path");
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const data = readFileSync(join(__dirname, "code-library.json"), "utf-8");
+    codeLibraryCache = JSON.parse(data);
     console.log("Code library loaded from bundled file");
     return codeLibraryCache;
   } catch {
@@ -236,12 +238,13 @@ export const handler = async (event) => {
       return jsonResponse(400, { error: "Invalid JSON in request body" });
     }
 
-    const { operativeNote, idToken } = body;
+    const { operativeNote, image, imageType, idToken } = body;
 
-    if (!operativeNote || typeof operativeNote !== "string" || !operativeNote.trim()) {
-      return jsonResponse(400, { error: "operativeNote is required and must be a non-empty string" });
+    if ((!operativeNote || typeof operativeNote !== "string" || !operativeNote.trim()) && !image) {
+      return jsonResponse(400, { error: "operativeNote or image is required" });
     }
 
+    // --- Verify admin ---
     // --- Verify admin ---
     try {
       await verifyAdmin(idToken);
@@ -256,10 +259,29 @@ export const handler = async (event) => {
     const codeLibrary = await loadCodeLibrary();
 
     // --- Build prompt ---
-    const { systemPrompt, userMessage } = buildPrompt(codeLibrary, operativeNote);
+    const { systemPrompt, userMessage } = buildPrompt(codeLibrary, operativeNote || "See attached image.");
+
+    // --- Build user content (text, image, or both) ---
+    const userContent = [];
+    if (image) {
+      userContent.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: imageType || "image/png",
+          data: image,
+        },
+      });
+    }
+    userContent.push({
+      type: "text",
+      text: image
+        ? "Extract billing codes from this operative note image." + (operativeNote ? `\n\nAdditional context:\n${operativeNote}` : "")
+        : userMessage,
+    });
 
     // --- Call Bedrock (Claude Sonnet) ---
-    const modelId = "anthropic.claude-sonnet-4-20250514";
+    const modelId = "us.anthropic.claude-sonnet-4-20250514-v1:0";
 
     const bedrockPayload = {
       anthropic_version: "bedrock-2023-05-31",
@@ -268,7 +290,7 @@ export const handler = async (event) => {
       messages: [
         {
           role: "user",
-          content: userMessage,
+          content: userContent,
         },
       ],
     };

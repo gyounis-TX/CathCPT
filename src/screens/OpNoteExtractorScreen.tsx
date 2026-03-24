@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, FileText, Sparkles, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ArrowLeft, FileText, Sparkles, Check, AlertTriangle, Loader2, ImagePlus, X } from 'lucide-react';
 import { extractCodesFromOpNote, ExtractionResult } from '../services/opNoteService';
 import { saveCharge } from '../services/chargesService';
 import { logAuditEvent } from '../services/auditService';
@@ -37,16 +37,45 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
   const [chargeDate, setChargeDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [imageData, setImageData] = useState<{ data: string; type: string; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(',')[1];
+      setImageData({ data: base64, type: file.type, preview: dataUrl });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) handleImageFile(file);
+        return;
+      }
+    }
+  };
 
   const handleExtract = async () => {
-    if (!opNoteText.trim()) return;
+    if (!opNoteText.trim() && !imageData) return;
     setIsExtracting(true);
     setError('');
     setResult(null);
     setSubmitSuccess(false);
 
     try {
-      const raw = await extractCodesFromOpNote(opNoteText);
+      const raw = await extractCodesFromOpNote(
+        opNoteText.trim() || undefined,
+        imageData ? { data: imageData.data, type: imageData.type } : undefined
+      );
       console.log('Extraction result:', JSON.stringify(raw, null, 2));
       const extracted: ExtractionResult = {
         cptCodes: raw.cptCodes || [],
@@ -156,22 +185,37 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
 
       <div className="p-4 max-w-4xl mx-auto space-y-4">
         {/* Input */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
+        <div className="bg-white rounded-xl p-4 border border-gray-200" onPaste={handlePaste}>
+          {/* Image Preview */}
+          {imageData && (
+            <div className="mb-3 relative inline-block">
+              <img src={imageData.preview} alt="Op note" className="max-h-48 rounded-lg border border-gray-200" />
+              <button
+                onClick={() => setImageData(null)}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                aria-label="Remove image"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <FileText size={16} className="inline mr-1.5" />
-            Paste Operative Note
+            Paste Text or Image
           </label>
           <textarea
             value={opNoteText}
             onChange={(e) => setOpNoteText(e.target.value)}
-            placeholder="Paste the full operative note here..."
+            placeholder="Paste operative note text here, or paste/upload a screenshot..."
             className="w-full h-48 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
           />
-          <button
-            onClick={handleExtract}
-            disabled={!opNoteText.trim() || isExtracting}
-            className="mt-3 px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-          >
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={handleExtract}
+              disabled={(!opNoteText.trim() && !imageData) || isExtracting}
+              className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+            >
             {isExtracting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
@@ -184,6 +228,25 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
               </>
             )}
           </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 flex items-center gap-2"
+            >
+              <ImagePlus size={16} />
+              Upload Image
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageFile(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
         </div>
 
         {/* Error */}

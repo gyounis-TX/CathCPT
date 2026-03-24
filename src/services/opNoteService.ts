@@ -25,17 +25,27 @@ export interface ExtractionResult {
   summary: string;
 }
 
-export async function extractCodesFromOpNote(opNoteText: string): Promise<ExtractionResult> {
+export async function extractCodesFromOpNote(
+  opNoteText?: string,
+  image?: { data: string; type: string }
+): Promise<ExtractionResult> {
   const auth = getFirebaseAuth();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
 
   const idToken = await user.getIdToken(true);
 
+  const payload: Record<string, string> = { idToken };
+  if (opNoteText) payload.operativeNote = opNoteText;
+  if (image) {
+    payload.image = image.data;
+    payload.imageType = image.type;
+  }
+
   const response = await fetch(EXTRACT_CODES_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ operativeNote: opNoteText, idToken }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
