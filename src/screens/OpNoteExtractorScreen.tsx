@@ -39,14 +39,14 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [imageData, setImageData] = useState<{ data: string; type: string; preview: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const handleImageFile = (file: File) => {
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
@@ -78,7 +78,7 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
   // Reset chat when new extraction happens
   useEffect(() => {
     setChatMessages([]);
-    setChatOpen(false);
+    setChatOpen(true);
     setChatInput('');
   }, [result]);
 
@@ -225,7 +225,14 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
           {/* Image Preview */}
           {imageData && (
             <div className="mb-3 relative inline-block">
-              <img src={imageData.preview} alt="Op note" className="max-h-48 rounded-lg border border-gray-200" />
+              {imageData.type === 'application/pdf' ? (
+                <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <FileText size={20} className="text-red-500" />
+                  <span className="text-sm text-gray-700">PDF uploaded</span>
+                </div>
+              ) : (
+                <img src={imageData.preview} alt="Op note" className="max-h-48 rounded-lg border border-gray-200" />
+              )}
               <button
                 onClick={() => setImageData(null)}
                 className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
@@ -274,7 +281,7 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];

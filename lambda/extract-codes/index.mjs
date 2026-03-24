@@ -324,8 +324,9 @@ ${JSON.stringify(codeLibrary.billingRules)}`;
     // --- Build user content (text, image, or both) ---
     const userContent = [];
     if (image) {
+      const isPdf = (imageType || "").includes("pdf");
       userContent.push({
-        type: "image",
+        type: isPdf ? "document" : "image",
         source: {
           type: "base64",
           media_type: imageType || "image/png",
