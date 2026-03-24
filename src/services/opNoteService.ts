@@ -89,3 +89,40 @@ export async function extractCodesFromOpNote(
     summary: raw.summary || 'Extraction complete',
   };
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export async function chatAboutExtraction(
+  chatMessages: ChatMessage[],
+  extractionResult: ExtractionResult,
+  operativeNote?: string,
+): Promise<string> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not authenticated');
+
+  const idToken = await user.getIdToken(true);
+
+  const response = await fetch(EXTRACT_CODES_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mode: 'chat',
+      chatMessages,
+      extractionResult,
+      operativeNote,
+      idToken,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(err.error || `Chat failed (${response.status})`);
+  }
+
+  const json = await response.json();
+  return json.reply || '';
+}

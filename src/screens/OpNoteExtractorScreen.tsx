@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { ArrowLeft, FileText, Sparkles, Check, AlertTriangle, Loader2, ImagePlus, X } from 'lucide-react';
-import { extractCodesFromOpNote, ExtractionResult } from '../services/opNoteService';
+import React, { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, FileText, Sparkles, Check, AlertTriangle, Loader2, ImagePlus, X, MessageCircle, ChevronDown, Send } from 'lucide-react';
+import { extractCodesFromOpNote, ExtractionResult, chatAboutExtraction, ChatMessage } from '../services/opNoteService';
 import { saveCharge } from '../services/chargesService';
 import { logAuditEvent } from '../services/auditService';
 import { rvuData } from '../data/rvuData';
@@ -39,6 +39,11 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [imageData, setImageData] = useState<{ data: string; type: string; preview: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const handleImageFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
@@ -61,6 +66,37 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
         if (file) handleImageFile(file);
         return;
       }
+    }
+  };
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages, chatLoading]);
+
+  // Reset chat when new extraction happens
+  useEffect(() => {
+    setChatMessages([]);
+    setChatOpen(false);
+    setChatInput('');
+  }, [result]);
+
+  const handleChatSend = async () => {
+    if (!chatInput.trim() || !result) return;
+    const userMsg: ChatMessage = { role: 'user', content: chatInput.trim() };
+    const updatedMessages = [...chatMessages, userMsg];
+    setChatMessages(updatedMessages);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const reply = await chatAboutExtraction(updatedMessages, result, opNoteText || undefined);
+      setChatMessages([...updatedMessages, { role: 'assistant', content: reply }]);
+    } catch (err: any) {
+      setChatMessages([...updatedMessages, { role: 'assistant', content: `Error: ${err.message}` }]);
+    } finally {
+      setChatLoading(false);
     }
   };
 
@@ -436,6 +472,70 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
                   <FileText size={16} />
                   Open in Code Editor
                 </button>
+              )}
+            </div>
+
+            {/* Chat about extraction */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => setChatOpen(!chatOpen)}
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageCircle size={16} className="text-indigo-600" />
+                  <span className="text-sm font-medium text-gray-700">Ask about this analysis</span>
+                </div>
+                <ChevronDown size={16} className={`text-gray-400 transition-transform ${chatOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {chatOpen && (
+                <div className="border-t border-gray-200">
+                  {/* Messages */}
+                  <div ref={chatScrollRef} className="max-h-64 overflow-y-auto p-4 space-y-3">
+                    {chatMessages.length === 0 && (
+                      <p className="text-xs text-gray-400 text-center">Ask a question — e.g., "Why wasn't 92929 used for the second vessel?" or "What would change if IVUS was done on both vessels?"</p>
+                    )}
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-indigo-600 text-white rounded-br-sm'
+                            : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                        }`}>
+                          {msg.content}
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-100 px-4 py-2 rounded-xl rounded-bl-sm flex gap-1">
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Input */}
+                  <div className="border-t border-gray-200 p-3 flex gap-2">
+                    <input
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend(); } }}
+                      placeholder="Ask about the coding..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      disabled={chatLoading}
+                    />
+                    <button
+                      onClick={handleChatSend}
+                      disabled={!chatInput.trim() || chatLoading}
+                      className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </>

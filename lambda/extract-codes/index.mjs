@@ -238,7 +238,67 @@ export const handler = async (event) => {
       return jsonResponse(400, { error: "Invalid JSON in request body" });
     }
 
-    const { operativeNote, image, imageType, idToken } = body;
+    const { operativeNote, image, imageType, idToken, mode, extractionResult, chatMessages } = body;
+
+    // --- Chat mode ---
+    if (mode === "chat") {
+      if (!idToken) return jsonResponse(400, { error: "idToken is required" });
+      try { await verifyAdmin(idToken); } catch (err) {
+        if (err instanceof AuthError) return jsonResponse(401, { error: err.message });
+        throw err;
+      }
+
+      if (!chatMessages || !Array.isArray(chatMessages) || chatMessages.length === 0) {
+        return jsonResponse(400, { error: "chatMessages is required for chat mode" });
+      }
+
+      const codeLibrary = await loadCodeLibrary();
+      const modelId = "us.anthropic.claude-sonnet-4-20250514-v1:0";
+
+      const chatSystem = `You are an expert cardiology billing consultant. You have deep knowledge of CPT codes, ICD-10 codes, Medicare billing rules, NCCI edits, and modifier usage for interventional cardiology.
+
+You are helping an admin review an AI-extracted billing analysis from a cardiac procedure operative note. Answer their questions about:
+- Why specific codes were or weren't extracted
+- Whether codes are appropriate for the documented procedure
+- Modifier usage and NCCI compliance
+- Medical necessity and documentation requirements
+- Alternative coding approaches
+- RVU and reimbursement implications
+
+Be concise (1-2 paragraphs). Use plain text, not markdown. Reference specific CPT/ICD-10 codes when relevant.
+
+CONTEXT — EXTRACTION RESULT:
+${JSON.stringify(extractionResult || {})}
+
+OPERATIVE NOTE:
+${operativeNote || "(not provided)"}
+
+CODE LIBRARY REFERENCE:
+${JSON.stringify(codeLibrary.billingRules)}`;
+
+      const messages = chatMessages.map(m => ({ role: m.role, content: m.content }));
+
+      const chatPayload = {
+        anthropic_version: "bedrock-2023-05-31",
+        max_tokens: 1024,
+        system: chatSystem,
+        messages,
+      };
+
+      const chatResponse = await bedrockClient.send(
+        new InvokeModelCommand({
+          modelId,
+          contentType: "application/json",
+          accept: "application/json",
+          body: JSON.stringify(chatPayload),
+        })
+      );
+
+      const chatBody = JSON.parse(Buffer.from(chatResponse.body).toString("utf-8"));
+      const reply = chatBody?.content?.[0]?.text ?? "";
+
+      return jsonResponse(200, { reply });
+    }
 
     if ((!operativeNote || typeof operativeNote !== "string" || !operativeNote.trim()) && !image) {
       return jsonResponse(400, { error: "operativeNote or image is required" });
