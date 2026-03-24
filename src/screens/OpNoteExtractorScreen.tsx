@@ -211,19 +211,19 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
               {(() => {
                 const checkedCodes = result.cptCodes.filter(c => checkedCpts.has(c.code));
                 let totalWorkRVU = 0;
-                let totalFee = 0;
                 checkedCodes.forEach(c => {
                   const rvu = rvuData[c.code];
-                  if (rvu) { totalWorkRVU += rvu.workRVU; totalFee += rvu.fee; }
+                  if (rvu) { totalWorkRVU += rvu.workRVU; }
                 });
                 if (result.sedation.included) {
                   const sedRvu = rvuData['99152'];
-                  if (sedRvu) { totalWorkRVU += sedRvu.workRVU; totalFee += sedRvu.fee; }
+                  if (sedRvu) { totalWorkRVU += sedRvu.workRVU; }
                   if (result.sedation.units > 0) {
                     const addSed = rvuData['99153'];
-                    if (addSed) { totalWorkRVU += addSed.workRVU * result.sedation.units; totalFee += addSed.fee * result.sedation.units; }
+                    if (addSed) { totalWorkRVU += addSed.workRVU * result.sedation.units; }
                   }
                 }
+                const totalPayment = totalWorkRVU * 36.04;
                 return (
                   <div className="flex gap-4">
                     <div className="bg-white/60 rounded-lg px-3 py-2">
@@ -231,8 +231,8 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
                       <p className="text-[10px] text-indigo-500 font-medium">Total Work RVU</p>
                     </div>
                     <div className="bg-white/60 rounded-lg px-3 py-2">
-                      <p className="text-lg font-bold text-green-700">${totalFee.toLocaleString()}</p>
-                      <p className="text-[10px] text-green-600 font-medium">Est. Reimbursement</p>
+                      <p className="text-lg font-bold text-green-700">${totalPayment.toFixed(2)}</p>
+                      <p className="text-[10px] text-green-600 font-medium">Est. Medicare (CF $36.04)</p>
                     </div>
                   </div>
                 );
