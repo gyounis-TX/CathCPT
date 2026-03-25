@@ -152,7 +152,14 @@ ${JSON.stringify(codeLibrary, null, 2)}
    - Apply modifier -59 for distinct procedural services when necessary to prevent inappropriate bundling.
    - Apply modifier -LT / -RT for left/right distinctions.
 
-4. **Output Format**
+4. **Moderate Sedation Rules**
+   - If the note mentions moderate sedation, conscious sedation, or sedation time, extract the total sedation time in minutes.
+   - Do NOT include sedation CPT codes (99152, 99153) in the cpt_codes array — report sedation separately.
+   - The billing system will automatically compute: 99152 for first 15 minutes, 99153 for each additional 15-minute unit.
+   - Example: "30 minutes sedation" = sedation_minutes: 30 (system adds 99152 + 1x 99153).
+   - Example: "15 minutes sedation" = sedation_minutes: 15 (system adds 99152 only).
+
+5. **Output Format**
    Return ONLY valid JSON with the following structure — no prose, no markdown, no explanations outside the JSON:
    {
      "cpt_codes": [
@@ -172,6 +179,7 @@ ${JSON.stringify(codeLibrary, null, 2)}
          "rationale": "string"
        }
      ],
+     "sedation_minutes": 0,
      "notes": "string (optional — flag ambiguities or missing info)"
    }`;
 

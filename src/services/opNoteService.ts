@@ -21,7 +21,7 @@ export interface ExtractedICD10Code {
 export interface ExtractionResult {
   cptCodes: ExtractedCPTCode[];
   icd10Codes: ExtractedICD10Code[];
-  sedation: { included: boolean; units: number };
+  sedation: { included: boolean; units: number; minutes: number };
   summary: string;
 }
 
@@ -75,18 +75,31 @@ export async function extractCodesFromOpNote(
     reasoning: c.reasoning || c.rationale || '',
   }));
 
-  // Detect sedation from CPT codes if not explicit
-  const sedationCode = cptCodes.find(c => c.code === '99152' || c.code === '99153');
-  const sedation = raw.sedation || {
-    included: !!sedationCode,
-    units: sedationCode ? 1 : 0,
-  };
+  // Compute sedation from sedation_minutes (preferred) or fallback to CPT code detection
+  const sedationMinutes = raw.sedation_minutes || raw.sedationMinutes || 0;
+  let sedation: { included: boolean; units: number; minutes: number };
+
+  if (sedationMinutes > 0) {
+    // First 15 min = 99152 (included), additional 15-min blocks = 99153 units
+    const additionalUnits = Math.max(0, Math.floor((sedationMinutes - 15) / 15));
+    sedation = { included: true, units: additionalUnits, minutes: sedationMinutes };
+  } else {
+    // Fallback: check if Claude returned 99152/99153 as CPT codes
+    const has99152 = cptCodes.some(c => c.code === '99152');
+    const count99153 = cptCodes.filter(c => c.code === '99153').length;
+    if (has99152) {
+      const mins = 15 + count99153 * 15;
+      sedation = { included: true, units: count99153, minutes: mins };
+    } else {
+      sedation = { included: false, units: 0, minutes: 0 };
+    }
+  }
 
   return {
-    cptCodes: cptCodes.filter(c => c.code !== '99152' && c.code !== '99153'), // sedation shown separately
+    cptCodes: cptCodes.filter(c => c.code !== '99152' && c.code !== '99153'),
     icd10Codes,
     sedation,
-    summary: raw.summary || 'Extraction complete',
+    summary: raw.summary || raw.notes || 'Extraction complete',
   };
 }
 
