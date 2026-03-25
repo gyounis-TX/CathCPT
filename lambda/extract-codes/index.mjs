@@ -376,7 +376,7 @@ ${JSON.stringify(codeLibrary.billingRules)}`;
     userContent.push({
       type: "text",
       text: image
-        ? "Extract billing codes from this operative note image. Pay special attention to handwritten annotations — moderate sedation time is often written by hand near the bottom of the form. Report the total sedation time in sedation_minutes." + (operativeNote ? `\n\nAdditional context:\n${operativeNote}` : "")
+        ? "Extract billing codes from this operative note. If this is a multi-page PDF, focus on the FIRST PAGE — it contains the procedure note with all billing-relevant information (procedure performed, findings, diagnosis, sedation time). Subsequent pages (ECGs, hemodynamic tracings, computer summaries) do not add new billing codes. Pay special attention to handwritten annotations — moderate sedation time is often written by hand near the bottom of the form. Report the total sedation time in sedation_minutes." + (operativeNote ? `\n\nAdditional context:\n${operativeNote}` : "")
         : userMessage,
     });
 

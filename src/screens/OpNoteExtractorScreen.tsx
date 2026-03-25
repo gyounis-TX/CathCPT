@@ -45,12 +45,12 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_FILE_SIZE = 7 * 1024 * 1024; // 7MB (~10MB base64 = API Gateway limit)
 
   const handleImageFile = (file: File) => {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
     if (file.size > MAX_FILE_SIZE) {
-      setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 5MB. For multi-page PDFs, upload just the procedure note page as a screenshot.`);
+      setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 7MB. Tip: take a screenshot of just the procedure note page and upload that instead.`);
       return;
     }
     const reader = new FileReader();
