@@ -95,16 +95,19 @@ exports.onChargeCreated = onDocumentCreated("organizations/{orgId}/charges/{char
   const db = getFirestore();
   const auth = getAuth();
 
+  console.log(`Charge created: ${chargeId} in org ${orgId}`);
+
   // 1. Check if org has charge notifications enabled
   const orgDoc = await db.collection("organizations").doc(orgId).get();
-  if (!orgDoc.exists) return;
+  if (!orgDoc.exists) { console.log("Org not found, skipping notification"); return; }
 
   const orgData = orgDoc.data();
   const notifications = orgData.chargeNotifications;
-  if (!notifications || !notifications.enabled) return;
+  if (!notifications || !notifications.enabled) { console.log("Notifications disabled for org, skipping"); return; }
 
   const recipientUserIds = notifications.recipientUserIds || [];
-  if (recipientUserIds.length === 0) return;
+  if (recipientUserIds.length === 0) { console.log("No recipients configured, skipping"); return; }
+  console.log(`Sending notifications to ${recipientUserIds.length} recipients`);
 
   // 2. Filter out the submitting physician
   const submitterId = charge.submittedByUserId || null;
@@ -129,7 +132,7 @@ exports.onChargeCreated = onDocumentCreated("organizations/{orgId}/charges/{char
       await db.collection("mail").doc(`${chargeId}-${uid}`).set({
         to: userRecord.email,
         message: {
-          subject: `New charge submitted by Dr. ${submitterName}`,
+          subject: `New charge submitted by ${submitterName}`,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
               <div style="text-align: center; margin-bottom: 24px;">
@@ -138,7 +141,7 @@ exports.onChargeCreated = onDocumentCreated("organizations/{orgId}/charges/{char
               </div>
 
               <p style="font-size: 16px; color: #111827;">
-                Dr. <strong>${submitterName}</strong> submitted a new charge.
+                <strong>${submitterName}</strong> submitted a new charge.
               </p>
 
               <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; margin: 16px 0;">
