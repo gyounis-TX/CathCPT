@@ -1,5 +1,5 @@
 {
-  "name": "cathcpt-ios",
+  "name": "cathdoc-ios",
   "private": true,
   "version": "3.0.0",
   "type": "module",
@@ -22,6 +22,7 @@
     "@sentry/react": "^10.39.0",
     "firebase": "^11.10.0",
     "lucide-react": "^0.344.0",
+    "pdfjs-dist": "^5.5.207",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

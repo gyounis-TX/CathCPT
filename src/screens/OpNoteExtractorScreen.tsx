@@ -45,14 +45,38 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const MAX_FILE_SIZE = 7 * 1024 * 1024; // 7MB (~10MB base64 = API Gateway limit)
-
-  const handleImageFile = (file: File) => {
+  const handleImageFile = async (file: File) => {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
-    if (file.size > MAX_FILE_SIZE) {
-      setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 7MB. Tip: take a screenshot of just the procedure note page and upload that instead.`);
+
+    // For PDFs: extract page 1 as JPEG image
+    if (file.type === 'application/pdf') {
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+
+        const scale = 2; // 2x for readability of handwriting
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d')!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const base64 = dataUrl.split(',')[1];
+        setImageData({ data: base64, type: 'image/jpeg', preview: dataUrl });
+        setError('');
+      } catch (err: any) {
+        setError('Failed to process PDF: ' + (err.message || 'unknown error'));
+      }
       return;
     }
+
+    // For images: read directly
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
