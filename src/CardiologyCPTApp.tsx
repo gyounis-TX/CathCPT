@@ -214,6 +214,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
 
   // Feature 2: Favorites
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
 
   // Feature 4: Case Templates
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -397,6 +398,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
         if (favoritesResult?.value) {
           setFavorites(JSON.parse(favoritesResult.value));
         }
+        setFavoritesLoaded(true);
 
         // Load custom templates
         const templatesResult = await window.storage.get('cathcpt_custom_templates');
@@ -446,10 +448,11 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
   }, [orgId]);
 
 
-  // Save favorites when changed
+  // Save favorites when changed (skip initial mount to prevent wiping stored data)
   useEffect(() => {
+    if (!favoritesLoaded) return;
     window.storage.set('cathcpt_favorites', JSON.stringify(favorites));
-  }, [favorites]);
+  }, [favorites, favoritesLoaded]);
 
   // Real-time billing rules validation
   useEffect(() => {
@@ -2364,7 +2367,7 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
       alert('Please enter a patient name');
       return;
     }
-    if (!matchedPatient && !patientDob) {
+    if (false) { // DOB no longer required for new patients
       alert('Please enter a date of birth for new patients');
       return;
     }
