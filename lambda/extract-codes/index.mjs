@@ -137,9 +137,25 @@ ${JSON.stringify(codeLibrary, null, 2)}
    - Select the most specific CPT code(s) that accurately describe the procedure(s) performed.
    - Apply bundling rules: do not separately bill components already included in a comprehensive code.
    - Use add-on codes (+) only when the parent code is also billed.
-   - For coronary angiography, identify whether left heart catheterization, right heart catheterization, or both were performed.
-   - For interventions (PCI), identify each vessel and lesion treated separately when appropriate.
+   - For coronary angiography, identify whether left heart catheterization, right heart catheterization, or both were performed. ALWAYS include the diagnostic cath code (93451-93461) when PCI is performed.
    - Vascular access codes (e.g., arterial/venous access) may be separately reportable depending on payer.
+
+   **CRITICAL — Multi-Vessel PCI Coding Rules:**
+   - For PCI (stent, angioplasty, atherectomy), the FIRST vessel uses the BASE code:
+     * 92928 = stent, first vessel
+     * 92920 = PTCA (angioplasty without stent), first vessel
+     * 92924 = atherectomy only, first vessel
+     * 92933 = atherectomy + stent, first vessel
+     * 92943 = CTO PCI, first vessel
+   - Each ADDITIONAL vessel uses the corresponding ADD-ON code with modifier -59:
+     * 92929-59 = stent, each additional vessel
+     * 92921-59 = PTCA, each additional vessel
+     * 92925-59 = atherectomy, each additional vessel
+     * 92934-59 = atherectomy + stent, each additional vessel
+     * 92944-59 = CTO, each additional vessel
+   - NEVER use the base code (e.g., 92928) more than once. The second and third vessels MUST use the add-on code (e.g., 92929-59).
+   - Example: 2-vessel PCI with stents = 92928 (first vessel) + 92929-59 (second vessel)
+   - Example: 3-vessel PCI with stents = 92928 + 92929-59 + 92929-59
 
 2. **ICD-10-CM Diagnosis Codes**
    - List the primary diagnosis first (the condition that drove the procedure).
@@ -312,7 +328,6 @@ ${JSON.stringify(codeLibrary.billingRules)}`;
       return jsonResponse(400, { error: "operativeNote or image is required" });
     }
 
-    // --- Verify admin ---
     // --- Verify admin ---
     try {
       await verifyAdmin(idToken);
