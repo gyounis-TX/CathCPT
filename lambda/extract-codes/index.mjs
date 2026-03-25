@@ -157,6 +157,22 @@ ${JSON.stringify(codeLibrary, null, 2)}
    - Example: 2-vessel PCI with stents = 92928 (first vessel) + 92929-59 (second vessel)
    - Example: 3-vessel PCI with stents = 92928 + 92929-59 + 92929-59
 
+   **CRITICAL — Electrophysiology Coding Rules:**
+   - **Diagnostic EP study**: 93619 (comprehensive, without induction) or 93620 (comprehensive, with induction). These are separately billable with ablation.
+   - **SVT ablation**: 93653 (SVT ablation including AV nodal reentrant, accessory pathway). Bill 93619 or 93620 separately for the diagnostic EP component.
+   - **Atrial flutter ablation**: 93650 (CTI/isthmus ablation for typical flutter). NOT 93655 (which is an add-on for additional ablation beyond primary).
+   - **AFib ablation (PVI)**: 93656 (comprehensive PVI ablation). 93657 is add-on for additional ablation lines beyond PVI.
+   - **VT ablation**: 93654 (comprehensive VT ablation with mapping).
+   - **Pacemaker implant**: 33206 (single atrial), 33207 (single ventricular), 33208 (dual chamber). Choose based on number of leads placed.
+   - **ICD implant**: 33249 (ICD with any leads including DFT testing).
+   - **CRT-D**: Bill 33249 (ICD) + 33225 (LV lead placement via CS). The LV lead is always a separate add-on code.
+   - **CRT-P (pacer)**: Bill 33208 (dual PPM) + 33225 (LV lead add-on).
+   - **Lead extraction**: 33241 (laser/powered extraction requiring specialized equipment). 33233/33234/33235 are for simple traction removal without powered tools.
+   - **DFT testing of existing ICD**: 93642 (includes VF induction and termination testing).
+   - **Loop recorder**: 33285 (implant), 33286 (removal).
+   - **Cardioversion**: 92960 (external), 92961 (internal).
+   - **ICE (intracardiac echo)**: 93662 — separately billable add-on when used during EP or structural procedures.
+
 2. **ICD-10-CM Diagnosis Codes**
    - List the primary diagnosis first (the condition that drove the procedure).
    - Include secondary diagnoses that affected management (e.g., hypertension, diabetes, CKD stage).
