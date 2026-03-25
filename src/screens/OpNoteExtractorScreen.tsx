@@ -375,6 +375,20 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
               </div>
             </div>
 
+            {/* Moderate Sedation */}
+            {result.sedation.included && (
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Moderate Sedation</h3>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p><span className="font-mono font-semibold text-gray-800">99152</span> — Initial 15 minutes</p>
+                  {result.sedation.units > 0 && (
+                    <p><span className="font-mono font-semibold text-gray-800">99153</span> — Additional {result.sedation.units} × 15 min ({result.sedation.units * 15} min)</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">Total sedation time: {(result.sedation as any).minutes || (15 + result.sedation.units * 15)} minutes</p>
+                </div>
+              </div>
+            )}
+
             {/* ICD-10 Codes */}
             <div className="bg-white rounded-xl p-4 border border-gray-200">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">ICD-10 Diagnoses ({result.icd10Codes.length})</h3>
@@ -399,20 +413,6 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
                 ))}
               </div>
             </div>
-
-            {/* Sedation */}
-            {result.sedation.included && (
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Moderate Sedation</h3>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <p><span className="font-mono font-semibold text-gray-800">99152</span> — Initial 15 minutes</p>
-                  {result.sedation.units > 0 && (
-                    <p><span className="font-mono font-semibold text-gray-800">99153</span> — Additional {result.sedation.units} × 15 min ({result.sedation.units * 15} min)</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">Total sedation time: {(result.sedation as any).minutes || (15 + result.sedation.units * 15)} minutes</p>
-                </div>
-              </div>
-            )}
 
             {/* Patient & Date */}
             <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
