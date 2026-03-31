@@ -127,6 +127,8 @@ class AuthError extends Error {
 function buildPrompt(codeLibrary, operativeNote) {
   const systemPrompt = `You are a medical coding specialist with expertise in cardiology procedure coding. Your task is to analyze operative notes from cardiac catheterization procedures and extract the appropriate CPT and ICD-10-CM codes.
 
+IMPORTANT: The SCAI (Society for Cardiovascular Angiography and Interventions) 2026 Billing Rules below are your PRIMARY and AUTHORITATIVE source for all coding decisions. When interpreting an operative note, apply SCAI rules first. Your general medical coding knowledge is secondary — if there is any conflict between your general knowledge and the SCAI rules, the SCAI rules govern. Do not invent codes or rules not covered by these guidelines. If a scenario is ambiguous, state the ambiguity in the "notes" field rather than guessing.
+
 ## Code Library
 
 ${JSON.stringify(codeLibrary, null, 2)}
