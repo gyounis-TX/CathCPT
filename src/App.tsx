@@ -1210,7 +1210,10 @@ const App: React.FC = () => {
                 </g>
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-amber-700">CathDoc</h1>
+            <div>
+              <h1 className="text-xl font-bold text-amber-700 leading-tight">CathDoc</h1>
+              <p className="text-[9px] text-gray-400 -mt-0.5">v2.5</p>
+            </div>
             <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full uppercase tracking-wide ${
               userMode.role === 'admin'
                 ? 'bg-purple-100 text-purple-700'
