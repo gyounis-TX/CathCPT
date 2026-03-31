@@ -131,76 +131,155 @@ function buildPrompt(codeLibrary, operativeNote) {
 
 ${JSON.stringify(codeLibrary, null, 2)}
 
-## Billing Rules
+## SCAI Billing Rules (2026)
 
-1. **CPT Code Selection**
-   - Select the most specific CPT code(s) that accurately describe the procedure(s) performed.
-   - Apply bundling rules: do not separately bill components already included in a comprehensive code.
-   - Use add-on codes (+) only when the parent code is also billed.
-   - Vascular access codes (e.g., arterial/venous access) may be separately reportable depending on payer.
+### 1. CARDIAC CATHETERIZATION (93451-93461)
+All cath codes include: catheter introduction/positioning, intracardiac/intravascular pressures, roadmapping angiography, catheter removal, access closure, imaging supervision/interpretation/report.
+Right heart caths include: catheter placement in right-sided chambers, blood gas sampling, cardiac output. Do NOT include RV/RA angiography or pulmonary angiography.
+Left heart caths include: catheter placement in left-sided chambers, LV/LA angiography with imaging S&I.
 
-   **CRITICAL — Diagnostic Catheterization Code Selection (93451-93461):**
-   These codes are MUTUALLY EXCLUSIVE. Choose exactly ONE based on what was performed:
-   - 93451 = Right heart cath only
-   - 93452 = Left heart cath only (with LV gram)
-   - 93453 = Combined R+L heart cath (with LV gram)
-   - 93454 = Coronary angiography only (no LHC, no RHC, no grafts)
-   - 93455 = Coronary angiography + bypass grafts (no LHC, no RHC)
-   - 93456 = Coronary angiography + right heart cath
-   - 93457 = Coronary angiography + bypass grafts + right heart cath
-   - 93458 = Coronary angiography + left heart cath/LV gram (MOST COMMON for diagnostic cath with PCI)
-   - 93459 = Coronary angiography + left heart cath + bypass grafts
-   - 93460 = Coronary angiography + combined R+L heart cath
-   - 93461 = Coronary angiography + combined R+L heart cath + bypass grafts
-   NEVER bill more than one code from this family. Pick the single most comprehensive code.
-   - If LV gram / left heart cath / LVEDP was measured → use 93458 (or 93460 if R+L)
-   - If bypass grafts were imaged → use the graft variant (93455, 93457, 93459, 93461)
-   - 93454 is ONLY used when coronary angio was done WITHOUT any heart catheterization (rare — typically only for angio-only followup)
-   ALWAYS include one of these codes when PCI is performed.
+These codes are MUTUALLY EXCLUSIVE — choose exactly ONE:
+- 93451 = Right heart cath only (with O2 sat and cardiac output)
+- 93452 = Left heart cath only (with LV gram S&I)
+- 93453 = Combined R+L heart cath (with LV gram S&I)
+- 93454 = Coronary angiography only — WITHOUT left or right heart catheterization. Use ONLY when coronary/bypass angio is done without any heart cath.
+- 93455 = Coronary angiography + bypass graft angiography — WITHOUT left or right heart cath. Use ONLY when coronary + graft angio is done without any heart cath.
+- 93456 = Coronary angiography + right heart cath
+- 93457 = Coronary angiography + bypass grafts + right heart cath
+- 93458 = Coronary angiography + left heart cath/LV gram (MOST COMMON)
+- 93459 = Coronary angiography + left heart cath + bypass grafts
+- 93460 = Coronary angiography + combined R+L heart cath
+- 93461 = Coronary angiography + combined R+L heart cath + bypass grafts
+NEVER bill more than one. If LVEDP was measured → includes LHC → use 93458+. If grafts imaged → use graft variant. ALWAYS include one when PCI is performed.
 
-   **CRITICAL — Multi-Vessel PCI Coding Rules:**
-   - For PCI (stent, angioplasty, atherectomy), the FIRST vessel uses the BASE code:
-     * 92928 = stent, first vessel
-     * 92920 = PTCA (angioplasty without stent), first vessel
-     * 92924 = atherectomy only, first vessel
-     * 92933 = atherectomy + stent, first vessel
-     * 92943 = CTO PCI, first vessel
-   - Each ADDITIONAL vessel uses the corresponding ADD-ON code with modifier -59:
-     * 92929-59 = stent, each additional vessel
-     * 92921-59 = PTCA, each additional vessel
-     * 92925-59 = atherectomy, each additional vessel
-     * 92934-59 = atherectomy + stent, each additional vessel
-     * 92944-59 = CTO, each additional vessel
-   - NEVER use the base code (e.g., 92928) more than once. The second and third vessels MUST use the add-on code (e.g., 92929-59).
-   - Example: 2-vessel PCI with stents = 92928 (first vessel) + 92929-59 (second vessel)
-   - Example: 3-vessel PCI with stents = 92928 + 92929-59 + 92929-59
+Catheterization add-on codes (bill separately in addition to primary):
+- 93462 = LHC by transseptal or transapical puncture (add-on to 93452-93461)
+- 93463 = Pharmacologic agent administration with hemodynamics (add-on to 93451-93461)
+- 93464 = Exercise study with hemodynamics (add-on to 93451-93461)
+- 93566 = Selective RV or RA angiography (add-on to 93451, 93453, 93456-93461)
+- 93567 = Supravalvular aortography (add-on to 93452-93461)
+- 93568 = Pulmonary angiography (add-on to 93451, 93453, 93456-93461)
+- 93571 = FFR/iFR initial vessel (add-on to cath or PCI codes; use coronary modifier)
+- 93572 = FFR/iFR each additional vessel (add-on to 93571)
 
-   **CRITICAL — Electrophysiology Coding Rules:**
-   - **Diagnostic EP study**: 93619 (comprehensive, without induction) or 93620 (comprehensive, with induction). These are separately billable with ablation.
-   - **SVT ablation**: 93653 (SVT ablation including AV nodal reentrant, accessory pathway). Bill 93619 or 93620 separately for the diagnostic EP component.
-   - **Atrial flutter ablation**: 93650 (CTI/isthmus ablation for typical flutter). NOT 93655 (which is an add-on for additional ablation beyond primary).
-   - **AFib ablation (PVI)**: 93656 (comprehensive PVI ablation). 93657 is add-on for additional ablation lines beyond PVI.
-   - **VT ablation**: 93654 (comprehensive VT ablation with mapping).
-   - **Pacemaker implant**: 33206 (single atrial), 33207 (single ventricular), 33208 (dual chamber). Choose based on number of leads placed.
-   - **ICD implant**: 33249 (ICD with any leads including DFT testing).
-   - **CRT-D**: Bill 33249 (ICD) + 33225 (LV lead placement via CS). The LV lead is always a separate add-on code.
-   - **CRT-P (pacer)**: Bill 33208 (dual PPM) + 33225 (LV lead add-on).
-   - **Lead extraction**: 33241 (laser/powered extraction requiring specialized equipment). 33233/33234/33235 are for simple traction removal without powered tools.
-   - **DFT testing of existing ICD**: 93642 (includes VF induction and termination testing).
-   - **Loop recorder**: 33285 (implant), 33286 (removal).
-   - **Cardioversion**: 92960 (external), 92961 (internal).
-   - **ICE (intracardiac echo)**: 93662 — separately billable add-on when used during EP or structural procedures.
+### 2. PCI — PERCUTANEOUS CORONARY INTERVENTION
+All PCI codes include: accessing/catheterizing vessel, traversing lesion, radiologic S&I for intervention, arteriotomy closure through access sheath, distal embolic protection, imaging to document completion.
 
-2. **ICD-10-CM Diagnosis Codes**
-   - List the primary diagnosis first (the condition that drove the procedure).
-   - Include secondary diagnoses that affected management (e.g., hypertension, diabetes, CKD stage).
-   - Use the most specific code available (e.g., specify laterality, type, severity).
-   - For CAD, specify native vs. bypass graft vessels and with/without angina.
+For a single artery or branch, use the code for the MOST INTENSIVE service performed.
+Only ONE base code from the PCI family per major coronary artery and/or its branches.
+If a lesion extends from one vessel into another and is bridged with a single intervention, report as ONE code.
 
-3. **Modifier Rules**
-   - Apply modifier -26 (professional component) or -TC (technical component) when appropriate.
-   - Apply modifier -59 for distinct procedural services when necessary to prevent inappropriate bundling.
-   - Apply modifier -LT / -RT for left/right distinctions.
+**Coronary artery modifiers (required on PCI codes):**
+- LC = Left circumflex (branches: obtuse marginal 1, obtuse marginal 2 — use add-on codes for branches)
+- LD = Left anterior descending (branches: diagonal 1, diagonal 2 — use add-on codes for branches)
+- LM = Left main (no recognized branches)
+- RC = Right coronary (branches: posterior descending, posterolateral — use add-on codes for branches)
+- RI = Ramus intermedius (no recognized branches)
+Major coronary arteries = LM, LAD, LCx, RCA, Ramus. Use BASE codes for major arteries, ADD-ON codes for branches.
+
+**Primary PCI codes (first vessel — use ONE):**
+- 92920 = Angioplasty only (balloon, no stent)
+- 92924 = Atherectomy (includes balloon angioplasty)
+- 92928 = Stent placement, one lesion one or more segments (includes balloon). Report when one or more stents treat a single lesion.
+- 92930 = Stent, 2+ distinct lesions with 2+ stents in 2+ segments, OR bifurcation lesion requiring stenting of both main + side branch
+- 92933 = Atherectomy + stent (includes balloon)
+- 92937 = Bypass graft PCI (any method — stent, atherectomy, angioplasty; includes distal protection)
+- 92941 = Acute MI PCI (total/subtotal occlusion during acute MI; includes aspiration thrombectomy). NOT for non-emergent ACS or late-presenting NSTEMI without ongoing chest pain.
+- 92943 = Chronic total occlusion PCI, antegrade approach (any combination stent/atherectomy/angioplasty)
+- 92945 = CTO PCI, combined antegrade + retrograde approach
+- 0913T = Drug-coated balloon (includes balloon angioplasty, IVUS/OCT imaging, coronary angiography)
+
+**Add-on PCI codes (each additional vessel — with modifier -59):**
+- 92921-59, 92925-59, 92929-59, 92931-59, 92934-59, 92938-59, 92944-59, 0914T
+NEVER use a base code more than once. Additional vessels MUST use add-on codes.
+
+**PCI add-on procedures (separately billable with any PCI):**
+- 92972 = Coronary lithotripsy (IVL)
+- 92973 = Mechanical aspiration thrombectomy (separately reportable with 92941)
+- 92974 = Radiation delivery device (brachytherapy)
+- 92978 = IVUS or OCT, initial vessel (report once per session; do NOT report with 0913T/0914T)
+- 92979 = IVUS or OCT, each additional vessel (add-on to 92978; report once per additional vessel)
+
+Report diagnostic angiography separately when: no prior study available and decision to intervene based on diagnostic angiography; or prior imaging inadequate/clinical change.
+
+### 3. PERIPHERAL — LOWER EXTREMITY REVASCULARIZATION (2026)
+LER codes include: access, selective catheterization, crossing lesion, treatment, imaging, closure.
+Code per TERRITORY, not per lesion. Use the most complex service per territory.
+Do NOT use add-on codes for additional lesions in the SAME vessel.
+Interventions on each leg reported separately. Use modifier -50 on bilateral initial vessel codes.
+Lesion types: Straightforward = stenosis; Complex = occlusion.
+
+**Iliac Territory** (common iliac, internal iliac, external iliac):
+Base codes: 37254, 37256, 37258, 37260 (initial artery)
+Add-on codes: 37255, 37257, 37259, 37261 (up to 2 additional vessels per extremity)
+Lithotripsy: 37262 (up to 3 times per leg)
+Iliac atherectomy: 0238T
+
+**Femoral/Popliteal Territory** (CFA, profunda, SFA, popliteal):
+CFA + profunda = single vessel. SFA + popliteal = single vessel.
+Base codes: 37263, 37265, 37267, 37269, 37271, 37273, 37275, 37277 (initial artery)
+Add-on codes: 37264, 37266, 37268, 37270, 37272, 37274, 37276, 37278 (one additional vessel per extremity)
+Lithotripsy: 37279 (up to 2 times per leg)
+
+**Tibial/Peroneal Territory** (AT, PT, peroneal):
+Tibioperoneal trunk = NOT a separate vessel unless only vessel treated.
+Base codes: 37280, 37282, 37284, 37286, 37288, 37290, 37292, 37294 (initial artery)
+Add-on codes: 37281, 37283, 37285, 37287, 37289, 37291, 37293, 37295 (up to 2 additional vessels per extremity)
+
+**Inframalleolar Territory** (dorsalis pedis, plantar):
+Pedal arch NOT a separate vessel unless only vessel treated.
+Base codes: 37296, 37298 (initial artery)
+Add-on codes: 37297, 37299 (one additional vessel per extremity)
+
+### 4. STRUCTURAL HEART PROCEDURES
+
+**TAVR/TAVI** (33361-33366): Requires two physician operators, modifier -62. Includes: percutaneous access, access sheath, balloon valvuloplasty, valve delivery/deployment, temp pacing, arteriotomy closure, angiography/fluoro S&I.
+- 33361 = percutaneous femoral; 33362 = open femoral; 33363 = open axillary; 33364 = open iliac; 33365 = transaortic; 33366 = transapical
+- 33370 = cerebral embolic protection (add-on to 33361-33366)
+- 33368 = cardiopulmonary bypass support (add-on)
+- Do NOT report diagnostic angiography done for roadmapping/fluoroscopic guidance, LVOT measurement, or post-TAVR aortic angiography.
+- Report diagnostic angiography separately ONLY if no prior study available and intervention decision based on it.
+- Report moderate sedation (99152) separately. Report US guidance (76937) separately if image saved. Report ICE (93662) separately.
+
+**MitraClip/TEER** (33418-33419): 33418 = initial clip; 33419 = each additional clip (report once per session). 90-day global period.
+- Includes: percutaneous access, sheath, transseptal puncture, device delivery/deployment, repositioning, closure.
+- Do NOT report 0345T with R+L heart cath inherent to valve repair.
+- Do NOT report diagnostic angiography done for TMVR guidance or hemodynamic measurements.
+- Report ICE (93662) separately. Report moderate sedation separately.
+
+**ASD/PFO Closure**: 93580 = ASD closure; 93581 = VSD closure. Report right heart cath and ICE separately.
+
+**Watchman/LAA Closure**: 33340 = LAA closure. Report ICE (93662) separately. Report transseptal puncture separately if applicable.
+
+**Tricuspid Valve** (0569T/0570T, 0545T, 0646T): Include vascular access, catheterization, device deployment, angiography/S&I, ICE. Similar diagnostic angiography rules as TAVR.
+
+### 5. ELECTROPHYSIOLOGY
+- **Diagnostic EP**: 93619 (without induction) or 93620 (with induction). Separately billable with ablation.
+- **SVT ablation**: 93653. Bill diagnostic EP (93619/93620) separately.
+- **AFlutter ablation**: 93650 (CTI ablation). 93655 = additional ablation add-on beyond primary.
+- **AFib PVI**: 93656. 93657 = additional ablation lines add-on.
+- **VT ablation**: 93654 (comprehensive with mapping).
+- **Pacemaker**: 33206 (single atrial), 33207 (single ventricular), 33208 (dual chamber).
+- **ICD**: 33249 (with any leads + DFT).
+- **CRT-D**: 33249 + 33225 (LV lead add-on). **CRT-P**: 33208 + 33225.
+- **Lead extraction**: 33241 (laser/powered). 33233/33234/33235 = simple traction.
+- **DFT testing**: 93642. **Loop recorder**: 33285 (implant), 33286 (removal).
+- **Cardioversion**: 92960 (external), 92961 (internal).
+- **ICE**: 93662 (separately billable add-on).
+
+### 6. ICD-10-CM DIAGNOSIS CODES
+- Primary diagnosis first (condition driving the procedure).
+- Include secondary diagnoses affecting management.
+- Use most specific code (laterality, type, severity).
+- CAD: specify native vs. graft, with/without angina.
+
+### 7. MODIFIER RULES
+- -26 / -TC = professional / technical component
+- -59 = distinct procedural service (NCCI unbundling)
+- -62 = two surgeons (required for TAVR)
+- -LT / -RT = laterality
+- -50 = bilateral (for peripheral initial vessel codes)
+- LC/LD/LM/RC/RI = coronary artery modifiers (required on PCI codes)
 
 4. **Moderate Sedation Rules**
    - If the note mentions moderate sedation, conscious sedation, or sedation time, extract the total sedation time in minutes.
