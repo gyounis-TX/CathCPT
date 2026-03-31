@@ -137,8 +137,26 @@ ${JSON.stringify(codeLibrary, null, 2)}
    - Select the most specific CPT code(s) that accurately describe the procedure(s) performed.
    - Apply bundling rules: do not separately bill components already included in a comprehensive code.
    - Use add-on codes (+) only when the parent code is also billed.
-   - For coronary angiography, identify whether left heart catheterization, right heart catheterization, or both were performed. ALWAYS include the diagnostic cath code (93451-93461) when PCI is performed.
    - Vascular access codes (e.g., arterial/venous access) may be separately reportable depending on payer.
+
+   **CRITICAL — Diagnostic Catheterization Code Selection (93451-93461):**
+   These codes are MUTUALLY EXCLUSIVE. Choose exactly ONE based on what was performed:
+   - 93451 = Right heart cath only
+   - 93452 = Left heart cath only (with LV gram)
+   - 93453 = Combined R+L heart cath (with LV gram)
+   - 93454 = Coronary angiography only (no LHC, no RHC, no grafts)
+   - 93455 = Coronary angiography + bypass grafts (no LHC, no RHC)
+   - 93456 = Coronary angiography + right heart cath
+   - 93457 = Coronary angiography + bypass grafts + right heart cath
+   - 93458 = Coronary angiography + left heart cath/LV gram (MOST COMMON for diagnostic cath with PCI)
+   - 93459 = Coronary angiography + left heart cath + bypass grafts
+   - 93460 = Coronary angiography + combined R+L heart cath
+   - 93461 = Coronary angiography + combined R+L heart cath + bypass grafts
+   NEVER bill more than one code from this family. Pick the single most comprehensive code.
+   - If LV gram / left heart cath / LVEDP was measured → use 93458 (or 93460 if R+L)
+   - If bypass grafts were imaged → use the graft variant (93455, 93457, 93459, 93461)
+   - 93454 is ONLY used when coronary angio was done WITHOUT any heart catheterization (rare — typically only for angio-only followup)
+   ALWAYS include one of these codes when PCI is performed.
 
    **CRITICAL — Multi-Vessel PCI Coding Rules:**
    - For PCI (stent, angioplasty, atherectomy), the FIRST vessel uses the BASE code:
