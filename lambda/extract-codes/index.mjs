@@ -152,7 +152,9 @@ These codes are MUTUALLY EXCLUSIVE — choose exactly ONE:
 - 93459 = Coronary angiography + left heart cath + bypass grafts
 - 93460 = Coronary angiography + combined R+L heart cath
 - 93461 = Coronary angiography + combined R+L heart cath + bypass grafts
-NEVER bill more than one. If LVEDP was measured → includes LHC → use 93458+. If grafts imaged → use graft variant. ALWAYS include one when PCI is performed.
+NEVER bill more than one. If grafts imaged → use graft variant. ALWAYS include one when PCI is performed.
+
+**CRITICAL — Do NOT infer left heart catheterization (LHC) unless it is EXPLICITLY documented.** LHC must be stated in the operative note using terms such as "left heart catheterization," "LHC," "left ventriculography," "LV gram," or "LVEDP measured/recorded." Coronary angiography performed via femoral artery access does NOT imply LHC was performed. If the note only lists coronary arteriogram and/or bypass graft arteriogram WITHOUT explicit LHC documentation, you MUST use 93454 or 93455 (no heart cath codes), NOT 93458 or 93459. Getting this wrong is a billing compliance violation.
 
 Catheterization add-on codes (bill separately in addition to primary):
 - 93462 = LHC by transseptal or transapical puncture (add-on to 93452-93461)
@@ -392,7 +394,7 @@ export const handler = async (event) => {
       }
 
       const codeLibrary = await loadCodeLibrary();
-      const modelId = "us.anthropic.claude-sonnet-4-20250514-v1:0";
+      const modelId = "us.anthropic.claude-sonnet-4-6-20250620-v1:0";
 
       const chatSystem = `You are an expert cardiology billing consultant. You have deep knowledge of CPT codes, ICD-10 codes, Medicare billing rules, NCCI edits, and modifier usage for interventional cardiology.
 
@@ -480,7 +482,7 @@ ${JSON.stringify(codeLibrary.billingRules)}`;
     });
 
     // --- Call Bedrock (Claude Sonnet) ---
-    const modelId = "us.anthropic.claude-sonnet-4-20250514-v1:0";
+    const modelId = "us.anthropic.claude-sonnet-4-6-20250620-v1:0";
 
     const bedrockPayload = {
       anthropic_version: "bedrock-2023-05-31",
