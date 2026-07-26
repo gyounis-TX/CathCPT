@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Heart, Users, Shield, Settings, LogOut, RefreshCw, History, Lightbulb, HelpCircle, FileText, Stethoscope, List, ClipboardCheck } from 'lucide-react';
 import CardiologyCPTApp, { CardiologyCPTAppHandle, CathLabBottomTab } from './CardiologyCPTApp';
+import logo from './assets/logo.png';
 import { LoginScreen } from './screens/LoginScreen';
 import { RoundsScreen } from './screens/RoundsScreen';
 import { AdminPortalScreen } from './screens/AdminPortalScreen';
@@ -1088,29 +1089,7 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-16 h-16 rounded-2xl mx-auto mb-4 overflow-hidden animate-pulse">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              <defs>
-                <linearGradient id="loadingBgDark" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#1a1a2e"/>
-                  <stop offset="100%" stopColor="#0d0d1a"/>
-                </linearGradient>
-                <linearGradient id="loadingHeartGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#FF6B35"/>
-                  <stop offset="50%" stopColor="#E8451C"/>
-                  <stop offset="100%" stopColor="#C41E00"/>
-                </linearGradient>
-              </defs>
-              <rect width="100" height="100" rx="18" fill="url(#loadingBgDark)"/>
-              <g transform="translate(18, 12) scale(0.65)">
-                <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="url(#loadingHeartGlow)" opacity="0.9"/>
-                <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="none" stroke="#FFB347" strokeWidth="1.5" opacity="0.7"/>
-                <path d="M35,35 L50,42 L65,30" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
-                <path d="M50,42 L50,60 L40,70" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
-                <path d="M50,60 L62,68" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
-                <circle cx="50" cy="42" r="2" fill="#FFD700" opacity="0.9"/>
-                <circle cx="50" cy="60" r="1.5" fill="#FFD700" opacity="0.7"/>
-              </g>
-            </svg>
+            <img src={logo} alt="CathDoc" className="w-full h-full" />
           </div>
           <p className="text-lg font-semibold text-gray-700 mb-1">CathDoc</p>
           <p className="text-gray-400 text-sm">{initStep || 'Loading...'}</p>
@@ -1186,29 +1165,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2.5">
             {/* Small CathDoc icon */}
             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <defs>
-                  <linearGradient id="headerBgDark" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#1a1a2e"/>
-                    <stop offset="100%" stopColor="#0d0d1a"/>
-                  </linearGradient>
-                  <linearGradient id="headerHeartGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#FF6B35"/>
-                    <stop offset="50%" stopColor="#E8451C"/>
-                    <stop offset="100%" stopColor="#C41E00"/>
-                  </linearGradient>
-                </defs>
-                <rect width="100" height="100" rx="18" fill="url(#headerBgDark)"/>
-                <g transform="translate(18, 12) scale(0.65)">
-                  <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="url(#headerHeartGlow)" opacity="0.9"/>
-                  <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="none" stroke="#FFB347" strokeWidth="1.5" opacity="0.7"/>
-                  <path d="M35,35 L50,42 L65,30" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
-                  <path d="M50,42 L50,60 L40,70" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
-                  <path d="M50,60 L62,68" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
-                  <circle cx="50" cy="42" r="2" fill="#FFD700" opacity="0.9"/>
-                  <circle cx="50" cy="60" r="1.5" fill="#FFD700" opacity="0.7"/>
-                </g>
-              </svg>
+              <img src={logo} alt="CathDoc" className="w-full h-full" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-amber-700 leading-tight">CathDoc</h1>
@@ -1605,29 +1562,7 @@ const App: React.FC = () => {
         className="fixed inset-0 bg-white z-[99999] flex flex-col items-center justify-center"
       >
         <div className="w-16 h-16 rounded-2xl overflow-hidden mb-4">
-          <svg viewBox="0 0 100 100" className="w-full h-full">
-            <defs>
-              <linearGradient id="overlayBgDark" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#1a1a2e"/>
-                <stop offset="100%" stopColor="#0d0d1a"/>
-              </linearGradient>
-              <linearGradient id="overlayHeartGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FF6B35"/>
-                <stop offset="50%" stopColor="#E8451C"/>
-                <stop offset="100%" stopColor="#C41E00"/>
-              </linearGradient>
-            </defs>
-            <rect width="100" height="100" rx="18" fill="url(#overlayBgDark)"/>
-            <g transform="translate(18, 12) scale(0.65)">
-              <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="url(#overlayHeartGlow)" opacity="0.9"/>
-              <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="none" stroke="#FFB347" strokeWidth="1.5" opacity="0.7"/>
-              <path d="M35,35 L50,42 L65,30" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
-              <path d="M50,42 L50,60 L40,70" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
-              <path d="M50,60 L62,68" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
-              <circle cx="50" cy="42" r="2" fill="#FFD700" opacity="0.9"/>
-              <circle cx="50" cy="60" r="1.5" fill="#FFD700" opacity="0.7"/>
-            </g>
-          </svg>
+          <img src={logo} alt="CathDoc" className="w-full h-full" />
         </div>
         <p className="text-lg font-semibold text-gray-700">CathDoc</p>
       </div>
