@@ -15,9 +15,9 @@ interface OnboardingStep {
 const steps: OnboardingStep[] = [
   {
     icon: <Heart className="w-12 h-12 text-white" />,
-    title: 'Welcome to CathCPT',
+    title: 'Welcome to CathDoc',
     description: 'Your comprehensive cardiology charge capture tool.',
-    detail: 'CathCPT helps you select CPT codes, track RVUs, and manage inpatient charges — all in a HIPAA-compliant mobile app.'
+    detail: 'CathDoc helps you select CPT codes, track RVUs, and manage inpatient charges — all in a HIPAA-compliant mobile app.'
   },
   {
     icon: <Activity className="w-12 h-12 text-white" />,

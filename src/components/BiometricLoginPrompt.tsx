@@ -56,7 +56,7 @@ export const BiometricLoginPrompt: React.FC<BiometricLoginPromptProps> = ({ onCo
             Enable {biometryLabel}?
           </h2>
           <p className="text-sm text-gray-600 mb-6">
-            Use {biometryLabel} for faster, more secure access to CathCPT. You can change this later in Settings.
+            Use {biometryLabel} for faster, more secure access to CathDoc. You can change this later in Settings.
           </p>
 
           <div className="space-y-2.5">

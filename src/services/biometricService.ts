@@ -46,7 +46,7 @@ export async function authenticateWithBiometric(): Promise<boolean> {
   try {
     const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
     await BiometricAuth.authenticate({
-      reason: 'Unlock CathCPT',
+      reason: 'Unlock CathDoc',
       cancelTitle: 'Use Password',
       allowDeviceCredential: false,
     });

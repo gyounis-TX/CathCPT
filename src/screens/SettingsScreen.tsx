@@ -736,7 +736,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </p>
           </div>
           <p>CPT® codes © American Medical Association. All rights reserved.</p>
-          <p className="mt-1">CathCPT uses 2026 CPT codes</p>
+          <p className="mt-1">CathDoc uses 2026 CPT codes</p>
           <p
             className="mt-1 text-xs text-gray-400 cursor-default"
             onClick={handleVersionTap}
