@@ -662,17 +662,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <div className="w-20 h-20 rounded-2xl mx-auto mb-4 overflow-hidden">
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <defs>
-              <linearGradient id="loginBgGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#D4A84B"/>
-                <stop offset="50%" stopColor="#C49A3D"/>
-                <stop offset="100%" stopColor="#9A7830"/>
+              <linearGradient id="loginBgDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1a1a2e"/>
+                <stop offset="100%" stopColor="#0d0d1a"/>
+              </linearGradient>
+              <linearGradient id="loginHeartGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FF6B35"/>
+                <stop offset="50%" stopColor="#E8451C"/>
+                <stop offset="100%" stopColor="#C41E00"/>
               </linearGradient>
             </defs>
-            <rect width="100" height="100" rx="18" fill="url(#loginBgGold)"/>
-            <g transform="translate(28, 5) scale(0.52)">
-              <path d="M42,22 C52,8 82,12 82,42 C82,68 42,92 42,92 C42,92 2,68 2,42 C2,12 32,8 42,22" fill="#8B1538"/>
+            <rect width="100" height="100" rx="18" fill="url(#loginBgDark)"/>
+            <g transform="translate(18, 12) scale(0.65)">
+              <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="url(#loginHeartGlow)" opacity="0.9"/>
+              <path d="M50,25 C55,10 75,8 82,20 C90,34 85,52 50,85 C15,52 10,34 18,20 C25,8 45,10 50,25Z" fill="none" stroke="#FFB347" strokeWidth="1.5" opacity="0.7"/>
+              <path d="M35,35 L50,42 L65,30" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+              <path d="M50,42 L50,60 L40,70" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+              <path d="M50,60 L62,68" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+              <circle cx="50" cy="42" r="2" fill="#FFD700" opacity="0.9"/>
+              <circle cx="50" cy="60" r="1.5" fill="#FFD700" opacity="0.7"/>
             </g>
-            <text x="50" y="72" fontSize="36" fontWeight="900" fill="#F5E6B0" textAnchor="middle" fontFamily="Arial Black, sans-serif">Doc</text>
           </svg>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">CathDoc</h1>
