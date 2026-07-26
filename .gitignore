@@ -49,3 +49,6 @@ scripts/serviceAccountKey.json
 # Temporary files
 *.tmp
 *.bak
+
+# Android release signing (local only)
+android/keystore.properties
