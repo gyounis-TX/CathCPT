@@ -47,7 +47,7 @@ export const mockHospitals = [
   { id: 'mock-hosp-3', name: 'BSLMC', organizationId: 'YOCA' }
 ];
 
-export const mockCathLabs = [
+export const mockCathLabs: { id: string; name: string; hospitalId?: string }[] = [
   { id: 'mock-lab-1', name: 'DHC Cath Lab', hospitalId: 'mock-hosp-1' },
   { id: 'mock-lab-2', name: 'HMH Cath Lab', hospitalId: 'mock-hosp-2' },
   { id: 'mock-lab-3', name: 'BSLMC Cath Lab', hospitalId: 'mock-hosp-3' }

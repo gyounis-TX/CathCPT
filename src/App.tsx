@@ -325,7 +325,7 @@ const App: React.FC = () => {
         try {
           await initializeFirebase();
         } catch (fbErr) {
-          logger.warn('Firebase init failed', fbErr);
+          logger.warn('Firebase init failed', { error: String(fbErr) });
         }
       }
 
@@ -392,7 +392,7 @@ const App: React.FC = () => {
             loadChargesAndDiagnoses(mode.organizationId)
           ]);
         } catch (proErr) {
-          logger.warn('Pro data load partially failed', proErr);
+          logger.warn('Pro data load partially failed', { error: String(proErr) });
         }
       }
 

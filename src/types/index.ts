@@ -120,7 +120,7 @@ export interface Inpatient {
   dob: string;
   mrn?: string;
   isActive: boolean;
-  dischargedAt?: string;
+  dischargedAt?: string | null;
   coveringFor?: string; // For call patients: whose patient we are covering
   createdAt: string;
   updatedAt?: string;
@@ -195,6 +195,9 @@ export interface AuditLogEntry {
     loginMethod?: 'password' | 'biometric';
     exportType?: string;
     exportRowCount?: number;
+    summary?: string;
+    authProvider?: string;
+    cptCount?: number;
   };
 }
 

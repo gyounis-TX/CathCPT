@@ -36,7 +36,8 @@ const defaultProps = {
   userEmail: 'doctor@example.com',
   userId: 'user-1',
   orgId: 'org-1',
-  onUnlock: vi.fn()
+  onUnlock: vi.fn(),
+  onLogout: vi.fn()
 };
 
 describe('LockScreen', () => {

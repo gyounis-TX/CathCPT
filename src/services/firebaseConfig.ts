@@ -56,7 +56,7 @@ export async function initializeFirebase(): Promise<{ app: FirebaseApp; auth: Au
     } else if (error.code === 'unimplemented') {
       logger.warn('Firestore persistence not available in this browser');
     } else {
-      logger.warn('Firestore persistence setup skipped:', error.message || 'timeout');
+      logger.warn('Firestore persistence setup skipped', { reason: error.message || 'timeout' });
     }
   }
 

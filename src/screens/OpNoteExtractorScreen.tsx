@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, FileText, Sparkles, Check, AlertTriangle, Loader2, ImagePlus, X, MessageCircle, ChevronDown, Send } from 'lucide-react';
-import { extractCodesFromOpNote, ExtractionResult, chatAboutExtraction, ChatMessage } from '../services/opNoteService';
+import { extractCodesFromOpNote, ExtractionResult, ExtractedICD10Code, chatAboutExtraction, ChatMessage } from '../services/opNoteService';
 import { saveCharge } from '../services/chargesService';
 import { logAuditEvent } from '../services/auditService';
 import { rvuData } from '../data/rvuData';
@@ -64,7 +64,7 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         const ctx = canvas.getContext('2d')!;
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        await page.render({ canvas, canvasContext: ctx, viewport }).promise;
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         const base64 = dataUrl.split(',')[1];
@@ -138,10 +138,11 @@ export const OpNoteExtractorScreen: React.FC<OpNoteExtractorScreenProps> = ({
     setSubmitSuccess(false);
 
     try {
-      const raw = await extractCodesFromOpNote(
-        opNoteText.trim() || undefined,
-        imageData ? { data: imageData.data, type: imageData.type } : undefined
-      );
+      const raw: ExtractionResult & { icd10codes?: ExtractedICD10Code[] } =
+        await extractCodesFromOpNote(
+          opNoteText.trim() || undefined,
+          imageData ? { data: imageData.data, type: imageData.type } : undefined
+        );
       console.log('Extraction result:', JSON.stringify(raw, null, 2));
       const extracted: ExtractionResult = {
         cptCodes: raw.cptCodes || [],
