@@ -22,9 +22,24 @@ const auth = admin.auth();
 // ---------------------------------------------------------------------------
 // AWS client initialization
 // ---------------------------------------------------------------------------
+const MODEL_ID = "us.anthropic.claude-sonnet-5-5";
+
 const bedrockClient = new BedrockRuntimeClient({
   region: process.env.AWS_REGION || "us-east-1",
 });
+
+async function invokeClaude(payload) {
+  const res = await bedrockClient.send(
+    new InvokeModelCommand({
+      modelId: MODEL_ID,
+      contentType: "application/json",
+      accept: "application/json",
+      body: JSON.stringify({ anthropic_version: "bedrock-2023-05-31", ...payload }),
+    })
+  );
+  const body = JSON.parse(Buffer.from(res.body).toString("utf-8"));
+  return body.content?.find((b) => b.type === "text")?.text ?? "";
+}
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "us-east-1",
@@ -394,8 +409,6 @@ export const handler = async (event) => {
       }
 
       const codeLibrary = await loadCodeLibrary();
-      const modelId = "us.anthropic.claude-sonnet-4-6-20250620-v1:0";
-
       const chatSystem = `You are an expert cardiology billing consultant. You have deep knowledge of CPT codes, ICD-10 codes, Medicare billing rules, NCCI edits, and modifier usage for interventional cardiology.
 
 You are helping an admin review an AI-extracted billing analysis from a cardiac procedure operative note. Answer their questions about:
@@ -419,24 +432,7 @@ ${JSON.stringify(codeLibrary.billingRules)}`;
 
       const messages = chatMessages.map(m => ({ role: m.role, content: m.content }));
 
-      const chatPayload = {
-        anthropic_version: "bedrock-2023-05-31",
-        max_tokens: 1024,
-        system: chatSystem,
-        messages,
-      };
-
-      const chatResponse = await bedrockClient.send(
-        new InvokeModelCommand({
-          modelId,
-          contentType: "application/json",
-          accept: "application/json",
-          body: JSON.stringify(chatPayload),
-        })
-      );
-
-      const chatBody = JSON.parse(Buffer.from(chatResponse.body).toString("utf-8"));
-      const reply = chatBody?.content?.[0]?.text ?? "";
+      const reply = await invokeClaude({ max_tokens: 1024, system: chatSystem, messages });
 
       return jsonResponse(200, { reply });
     }
@@ -482,31 +478,11 @@ ${JSON.stringify(codeLibrary.billingRules)}`;
     });
 
     // --- Call Bedrock (Claude Sonnet) ---
-    const modelId = "us.anthropic.claude-sonnet-4-6-20250620-v1:0";
-
-    const bedrockPayload = {
-      anthropic_version: "bedrock-2023-05-31",
+    const rawText = await invokeClaude({
       max_tokens: 4096,
       system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: userContent,
-        },
-      ],
-    };
-
-    const bedrockResponse = await bedrockClient.send(
-      new InvokeModelCommand({
-        modelId,
-        contentType: "application/json",
-        accept: "application/json",
-        body: JSON.stringify(bedrockPayload),
-      })
-    );
-
-    const bedrockBody = JSON.parse(Buffer.from(bedrockResponse.body).toString("utf-8"));
-    const rawText = bedrockBody?.content?.[0]?.text ?? "";
+      messages: [{ role: "user", content: userContent }],
+    });
 
     if (!rawText) {
       return jsonResponse(502, { error: "Empty response from Bedrock" });
