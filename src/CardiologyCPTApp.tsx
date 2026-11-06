@@ -2518,13 +2518,13 @@ const CardiologyCPTApp = forwardRef<CardiologyCPTAppHandle, CardiologyCPTAppProp
     // Get charge date directly from the date picker text
     const chargeDate: string = procedureDateText || formatDateForStorage(new Date());
 
-    // Auto-create inpatient record if no match and DOB is provided
+    // Auto-create inpatient record if no match so the charge reaches the billing queue
     let resolvedPatient = matchedPatient;
-    if (!resolvedPatient && patientDob && onPatientCreated) {
+    if (!resolvedPatient && onPatientCreated) {
       const hospitalMatch = hospitals.find(h => h.name === selectedLocation);
       resolvedPatient = await onPatientCreated({
         patientName: patientName.trim(),
-        dob: patientDob,
+        dob: patientDob || '',
         hospitalId: hospitalMatch?.id || '',
         hospitalName: selectedLocation,
         isActive: true

@@ -622,6 +622,7 @@ const App: React.FC = () => {
       const allPatients = await getAllOrgInpatients(orgId);
       const discharged = allPatients.find(p =>
         !p.isActive &&
+        !!patient.dob &&
         p.patientName === patient.patientName &&
         p.dob === patient.dob
       );
